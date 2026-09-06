@@ -32,47 +32,46 @@ const SPACE_C = {
 };
 
 // LIGHT_C: the app's main page/chrome palette (headers, tab bar, section
-// labels, page background). Per the owner's request to swap black and white
-// throughout, the page itself is now the dark surface (the same unified
-// black, #1A1917, used by the membership card) with light text, while each
-// Card renders as a light "island" on top of it (see CARD_C below). Same
-// keys as SPACE_C/CARD_C so every component that references `C.xxx` works
-// unchanged under any of the themes.
+// labels, page background). Per the owner's request to match the clean,
+// mostly-white look of Instagram's own UI — pure white background, near-
+// black text, a muted gray for secondary text/labels, and hairline light
+// gray borders instead of bold black/white boxes. Gold stays as the app's
+// own brand accent (buttons, highlights, selected states). Same keys as
+// SPACE_C/CARD_C so every component that references `C.xxx` works unchanged
+// under any of the themes.
 const LIGHT_C = {
-  bg: "#1A1917",
-  bg2: "#1A1917",
-  card: "#1A1917",
-  cardShade: "#1A1917",
-  cardBorder: "#3A362C",
-  cardBorderLight: "#4A4536",
+  bg: "#FFFFFF",
+  bg2: "#FFFFFF",
+  card: "#FFFFFF",
+  cardShade: "#FFFFFF",
+  cardBorder: "#DBDBDB",
+  cardBorderLight: "#EFEFEF",
   gold: "#D4AF37",
   goldDim: "#8C7328",
   goldSoft: "#D4AF3722",
-  ivory: "#FFFFFF",
-  dim: "#B0AA9C",
-  danger: "#E0685A",
+  ivory: "#262626",
+  dim: "#8E8E8E",
+  danger: "#ED4956",
   onAccent: "#0D0D0D",
 };
 
-// CARD_C: applied inside every Card box — solid off-white with a dark
-// border/text, so the surrounding page can stay black while each card reads
-// as a clean light box (dark text, gold kept as an accent for
-// highlighted/selected states). This is the exact off-white the page
-// background used before the black/white swap, so the two surfaces are a
-// clean, deliberate inversion of each other.
+// CARD_C: applied inside every Card box. Matches Instagram's flat,
+// borderline-invisible section styling — a hair off-white so a card reads
+// as a distinct area without ever becoming a bold black or white "box",
+// same hairline gray border and text colors as the page itself.
 const CARD_C = {
-  bg: "#F6F2E8",
-  bg2: "#F6F2E8",
-  card: "#F6F2E8",
-  cardShade: "#F6F2E8",
-  cardBorder: "#1A1917",
-  cardBorderLight: "#8C7328",
+  bg: "#FAFAFA",
+  bg2: "#FAFAFA",
+  card: "#FAFAFA",
+  cardShade: "#FAFAFA",
+  cardBorder: "#DBDBDB",
+  cardBorderLight: "#EFEFEF",
   gold: "#D4AF37",
   goldDim: "#8C7328",
   goldSoft: "#D4AF3722",
-  ivory: "#2A2620",
-  dim: "#6B6558",
-  danger: "#B2483A",
+  ivory: "#262626",
+  dim: "#8E8E8E",
+  danger: "#ED4956",
   onAccent: "#0D0D0D",
 };
 
@@ -215,9 +214,9 @@ function SectionLabel({ children }) {
 function Card({ children, style }) {
   return (
     <div style={{
-      background: "#F6F2E8",
-      border: "1px solid #1A1917", borderRadius: 14,
-      padding: 16, marginBottom: 12, boxShadow: "0 6px 18px -12px rgba(0,0,0,0.35)",
+      background: "#FAFAFA",
+      border: "1px solid #DBDBDB", borderRadius: 14,
+      padding: 16, marginBottom: 12, boxShadow: "none",
       ...style,
     }}>
       <ThemeContext.Provider value={CARD_C}>{children}</ThemeContext.Provider>
@@ -709,7 +708,7 @@ function AppInner() {
           alignItems: "center", justifyContent: "center", gap: 14, padding: 24, textAlign: "center",
           background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
         }}>
-          <Logo height={56} color="#FFFFFF" style={{ marginBottom: 8 }} />
+          <Logo height={56} color="#262626" style={{ marginBottom: 8 }} />
           <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.ivory }}>ご利用を停止しています</div>
           <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, maxWidth: 280 }}>
             現在このアカウントはご利用いただけません。詳しくはジムまでお問い合わせください。
@@ -737,7 +736,7 @@ function AppInner() {
           alignItems: "center", justifyContent: "center", gap: 14, padding: 24, textAlign: "center",
           background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
         }}>
-          <Logo height={56} color="#FFFFFF" style={{ marginBottom: 8 }} />
+          <Logo height={56} color="#262626" style={{ marginBottom: 8 }} />
           <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.gold }}>ご登録ありがとうございます</div>
           <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, maxWidth: 280 }}>
             現在スタッフが内容を確認しています。承認が完了すると自動的にご利用いただけるようになりますので、しばらくお待ちください。
@@ -750,7 +749,7 @@ function AppInner() {
       <div style={{ padding: "22px 20px 16px", borderBottom: `1px solid ${C.cardBorder}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <Logo height={46} color="#FFFFFF" style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
+            <Logo height={46} color="#262626" style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 3, color: C.goldDim, marginTop: 6 }}>MEMBERS ONLY</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1149,6 +1148,22 @@ const INGREDIENTS = {
 
 const STORE_CHAINS = ["大戸屋", "やよい軒", "なかよし", "すき家", "鳥貴族", "なか卯", "サイゼリヤ"];
 
+// Daily target ranges for the cellular rejuvenation / anti-aging nutrients
+// that ARE reasonably estimable from a meal photo (unlike the AGING_NUTRIENTS
+// supplement checklist in ConditionTab, which covers amino acids etc. that
+// can't be judged from a photo). Each is rendered as a progress bar against
+// dayTotals. Sodium is a ceiling (lower is better) rather than a floor, so
+// it's flagged with mode: "max".
+const REJUVENATION_TARGETS = [
+  { key: "vitaminC", label: "ビタミンC", min: 1000, max: 3000, unit: "mg" },
+  { key: "fiber", label: "食物繊維", min: 20, max: 25, unit: "g" },
+  { key: "potassium", label: "カリウム", min: 3000, max: 3500, unit: "mg" },
+  { key: "calcium", label: "カルシウム", min: 650, max: 800, unit: "mg" },
+  { key: "iron", label: "鉄分", min: 7.5, max: 10, unit: "mg", note: "男性・非月経時の目安" },
+  { key: "vitaminA", label: "ビタミンA", min: 800, max: 900, unit: "μgRAE" },
+  { key: "sodium", label: "ナトリウム", max: 2000, unit: "mg", mode: "max", note: "食塩相当量6.5g未満が目安" },
+];
+
 function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId }) {
   const C = useTheme();
   const [analyzing, setAnalyzing] = useState(false);
@@ -1177,7 +1192,9 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
       potassium: acc.potassium + (m.potassium || 0),
       calcium: acc.calcium + (m.calcium || 0),
       iron: acc.iron + (m.iron || 0),
-    }), { calories: 0, protein: 0, fat: 0, carb: 0, fiber: 0, vitaminC: 0, potassium: 0, calcium: 0, iron: 0 });
+      sodium: acc.sodium + (m.sodium || 0),
+      vitaminA: acc.vitaminA + (m.vitaminA || 0),
+    }), { calories: 0, protein: 0, fat: 0, carb: 0, fiber: 0, vitaminC: 0, potassium: 0, calcium: 0, iron: 0, sodium: 0, vitaminA: 0 });
     const pGrams = t.protein, fGrams = t.fat, cGrams = t.carb;
     const pCal = pGrams * 4, fCal = fGrams * 9, cCal = cGrams * 4;
     const totalCal = pCal + fCal + cCal || 1;
@@ -1248,6 +1265,41 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
 
   return (
     <div>
+      <SectionLabel>1日の目安(PFC・カロリー)</SectionLabel>
+      {targets && targets.calories == null ? (
+        <Card>
+          <div style={{ fontSize: 12.5, color: CARD_C.dim, lineHeight: 1.8, textAlign: "center" }}>
+            『TTGYMトレーナーがお客様の理想の摂取カロリーを設定中です。』
+          </div>
+        </Card>
+      ) : targets && targets.calories != null ? (
+        <Card style={{ height: 220, padding: "16px 10px 10px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 6px", marginBottom: 8 }}>
+            <div style={{ fontSize: 11.5, color: CARD_C.dim }}>1日の目安カロリー</div>
+            <div>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 22, color: C.gold }}>{targets.calories}</span>
+              <span style={{ fontSize: 11, color: CARD_C.dim, marginLeft: 4 }}>kcal</span>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height="72%">
+            <BarChart
+              data={[
+                { name: "P(タンパク質)", value: targets.protein },
+                { name: "F(脂質)", value: targets.fat },
+                { name: "C(炭水化物)", value: targets.carb },
+              ]}
+              margin={{ top: 4, right: 14, left: -14, bottom: 0 }}
+            >
+              <CartesianGrid stroke={C.cardBorder} vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: CARD_C.dim, fontSize: 10.5 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} />
+              <YAxis tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={false} tickLine={false} width={32} unit="g" />
+              <Tooltip contentStyle={{ background: C.bg, border: `1px solid ${C.cardBorder}`, fontSize: 12 }} />
+              <Bar dataKey="value" fill={C.gold} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      ) : null}
+
       <SectionLabel>AI 食事解析</SectionLabel>
       <Card>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -1551,22 +1603,30 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
 
       <SectionLabel>細胞若返り・抗老化(食事より自動集計)</SectionLabel>
       <Card>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: CARD_C.dim, marginBottom: 4 }}>
-            <span>ビタミンC(目安 1000〜3000mg/日)</span>
-            <span style={{ fontFamily: "'Space Mono', monospace", color: dayTotals.vitaminC >= 1000 ? C.gold : "#B8B2A7" }}>
-              {Math.round(dayTotals.vitaminC)}mg
-            </span>
-          </div>
-          <div style={{ height: 6, background: C.cardBorder, borderRadius: 3, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.min(100, (dayTotals.vitaminC / 1000) * 100)}%`, background: dayTotals.vitaminC >= 1000 ? C.gold : "#B8B2A7" }} />
-          </div>
-        </div>
-        <div style={{ fontSize: 10.5, color: CARD_C.dim, lineHeight: 1.6 }}>
-          食物繊維 {Math.round(dayTotals.fiber)}g ・ カリウム {Math.round(dayTotals.potassium)}mg ・ カルシウム {Math.round(dayTotals.calcium)} ・ 鉄分 {Math.round(dayTotals.iron)}(いずれも写真解析による目安値)
-        </div>
-        <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 10, lineHeight: 1.6 }}>
-          ※アミノ酸(グルタミン等)やビタミンD/E、マグネシウム・亜鉛などのサプリメント由来の栄養素は写真から推定できないため、「体調管理」タブのチェックリストで記録してください。
+        {REJUVENATION_TARGETS.map(n => {
+          const value = dayTotals[n.key] || 0;
+          const isMax = n.mode === "max";
+          const reached = isMax ? value <= n.max : value >= n.min;
+          const barColor = reached ? C.gold : (isMax ? C.danger : "#B8B2A7");
+          const pctBase = isMax ? n.max : n.min;
+          const rangeText = isMax ? `目安 ${n.max}${n.unit}未満` : `目安 ${n.min}〜${n.max}${n.unit}`;
+          return (
+            <div key={n.key} style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: CARD_C.dim, marginBottom: 4 }}>
+                <span>{n.label}({rangeText})</span>
+                <span style={{ fontFamily: "'Space Mono', monospace", color: barColor }}>
+                  {Math.round(value * 10) / 10}{n.unit}
+                </span>
+              </div>
+              <div style={{ height: 6, background: C.cardBorder, borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.min(100, (value / pctBase) * 100)}%`, background: barColor }} />
+              </div>
+              {n.note && <div style={{ fontSize: 9.5, color: CARD_C.dim, marginTop: 2 }}>{n.note}</div>}
+            </div>
+          );
+        })}
+        <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 4, lineHeight: 1.6 }}>
+          いずれも写真解析による目安値です。※アミノ酸(グルタミン等)やビタミンD/E、マグネシウム・亜鉛などのサプリメント由来の栄養素は写真から推定できないため、「体調管理」タブのチェックリストで記録してください。
         </div>
       </Card>
 
@@ -1702,40 +1762,42 @@ const AGING_PRINCIPLES = [
   { key: "antiGlycation", label: "抗酸化・抗糖化:血糖値の急上昇や焦げ・揚げ物(AGEs)を避けられましたか?" },
 ];
 
+// Each pool entry pairs an advice message with a concrete "次のステップ"
+// (next step) action, shown together in the score comment card.
 const ADVICE_POOL = {
   ideal: {
     label: "理想的バランス",
     messages: [
-      "神経系が最も冴えている状態。高強度トレーニングに最適です。",
-      "脳・神経・腸すべてが良いコンディション。今日は自己ベスト更新を狙いましょう。",
-      "回復とパフォーマンスのバランスが取れています。集中力を要する種目から始めるのがおすすめです。",
-      "絶好調です。新しい種目やフォームの見直しに挑戦するのに向いています。",
+      { text: "神経系が最も冴えている状態。高強度トレーニングに最適です。", nextStep: "今日は高強度種目やPRチャレンジからトレーニングを組み立てましょう。" },
+      { text: "脳・神経・腸すべてが良いコンディション。今日は自己ベスト更新を狙いましょう。", nextStep: "メインリフトで重量更新にトライし、追い込んだ分は栄養補給を忘れずに。" },
+      { text: "回復とパフォーマンスのバランスが取れています。集中力を要する種目から始めるのがおすすめです。", nextStep: "複雑なフォームが必要な種目やスキルトレーニングを優先して取り組みましょう。" },
+      { text: "絶好調です。新しい種目やフォームの見直しに挑戦するのに向いています。", nextStep: "新種目の導入やフォーム動画チェックなど、質を高める取り組みに時間を使いましょう。" },
     ],
   },
   sympathetic: {
     label: "交感神経優位",
     messages: [
-      "集中力は高いが緊張気味。今日は深い呼吸を意識したセッションを。",
-      "やや興奮状態です。ウォームアップを長めに取り、徐々に強度を上げましょう。",
-      "頭は冴えていますが力みやすい状態。フォーム確認を丁寧に行いましょう。",
-      "交感神経が優位です。トレーニング後のクールダウンをいつもより長めに。",
+      { text: "集中力は高いが緊張気味。今日は深い呼吸を意識したセッションを。", nextStep: "セット間に深呼吸を3〜5回入れ、心拍を落ち着かせてから次のセットに入りましょう。" },
+      { text: "やや興奮状態です。ウォームアップを長めに取り、徐々に強度を上げましょう。", nextStep: "通常より5分長くウォームアップし、軽負荷から段階的に重量を上げていきましょう。" },
+      { text: "頭は冴えていますが力みやすい状態。フォーム確認を丁寧に行いましょう。", nextStep: "鏡や動画でフォームを確認しながら、丁寧に反復回数をこなしましょう。" },
+      { text: "交感神経が優位です。トレーニング後のクールダウンをいつもより長めに。", nextStep: "終了後は10分程度のストレッチと呼吸法で副交感神経へ切り替えましょう。" },
     ],
   },
   parasympathetic: {
     label: "副交感神経優位",
     messages: [
-      "回復モード。ストレッチや神経系ドリルで整えましょう。",
-      "身体がまだ休息を求めています。軽めの有酸素やモビリティワークが向いています。",
-      "無理に追い込まず、可動域を広げるセッションに切り替えるのがおすすめです。",
-      "リカバリー優先の日。睡眠と栄養の質を今日は特に意識しましょう。",
+      { text: "回復モード。ストレッチや神経系ドリルで整えましょう。", nextStep: "モビリティドリルと軽いストレッチを中心に、20〜30分程度の軽めのセッションにしましょう。" },
+      { text: "身体がまだ休息を求めています。軽めの有酸素やモビリティワークが向いています。", nextStep: "ウォーキングや軽いバイクなど、心拍を上げすぎない有酸素を選びましょう。" },
+      { text: "無理に追い込まず、可動域を広げるセッションに切り替えるのがおすすめです。", nextStep: "ストレッチポールやヨガなど、可動域改善を目的にしたメニューに変更しましょう。" },
+      { text: "リカバリー優先の日。睡眠と栄養の質を今日は特に意識しましょう。", nextStep: "今夜はいつもより30分早く就寝し、タンパク質を意識した夕食を摂りましょう。" },
     ],
   },
   rest: {
     label: "要休息",
     messages: [
-      "疲労が蓄積しています。今日は完全休養か、ごく軽いストレッチに留めましょう。",
-      "心身ともにお疲れのサインです。無理せずしっかり休むことが最大のパフォーマンス投資です。",
-      "オーバーワークのリスクがあります。トレーナーに相談の上、メニューを調整しましょう。",
+      { text: "疲労が蓄積しています。今日は完全休養か、ごく軽いストレッチに留めましょう。", nextStep: "今日はトレーニングを休み、10分程度の軽いストレッチと早めの就寝を心がけましょう。" },
+      { text: "心身ともにお疲れのサインです。無理せずしっかり休むことが最大のパフォーマンス投資です。", nextStep: "睡眠時間を普段より1時間多く確保し、栄養と水分補給を優先しましょう。" },
+      { text: "オーバーワークのリスクがあります。トレーナーに相談の上、メニューを調整しましょう。", nextStep: "次回来店時にトレーナーへ今週の疲労感を共有し、メニュー強度の調整を相談しましょう。" },
     ],
   },
 };
@@ -1799,11 +1861,12 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
 
     const pool = ADVICE_POOL[category];
     const idx = (sleep + mental + morningFatigue + bowel) % pool.messages.length;
-    let advice = pool.messages[idx];
+    let advice = pool.messages[idx].text;
+    let nextStep = pool.messages[idx].nextStep;
     if (bowel >= 3) advice += " 腸内環境のケアもあわせて意識しましょう。";
     if (sleepHours && Number(sleepHours) < 6) advice += " 睡眠時間がやや短めなので、今夜は早めの就寝を。";
 
-    return { label: pool.label, advice };
+    return { label: pool.label, advice, nextStep };
   }, [sleep, mental, morningFatigue, bowel, sleepHours]);
 
   return (
@@ -1829,6 +1892,13 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
           <CheckToggle label="湯船に10分以上浸かりましたか?" checked={bath10} onToggle={() => setBath10(v => !v)} />
           <CheckToggle label="運動・ストレッチはできましたか?" checked={exercise} onToggle={() => setExercise(v => !v)} />
           <CheckToggle label="就寝1〜2時間前にデジタルデトックス(スマホ断ち)はできましたか?" checked={digitalDetox} onToggle={() => setDigitalDetox(v => !v)} />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>細胞若返り・抗老化チェック</div>
+          {AGING_PRINCIPLES.map(p => (
+            <CheckToggle key={p.key} label={p.label} checked={!!agingChecklist[p.key]} onToggle={() => toggleAging(p.key)} />
+          ))}
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -1936,6 +2006,12 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
           <span style={{ fontSize: 13, color: C.gold, fontWeight: 600 }}>{status.label}</span>
         </div>
         <div style={{ fontSize: 12.5, color: CARD_C.dim, lineHeight: 1.6 }}>{status.advice}</div>
+        {status.nextStep && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.cardBorder}` }}>
+            <div style={{ fontSize: 11, color: C.gold, marginBottom: 4, letterSpacing: 0.5 }}>次のステップ</div>
+            <div style={{ fontSize: 12.5, color: CARD_C.ivory, lineHeight: 1.6 }}>{status.nextStep}</div>
+          </div>
+        )}
       </Card>
 
       <GoldButton onClick={() => onSave({
@@ -1981,18 +2057,10 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
         ))}
       </Card>
 
-      <SectionLabel>細胞若返り・抗老化チェック</SectionLabel>
+      <SectionLabel>補いたい栄養素(サプリメント)</SectionLabel>
       <Card>
         <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.6 }}>
-          「美と健康」のために意識したい3つの原則です。チェックすると自動で保存されます。
-        </div>
-        {AGING_PRINCIPLES.map(p => (
-          <CheckToggle key={p.key} label={p.label} checked={!!agingChecklist[p.key]} onToggle={() => toggleAging(p.key)} />
-        ))}
-      </Card>
-      <Card>
-        <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.6 }}>
-          サプリメント等での摂取目安です。今日摂取したものにチェックしてください。
+          食事だけでは十分に摂りにくく、サプリメント等で補ったほうがよい成分です。成分名の横に1日の摂取目安を記載しています。今日摂取したものにチェックしてください。
         </div>
         {["アミノ酸", "ビタミン", "ミネラル", "追加提案"].map(category => (
           <div key={category} style={{ marginBottom: 12 }}>
