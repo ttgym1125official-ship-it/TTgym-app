@@ -19,6 +19,7 @@ const SPACE_C = {
   bg: "#000000",
   bg2: "#060606",
   card: "#0B0B0B",
+  cardShade: "#201E19",
   cardBorder: "#242018",
   cardBorderLight: "#332C1E",
   gold: "#D4AF37",
@@ -30,24 +31,26 @@ const SPACE_C = {
   onAccent: "#0D0D0D",
 };
 
-// LIGHT_C: the plain white/black palette used everywhere else in the app
-// (everything after the registration screen) — simple, clean, no gradients or
-// tinted color; card/box separation comes from solid black borders and a
-// soft neutral shadow rather than color. Same keys as SPACE_C so every
-// component that references `C.xxx` works unchanged under either theme.
+// LIGHT_C: the original TTGYM design (gold accent color, same fonts/layout)
+// with the background switched from black to white for everyone after the
+// registration screen — the gold/goldDim accent and overall look are
+// unchanged from the app's original design, only the base surface is white
+// and body text is dark instead of light-on-dark. Same keys as SPACE_C so
+// every component that references `C.xxx` works unchanged under either theme.
 const LIGHT_C = {
   bg: "#FFFFFF",
   bg2: "#FFFFFF",
   card: "#FFFFFF",
-  cardBorder: "#000000",
-  cardBorderLight: "#000000",
-  gold: "#000000",
-  goldDim: "#333333",
-  goldSoft: "#0000000D",
-  ivory: "#111111",
-  dim: "#6B6B6B",
-  danger: "#B0201A",
-  onAccent: "#FFFFFF",
+  cardShade: "#F7F3E9",
+  cardBorder: "#E4DFD3",
+  cardBorderLight: "#D8CBA8",
+  gold: "#D4AF37",
+  goldDim: "#8C7328",
+  goldSoft: "#D4AF3722",
+  ivory: "#2A2620",
+  dim: "#6B6558",
+  danger: "#B2483A",
+  onAccent: "#0D0D0D",
 };
 
 const ThemeContext = createContext(LIGHT_C);
@@ -190,9 +193,9 @@ function Card({ children, style }) {
   const C = useTheme();
   return (
     <div style={{
-      background: C.card,
+      background: `linear-gradient(155deg, ${C.card} 0%, ${C.cardShade} 100%)`,
       border: `1px solid ${C.cardBorder}`, borderRadius: 14,
-      padding: 16, marginBottom: 12, boxShadow: "0 2px 10px -4px rgba(0,0,0,0.12)",
+      padding: 16, marginBottom: 12, boxShadow: "0 6px 18px -12px rgba(0,0,0,0.35)",
       ...style,
     }}>{children}</div>
   );
@@ -205,11 +208,11 @@ function GoldButton({ children, onClick, disabled, variant = "solid" }) {
     <button onClick={onClick} disabled={disabled} style={{
       width: "100%", padding: "13px 0", borderRadius: 9, cursor: disabled ? "default" : "pointer",
       fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 600, fontSize: 13.5, letterSpacing: 1,
-      background: solid ? (disabled ? C.cardBorder : `linear-gradient(135deg, ${C.gold} 0%, ${C.goldDim} 100%)`) : "transparent",
+      background: solid ? (disabled ? C.cardBorder : `linear-gradient(135deg, #E4C158 0%, ${C.gold} 45%, ${C.goldDim} 100%)`) : "transparent",
       color: solid ? (disabled ? C.dim : C.onAccent) : C.gold,
       border: solid ? "none" : `1px solid ${C.goldDim}`,
       opacity: disabled ? 0.6 : 1,
-      boxShadow: solid && !disabled ? "0 4px 14px -4px rgba(0,0,0,0.35)" : "none",
+      boxShadow: solid && !disabled ? "0 4px 14px -4px rgba(212,175,55,0.45)" : "none",
       transition: "opacity 0.15s ease, transform 0.1s ease",
     }}>{children}</button>
   );
@@ -241,7 +244,7 @@ function BirthdayOverlay({ name, onClose }) {
     left: Math.random() * 100,
     delay: Math.random() * 2,
     duration: 2.5 + Math.random() * 2,
-    color: [C.gold, "#333333", "#999999", "#000000"][i % 4],
+    color: [C.gold, "#F0D77A", "#B0AA9C", C.goldDim][i % 4],
     size: 6 + Math.random() * 6,
     rotate: Math.random() * 360,
   })), []);
@@ -250,7 +253,7 @@ function BirthdayOverlay({ name, onClose }) {
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, zIndex: 60, display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center",
-      background: `radial-gradient(ellipse 90% 70% at 50% 30%, #F2F2F2 0%, ${C.bg2} 55%, ${C.bg} 100%)`,
+      background: `radial-gradient(ellipse 90% 70% at 50% 30%, #FFF6DC 0%, ${C.bg2} 55%, ${C.bg} 100%)`,
       overflow: "hidden", cursor: "pointer",
     }}>
       {confetti.map((c, i) => (
@@ -264,7 +267,7 @@ function BirthdayOverlay({ name, onClose }) {
       <div style={{ fontSize: 46, animation: "birthdayPop 1s cubic-bezier(0.34, 1.56, 0.64, 1)", position: "relative" }}>🎉🎂🎉</div>
       <div style={{
         fontFamily: "'Noto Serif JP', serif", fontSize: 20, color: C.gold, marginTop: 18, lineHeight: 1.9,
-        animation: "splashFadeIn 0.9s ease 0.2s both", textShadow: "0 0 16px rgba(0,0,0,0.15)", position: "relative",
+        animation: "splashFadeIn 0.9s ease 0.2s both", textShadow: "0 0 20px rgba(212,175,55,0.35)", position: "relative",
       }}>
         【{name}様<br />お誕生日おめでとうございます！
       </div>
@@ -723,7 +726,7 @@ function AppInner() {
       <div style={{ padding: "22px 20px 16px", borderBottom: `1px solid ${C.cardBorder}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <Logo height={46} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.18))" }} />
+            <Logo height={46} style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 3, color: C.goldDim, marginTop: 6 }}>MEMBERS ONLY</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2619,7 +2622,7 @@ function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
       <SectionLabel>メンバーシップ</SectionLabel>
       <div style={{
         borderRadius: 8, padding: "28px 22px", marginBottom: 18, position: "relative", overflow: "hidden",
-        background: `linear-gradient(135deg, #000000 0%, #1A1A1A 50%, #000000 100%)`,
+        background: `linear-gradient(135deg, #1A1917 0%, #232019 50%, #1A1917 100%)`,
         border: `1px solid ${tier.color}`,
       }}>
         <div style={{
@@ -2629,12 +2632,12 @@ function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
         }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: C.dim, letterSpacing: 2 }}>TTGYM MEMBER CARD</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: "#B0AA9C", letterSpacing: 2 }}>TTGYM MEMBER CARD</div>
             <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, color: tier.color, marginTop: 6, letterSpacing: 1 }}>{tier.name.toUpperCase()}</div>
           </div>
           <Crown size={26} color={tier.color} />
         </div>
-        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.dim, marginTop: 24, position: "relative" }}>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#B0AA9C", marginTop: 24, position: "relative" }}>
           POINTS &nbsp; {points}
         </div>
       </div>
