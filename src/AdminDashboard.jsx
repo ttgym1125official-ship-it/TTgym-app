@@ -161,6 +161,7 @@ const COMMENT_TYPES = [
   { key: "weekly", label: "1週間" },
   { key: "monthly", label: "1ヶ月" },
   { key: "personal", label: "パーソナル" },
+  { key: "condition", label: "体調管理" },
 ];
 
 function TrainerCommentEditor({ memberId, comments, onAdded }) {
@@ -426,6 +427,111 @@ function GoalAndPhotosEditor({ memberId, profile, onSaved }) {
   );
 }
 
+function NutritionTargetEditor({ memberId, profile, onSaved }) {
+  const [calories, setCalories] = useState(profile.targetCalories != null ? String(profile.targetCalories) : "");
+  const [protein, setProtein] = useState(profile.targetProtein != null ? String(profile.targetProtein) : "");
+  const [fat, setFat] = useState(profile.targetFat != null ? String(profile.targetFat) : "");
+  const [carb, setCarb] = useState(profile.targetCarb != null ? String(profile.targetCarb) : "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const r = await window.storage.get(`profile:${memberId}`, true);
+      const existing = r ? JSON.parse(r.value) : profile;
+      const merged = {
+        ...existing,
+        targetCalories: calories ? Number(calories) : null,
+        targetProtein: protein ? Number(protein) : null,
+        targetFat: fat ? Number(fat) : null,
+        targetCarb: carb ? Number(carb) : null,
+      };
+      await window.storage.set(`profile:${memberId}`, JSON.stringify(merged), true);
+      onSaved(merged);
+    } catch (e) {}
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 10, color: C.dim, marginBottom: 8 }}>1日の摂取目標(カロリー・PFC) — お客様アプリの食事タブに反映されます</div>
+      {profile.targetWeight != null || profile.targetBodyFat != null ? (
+        <div style={{ fontSize: 10.5, color: C.goldDim, marginBottom: 8 }}>
+          お客様が設定した目標: {profile.targetWeight != null ? `${profile.targetWeight}kg` : ""} {profile.targetBodyFat != null ? `${profile.targetBodyFat}%` : ""}
+        </div>
+      ) : null}
+      <div style={{ background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: 10 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          {[["カロリー(kcal)", calories, setCalories], ["タンパク質P(g)", protein, setProtein], ["脂質F(g)", fat, setFat], ["炭水化物C(g)", carb, setCarb]].map(([ph, v, setter]) => (
+            <input key={ph} type="number" inputMode="decimal" value={v} onChange={e => setter(e.target.value)} placeholder={ph} style={{
+              flex: 1, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
+              padding: "8px 4px", color: C.ivory, fontSize: 11, textAlign: "center", boxSizing: "border-box",
+            }} />
+          ))}
+        </div>
+        <button onClick={handleSave} disabled={saving} style={{
+          width: "100%", background: C.gold, color: "#0D0D0D", border: "none", borderRadius: 4,
+          padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.6 : 1,
+        }}>{saving ? "保存中…" : "目標を保存する"}</button>
+      </div>
+    </div>
+  );
+}
+
+function TrainingCommentEditor({ memberId, sessions, onAdded }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [freeComment, setFreeComment] = useState("");
+  const [saving, setSaving] = useState(false);
+  const sorted = [...(sessions || [])].filter(s => s.freeComment || s.freePhoto).sort((a, b) => b.date.localeCompare(a.date));
+
+  async function handleAdd() {
+    if (!freeComment.trim()) return;
+    setSaving(true);
+    try {
+      const r = await window.storage.get(`data:${memberId}:sessions`, true);
+      const latest = r ? JSON.parse(r.value) : (sessions || []);
+      const existing = latest.find(s => s.date === date);
+      const entry = { ...(existing || { id: newId(), date, personalTraining: false }), freeComment: freeComment.trim() };
+      const next = [...latest.filter(s => s.date !== date), entry];
+      await window.storage.set(`data:${memberId}:sessions`, JSON.stringify(next), true);
+      onAdded(next);
+      setFreeComment("");
+    } catch (e) {}
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 10, color: C.dim, marginBottom: 8 }}>トレーニングへのコメント(お客様アプリのトレーニングタブに反映されます)</div>
+      <div style={{ background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: 10, marginBottom: 10 }}>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
+          width: "100%", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
+          padding: "7px 8px", color: C.ivory, fontSize: 12, marginBottom: 8, boxSizing: "border-box",
+        }} />
+        <textarea
+          value={freeComment} onChange={e => setFreeComment(e.target.value)} rows={3}
+          placeholder="お客様のトレーニング記録・写真へのコメントを入力"
+          style={{
+            width: "100%", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
+            padding: "8px 10px", color: C.ivory, fontSize: 12.5, marginBottom: 8, boxSizing: "border-box", resize: "vertical",
+          }}
+        />
+        <button onClick={handleAdd} disabled={saving || !freeComment.trim()} style={{
+          width: "100%", background: C.gold, color: "#0D0D0D", border: "none", borderRadius: 4,
+          padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: (saving || !freeComment.trim()) ? 0.6 : 1,
+        }}>{saving ? "保存中…" : "コメントを保存"}</button>
+      </div>
+      {sorted.length === 0 ? <div style={{ fontSize: 11.5, color: C.dim }}>記録なし</div> : sorted.slice(0, 6).map(s => (
+        <div key={s.id} style={{ padding: "6px 0", borderBottom: `1px solid ${C.cardBorder}` }}>
+          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 2 }}>{s.date}</div>
+          {s.freeComment && <div style={{ fontSize: 12, color: C.ivory, whiteSpace: "pre-wrap", marginBottom: s.freePhoto ? 6 : 0 }}>{s.freeComment}</div>}
+          {s.freePhoto && <img src={s.freePhoto} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: 4 }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PointAdjustmentEditor({ member, onSaved }) {
   const [value, setValue] = useState(member.pointAdjustment || 0);
   const [saving, setSaving] = useState(false);
@@ -475,9 +581,29 @@ function MemberDetail({ member, onMemberUpdated }) {
   const [updatingApproval, setUpdatingApproval] = useState(false);
   const [pointAdjustment, setPointAdjustment] = useState(member.pointAdjustment || 0);
   const [profile, setProfile] = useState(member);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { setData(null); loadMemberData(member.id).then(setData); }, [member.id]);
   useEffect(() => { onMemberUpdated?.(profile); }, [profile]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const [freshData, r] = await Promise.all([
+        loadMemberData(member.id),
+        window.storage.get(`profile:${member.id}`, true),
+      ]);
+      setData(freshData);
+      if (r) {
+        const p = JSON.parse(r.value);
+        setProfile(p);
+        setBlocked(!!p.blocked);
+        setApproved(!!p.approved);
+        setPointAdjustment(p.pointAdjustment || 0);
+      }
+    } catch (e) {}
+    setRefreshing(false);
+  }
 
   async function toggleBlock() {
     setUpdatingBlock(true);
@@ -536,6 +662,12 @@ function MemberDetail({ member, onMemberUpdated }) {
 
   return (
     <div style={{ padding: "14px 4px 4px" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <button onClick={handleRefresh} disabled={refreshing} style={{
+          background: "none", border: `1px solid ${C.cardBorder}`, color: C.dim, borderRadius: 20,
+          padding: "5px 12px", fontSize: 10.5, cursor: "pointer", opacity: refreshing ? 0.6 : 1,
+        }}>{refreshing ? "更新中…" : "最新の記録に更新"}</button>
+      </div>
       {isBirthdayToday(profile.birthdate) && (
         <div style={{
           display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "10px 12px",
@@ -590,6 +722,13 @@ function MemberDetail({ member, onMemberUpdated }) {
       </div>
 
       <GoalAndPhotosEditor memberId={member.id} profile={profile} onSaved={setProfile} />
+
+      <NutritionTargetEditor memberId={member.id} profile={profile} onSaved={setProfile} />
+
+      <TrainingCommentEditor
+        memberId={member.id} sessions={data.sessions}
+        onAdded={next => setData(d => ({ ...d, sessions: next }))}
+      />
 
       <PointAdjustmentEditor member={{ ...member, pointAdjustment }} onSaved={setPointAdjustment} />
 
@@ -749,25 +888,33 @@ function Dashboard() {
   const [loaded, setLoaded] = useState(false);
   const [members, setMembers] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function loadMembers() {
+    try {
+      const list = await window.storage.list("profile:");
+      const keys = list?.keys || [];
+      const loadedMembers = [];
+      for (const k of keys) {
+        try {
+          const r = await window.storage.get(k, true);
+          if (r) loadedMembers.push(JSON.parse(r.value));
+        } catch (e) {}
+      }
+      loadedMembers.sort((a, b) => (b.lastActivityAt || "").localeCompare(a.lastActivityAt || ""));
+      setMembers(loadedMembers);
+    } catch (e) { setMembers([]); }
+  }
 
   useEffect(() => {
-    (async () => {
-      try {
-        const list = await window.storage.list("profile:");
-        const keys = list?.keys || [];
-        const loadedMembers = [];
-        for (const k of keys) {
-          try {
-            const r = await window.storage.get(k, true);
-            if (r) loadedMembers.push(JSON.parse(r.value));
-          } catch (e) {}
-        }
-        loadedMembers.sort((a, b) => (b.lastActivityAt || "").localeCompare(a.lastActivityAt || ""));
-        setMembers(loadedMembers);
-      } catch (e) { setMembers([]); }
-      setLoaded(true);
-    })();
+    (async () => { await loadMembers(); setLoaded(true); })();
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadMembers();
+    setRefreshing(false);
+  }
 
   if (!loaded) {
     return (
@@ -789,16 +936,22 @@ function Dashboard() {
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
       `}</style>
 
-      <div style={{ marginBottom: 20 }}>
-        <Logo height={42} />
-        <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, letterSpacing: 2, color: C.ivory, marginTop: 10 }}>管理ダッシュボード</div>
-        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, color: C.goldDim, marginTop: 4 }}>MEMBER REGISTRY</div>
+      <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div>
+          <Logo height={42} />
+          <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, letterSpacing: 2, color: C.ivory, marginTop: 10 }}>管理ダッシュボード</div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, color: C.goldDim, marginTop: 4 }}>MEMBER REGISTRY</div>
+        </div>
+        <button onClick={handleRefresh} disabled={refreshing} style={{
+          background: "none", border: `1px solid ${C.goldDim}`, color: C.gold, borderRadius: 20,
+          padding: "7px 14px", fontSize: 11.5, cursor: "pointer", opacity: refreshing ? 0.6 : 1,
+        }}>{refreshing ? "更新中…" : "更新"}</button>
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: "12px 14px", marginBottom: 20 }}>
         <AlertTriangle size={16} color={C.goldDim} style={{ flexShrink: 0, marginTop: 1 }} />
         <div style={{ fontSize: 11, lineHeight: 1.7, color: C.dim }}>
-          この一覧には、この端末(このブラウザ)で登録・記録された会員のみ表示されます。お客様が各自のスマホでTTGYMを使っている場合、そのデータはお客様の端末にしか保存されず、ここには表示されません。
+          この一覧はデータベース(Supabase)に登録された全ての会員を表示しています。お客様がご自身のスマホでTTGYMをご利用の場合も、記録内容はリアルタイムでここに反映されます。最新の状態にするには「更新」を押してください。
         </div>
       </div>
 
@@ -806,7 +959,7 @@ function Dashboard() {
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: C.card, border: `1px solid ${C.danger}`, borderRadius: 4, padding: "14px 16px", marginBottom: 20 }}>
           <AlertTriangle size={18} color={C.danger} style={{ flexShrink: 0, marginTop: 1 }} />
           <div style={{ fontSize: 12, lineHeight: 1.7, color: C.ivory }}>
-            登録されている会員が見つかりませんでした。この端末のTTYM本体アプリの「登録」タブでお客様登録を行うと、ここに表示されるようになります。
+            登録されている会員が見つかりませんでした。お客様アプリの「登録」タブでお客様登録を行うと、ここに表示されるようになります。
           </div>
         </div>
       )}
