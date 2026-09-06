@@ -53,6 +53,27 @@ const LIGHT_C = {
   onAccent: "#0D0D0D",
 };
 
+// CARD_C: applied inside every Card box — solid black with a white
+// border/text, so the surrounding page can stay plain white while each card
+// reads as a clean black box (white text, gold kept as an accent for
+// highlighted/selected states, matching the black "member card" look used
+// elsewhere in the app).
+const CARD_C = {
+  bg: "#000000",
+  bg2: "#000000",
+  card: "#000000",
+  cardShade: "#000000",
+  cardBorder: "#FFFFFF",
+  cardBorderLight: "#FFFFFF",
+  gold: "#D4AF37",
+  goldDim: "#8C7328",
+  goldSoft: "#D4AF3722",
+  ivory: "#FFFFFF",
+  dim: "#CCCCCC",
+  danger: "#E0685A",
+  onAccent: "#0D0D0D",
+};
+
 const ThemeContext = createContext(LIGHT_C);
 function useTheme() { return useContext(ThemeContext); }
 
@@ -190,14 +211,15 @@ function SectionLabel({ children }) {
 }
 
 function Card({ children, style }) {
-  const C = useTheme();
   return (
     <div style={{
-      background: `linear-gradient(155deg, ${C.card} 0%, ${C.cardShade} 100%)`,
-      border: `1px solid ${C.cardBorder}`, borderRadius: 14,
+      background: "#000000",
+      border: "1px solid #FFFFFF", borderRadius: 14,
       padding: 16, marginBottom: 12, boxShadow: "0 6px 18px -12px rgba(0,0,0,0.35)",
       ...style,
-    }}>{children}</div>
+    }}>
+      <ThemeContext.Provider value={CARD_C}>{children}</ThemeContext.Provider>
+    </div>
   );
 }
 
@@ -685,7 +707,7 @@ function AppInner() {
           alignItems: "center", justifyContent: "center", gap: 14, padding: 24, textAlign: "center",
           background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
         }}>
-          <Logo height={56} style={{ marginBottom: 8 }} />
+          <Logo height={56} color="#000000" style={{ marginBottom: 8 }} />
           <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.ivory }}>ご利用を停止しています</div>
           <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, maxWidth: 280 }}>
             現在このアカウントはご利用いただけません。詳しくはジムまでお問い合わせください。
@@ -713,7 +735,7 @@ function AppInner() {
           alignItems: "center", justifyContent: "center", gap: 14, padding: 24, textAlign: "center",
           background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
         }}>
-          <Logo height={56} style={{ marginBottom: 8 }} />
+          <Logo height={56} color="#000000" style={{ marginBottom: 8 }} />
           <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.gold }}>ご登録ありがとうございます</div>
           <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, maxWidth: 280 }}>
             現在スタッフが内容を確認しています。承認が完了すると自動的にご利用いただけるようになりますので、しばらくお待ちください。
@@ -726,7 +748,7 @@ function AppInner() {
       <div style={{ padding: "22px 20px 16px", borderBottom: `1px solid ${C.cardBorder}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <Logo height={46} style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
+            <Logo height={46} color="#000000" style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 3, color: C.goldDim, marginTop: 6 }}>MEMBERS ONLY</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1244,25 +1266,25 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
         <Card style={{ borderColor: C.goldDim }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>{preview.name}</div>
-            <button onClick={() => setPreview(null)} style={{ background: "none", border: "none", color: C.dim, cursor: "pointer" }}><X size={16} /></button>
+            <button onClick={() => setPreview(null)} style={{ background: "none", border: "none", color: CARD_C.dim, cursor: "pointer" }}><X size={16} /></button>
           </div>
           <div style={{ display: "flex", gap: 14, marginTop: 10, fontFamily: "'Space Mono', monospace", fontSize: 12.5 }}>
-            <span>{preview.calories} kcal</span><span style={{ color: C.dim }}>P {preview.protein}g</span>
-            <span style={{ color: C.dim }}>F {preview.fat}g</span><span style={{ color: C.dim }}>C {preview.carb}g</span>
+            <span>{preview.calories} kcal</span><span style={{ color: CARD_C.dim }}>P {preview.protein}g</span>
+            <span style={{ color: CARD_C.dim }}>F {preview.fat}g</span><span style={{ color: CARD_C.dim }}>C {preview.carb}g</span>
           </div>
           {preview.warning && (
             <div style={{ marginTop: 12, padding: 12, background: C.goldSoft, borderLeft: `2px solid ${C.gold}`, borderRadius: 2 }}>
               <div style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 11.5, color: C.gold, marginBottom: 4 }}>
                 <Sparkles size={13} /> {preview.warningItem} を検知
               </div>
-              <div style={{ fontSize: 12.5, color: C.ivory, lineHeight: 1.6 }}>{preview.alternative}</div>
+              <div style={{ fontSize: 12.5, color: CARD_C.ivory, lineHeight: 1.6 }}>{preview.alternative}</div>
             </div>
           )}
           {(preview.fiber != null || preview.sugar != null || preview.sodium != null || preview.potassium != null
             || preview.vitaminA != null || preview.vitaminC != null || preview.calcium != null || preview.iron != null) && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.cardBorder}` }}>
-              <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>その他の栄養素(参考値)</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.dim }}>
+              <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>その他の栄養素(参考値)</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontFamily: "'Space Mono', monospace", fontSize: 11, color: CARD_C.dim }}>
                 {preview.fiber != null && <span>食物繊維 {preview.fiber}g</span>}
                 {preview.sugar != null && <span>糖分 {preview.sugar}g</span>}
                 {preview.sodium != null && <span>ナトリウム {preview.sodium}mg</span>}
@@ -1274,7 +1296,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
               </div>
             </div>
           )}
-          <div style={{ fontSize: 10.5, color: C.dim, marginTop: 10, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginTop: 10, lineHeight: 1.5 }}>
             ※AIによる画像からの推定値です。分量の誤差はご了承のうえ、参考値としてご利用ください。その他の栄養素はカロリー/PFC以上に誤差が大きくなります。
           </div>
           <div style={{ marginTop: 12 }}>
@@ -1492,7 +1514,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
       <SectionLabel>今日の目標達成度</SectionLabel>
       {targets && targets.calories == null ? (
         <Card>
-          <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, textAlign: "center" }}>
+          <div style={{ fontSize: 12.5, color: CARD_C.dim, lineHeight: 1.8, textAlign: "center" }}>
             『TTGYMトレーナーがお客様の理想の摂取カロリーを設定中です。』
           </div>
         </Card>
@@ -1510,7 +1532,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
             const barColor = over ? C.danger : (under ? "#B8B2A7" : C.gold);
             return (
               <div key={row.label} style={{ marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: C.dim, marginBottom: 4 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: CARD_C.dim, marginBottom: 4 }}>
                   <span>{row.label}</span>
                   <span style={{ fontFamily: "'Space Mono', monospace", color: barColor }}>
                     {Math.round(row.value)} / {row.target}{row.unit} {over ? "(オーバー)" : under ? "(不足気味)" : "(良好)"}
@@ -1528,7 +1550,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
       <SectionLabel>細胞若返り・抗老化(食事より自動集計)</SectionLabel>
       <Card>
         <div style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: C.dim, marginBottom: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: CARD_C.dim, marginBottom: 4 }}>
             <span>ビタミンC(目安 1000〜3000mg/日)</span>
             <span style={{ fontFamily: "'Space Mono', monospace", color: dayTotals.vitaminC >= 1000 ? C.gold : "#B8B2A7" }}>
               {Math.round(dayTotals.vitaminC)}mg
@@ -1538,10 +1560,10 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
             <div style={{ height: "100%", width: `${Math.min(100, (dayTotals.vitaminC / 1000) * 100)}%`, background: dayTotals.vitaminC >= 1000 ? C.gold : "#B8B2A7" }} />
           </div>
         </div>
-        <div style={{ fontSize: 10.5, color: C.dim, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 10.5, color: CARD_C.dim, lineHeight: 1.6 }}>
           食物繊維 {Math.round(dayTotals.fiber)}g ・ カリウム {Math.round(dayTotals.potassium)}mg ・ カルシウム {Math.round(dayTotals.calcium)} ・ 鉄分 {Math.round(dayTotals.iron)}(いずれも写真解析による目安値)
         </div>
-        <div style={{ fontSize: 10, color: C.dim, marginTop: 10, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 10, lineHeight: 1.6 }}>
           ※アミノ酸(グルタミン等)やビタミンD/E、マグネシウム・亜鉛などのサプリメント由来の栄養素は写真から推定できないため、「体調管理」タブのチェックリストで記録してください。
         </div>
       </Card>
@@ -1550,7 +1572,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Droplet size={16} color={C.gold} />
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18 }}>{todaysWater}<span style={{ fontSize: 11, color: C.dim }}> ml</span></span>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18 }}>{todaysWater}<span style={{ fontSize: 11, color: CARD_C.dim }}> ml</span></span>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             {[200, 350, 500].map(ml => (
@@ -1569,16 +1591,16 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
       <SectionLabel>本日のタイムライン</SectionLabel>
       {todaysMeals.length > 0 && (
         <Card style={{ borderColor: C.goldDim }}>
-          <div style={{ fontSize: 11, color: C.dim, marginBottom: 10 }}>本日の合計</div>
+          <div style={{ fontSize: 11, color: CARD_C.dim, marginBottom: 10 }}>本日の合計</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <div>
               <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 26, color: C.gold }}>{dayTotals.calories}</span>
-              <span style={{ fontSize: 11, color: C.dim, marginLeft: 4 }}>kcal</span>
+              <span style={{ fontSize: 11, color: CARD_C.dim, marginLeft: 4 }}>kcal</span>
             </div>
             <div style={{ display: "flex", gap: 14, fontFamily: "'Space Mono', monospace", fontSize: 12.5 }}>
-              <span>P <span style={{ color: C.ivory }}>{dayTotals.protein}g</span></span>
-              <span>F <span style={{ color: C.ivory }}>{dayTotals.fat}g</span></span>
-              <span>C <span style={{ color: C.ivory }}>{dayTotals.carb}g</span></span>
+              <span>P <span style={{ color: CARD_C.ivory }}>{dayTotals.protein}g</span></span>
+              <span>F <span style={{ color: CARD_C.ivory }}>{dayTotals.fat}g</span></span>
+              <span>C <span style={{ color: CARD_C.ivory }}>{dayTotals.carb}g</span></span>
             </div>
           </div>
           <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginTop: 12, background: C.cardBorder }}>
@@ -1593,12 +1615,12 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.dim, marginTop: 4 }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: CARD_C.dim, marginTop: 4 }}>
                 {m.time} · {m.calories}kcal · P{m.protein} F{m.fat} C{m.carb}
               </div>
               <ExtraNutrients item={m} />
             </div>
-            <button onClick={() => onDeleteMeal(m.id)} style={{ background: "none", border: "none", color: C.dim, cursor: "pointer" }}><Trash2 size={14} /></button>
+            <button onClick={() => onDeleteMeal(m.id)} style={{ background: "none", border: "none", color: CARD_C.dim, cursor: "pointer" }}><Trash2 size={14} /></button>
           </div>
         </Card>
       ))}
@@ -1787,20 +1809,20 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
       <SectionLabel>ブレイン&ガット ダッシュボード</SectionLabel>
       <Card>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>お通じの状態</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>お通じの状態</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {BOWEL_OPTIONS.map((opt, i) => (
               <button key={i} onClick={() => setBowel(i)} style={{
                 padding: "8px 10px", borderRadius: 8, fontSize: 12,
                 background: bowel === i ? C.gold : "transparent",
-                color: bowel === i ? C.onAccent : C.ivory,
+                color: bowel === i ? C.onAccent : CARD_C.ivory,
                 border: `1px solid ${bowel === i ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>{opt}</button>
             ))}
           </div>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>朝の実践チェック</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>朝の実践チェック</div>
           <CheckToggle label="朝、日光を浴びましたか?" checked={sunAM} onToggle={() => setSunAM(v => !v)} />
           <CheckToggle label="湯船に10分以上浸かりましたか?" checked={bath10} onToggle={() => setBath10(v => !v)} />
           <CheckToggle label="運動・ストレッチはできましたか?" checked={exercise} onToggle={() => setExercise(v => !v)} />
@@ -1808,37 +1830,37 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>就寝の何時間前に最後の食事をしましたか?</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>就寝の何時間前に最後の食事をしましたか?</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input type="number" step="0.5" inputMode="decimal" placeholder="3" value={mealHoursBeforeSleep}
               onChange={e => setMealHoursBeforeSleep(e.target.value)} style={{
                 width: 90, padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
                 background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center",
               }} />
-            <span style={{ fontSize: 12, color: C.dim }}>時間前</span>
+            <span style={{ fontSize: 12, color: CARD_C.dim }}>時間前</span>
           </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>睡眠時間</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>睡眠時間</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input type="number" step="0.5" inputMode="decimal" placeholder="7.5" value={sleepHours}
               onChange={e => setSleepHours(e.target.value)} style={{
                 width: 90, padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
                 background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center",
               }} />
-            <span style={{ fontSize: 12, color: C.dim }}>時間</span>
+            <span style={{ fontSize: 12, color: CARD_C.dim }}>時間</span>
           </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>睡眠の質(神経系回復度)</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>睡眠の質(神経系回復度)</div>
           <div style={{ display: "flex", gap: 6 }}>
             {SLEEP_LEVELS.map(l => (
               <button key={l.n} onClick={() => setSleep(l.n)} style={{
                 flex: 1, padding: "8px 2px", borderRadius: 8,
                 background: sleep === l.n ? C.gold : "transparent",
-                color: sleep === l.n ? C.onAccent : C.ivory,
+                color: sleep === l.n ? C.onAccent : CARD_C.ivory,
                 border: `1px solid ${sleep === l.n ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>
                 <div style={{ fontSize: 12, fontFamily: "'Space Mono', monospace" }}>{l.n}</div>
@@ -1846,7 +1868,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
             ))}
           </div>
           <div style={{
-            fontSize: 10.5, color: sleep === 3 ? C.gold : C.dim, marginTop: 6, textAlign: "center",
+            fontSize: 10.5, color: sleep === 3 ? C.gold : CARD_C.dim, marginTop: 6, textAlign: "center",
             transition: "color 0.15s ease",
           }}>
             {SLEEP_LEVELS.find(l => l.n === sleep)?.label} — {SLEEP_LEVELS.find(l => l.n === sleep)?.desc}
@@ -1854,13 +1876,13 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>睡眠前の食事量</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>睡眠前の食事量</div>
           <div style={{ display: "flex", gap: 6 }}>
             {MEAL_AMOUNTS.map(opt => (
               <button key={opt} onClick={() => setPreSleepMeal(opt)} style={{
                 flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12,
                 background: preSleepMeal === opt ? C.gold : "transparent",
-                color: preSleepMeal === opt ? C.onAccent : C.ivory,
+                color: preSleepMeal === opt ? C.onAccent : CARD_C.ivory,
                 border: `1px solid ${preSleepMeal === opt ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>{opt}</button>
             ))}
@@ -1868,39 +1890,39 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>起床時の身体のだるさ</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>起床時の身体のだるさ</div>
           <div style={{ display: "flex", gap: 6 }}>
             {FATIGUE_LEVELS.map(l => (
               <button key={l.n} onClick={() => setMorningFatigue(l.n)} style={{
                 flex: 1, padding: "8px 2px", borderRadius: 8,
                 background: morningFatigue === l.n ? C.gold : "transparent",
-                color: morningFatigue === l.n ? C.onAccent : C.ivory,
+                color: morningFatigue === l.n ? C.onAccent : CARD_C.ivory,
                 border: `1px solid ${morningFatigue === l.n ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>
                 <div style={{ fontSize: 12, fontFamily: "'Space Mono', monospace" }}>{l.n}</div>
               </button>
             ))}
           </div>
-          <div style={{ fontSize: 10.5, color: C.dim, marginTop: 6, textAlign: "center" }}>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginTop: 6, textAlign: "center" }}>
             {FATIGUE_LEVELS.find(l => l.n === morningFatigue)?.label}
           </div>
         </div>
 
         <div style={{ marginBottom: 6 }}>
-          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>ストレス・メンタルスコア(5が最も良好)</div>
+          <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>ストレス・メンタルスコア(5が最も良好)</div>
           <div style={{ display: "flex", gap: 6 }}>
             {MENTAL_LEVELS.map(l => (
               <button key={l.n} onClick={() => setMental(l.n)} style={{
                 flex: 1, padding: "8px 2px", borderRadius: 8,
                 background: mental === l.n ? C.gold : "transparent",
-                color: mental === l.n ? C.onAccent : C.ivory,
+                color: mental === l.n ? C.onAccent : CARD_C.ivory,
                 border: `1px solid ${mental === l.n ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>
                 <div style={{ fontSize: 12, fontFamily: "'Space Mono', monospace" }}>{l.n}</div>
               </button>
             ))}
           </div>
-          <div style={{ fontSize: 10.5, color: C.dim, marginTop: 6, textAlign: "center" }}>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginTop: 6, textAlign: "center" }}>
             {MENTAL_LEVELS.find(l => l.n === mental)?.label}
           </div>
         </div>
@@ -1911,7 +1933,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
           <Activity size={15} color={C.gold} />
           <span style={{ fontSize: 13, color: C.gold, fontWeight: 600 }}>{status.label}</span>
         </div>
-        <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.6 }}>{status.advice}</div>
+        <div style={{ fontSize: 12.5, color: CARD_C.dim, lineHeight: 1.6 }}>{status.advice}</div>
       </Card>
 
       <GoldButton onClick={() => onSave({
@@ -1929,8 +1951,8 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
           <SectionLabel>トレーナーからのコメント</SectionLabel>
           {conditionComments.slice(0, 5).map(c => (
             <Card key={c.id}>
-              <div style={{ fontSize: 10, color: C.dim, marginBottom: 6 }}>{c.date}</div>
-              <div style={{ fontSize: 13, color: C.ivory, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{c.text}</div>
+              <div style={{ fontSize: 10, color: CARD_C.dim, marginBottom: 6 }}>{c.date}</div>
+              <div style={{ fontSize: 13, color: CARD_C.ivory, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{c.text}</div>
             </Card>
           ))}
         </>
@@ -1938,7 +1960,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
 
       <SectionLabel>次のステップ</SectionLabel>
       <Card>
-        <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 12, lineHeight: 1.7 }}>
+        <div style={{ fontSize: 11.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.7 }}>
           今の状態に合わせて、次のようなサポートもご利用いただけます。気になるものがあれば、お気軽にご相談ください。
         </div>
         {[
@@ -1952,14 +1974,14 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
             borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "pointer",
           }}>
             <div style={{ fontSize: 12.5, color: C.gold }}>{item.label}</div>
-            <div style={{ fontSize: 10.5, color: C.dim, marginTop: 3 }}>{item.note}</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginTop: 3 }}>{item.note}</div>
           </button>
         ))}
       </Card>
 
       <SectionLabel>細胞若返り・抗老化チェック</SectionLabel>
       <Card>
-        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 12, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.6 }}>
           「美と健康」のために意識したい3つの原則です。チェックすると自動で保存されます。
         </div>
         {AGING_PRINCIPLES.map(p => (
@@ -1967,7 +1989,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
         ))}
       </Card>
       <Card>
-        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 12, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.6 }}>
           サプリメント等での摂取目安です。今日摂取したものにチェックしてください。
         </div>
         {["アミノ酸", "ビタミン", "ミネラル", "追加提案"].map(category => (
@@ -2088,7 +2110,7 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
     <div>
       {(targetWeight != null || targetBodyFat != null) && (
         <Card style={{ borderColor: C.goldDim }}>
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>目標(登録タブで設定)</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>目標(登録タブで設定)</div>
           <div style={{ display: "flex", gap: 16, fontFamily: "'Space Mono', monospace", fontSize: 14, color: C.gold }}>
             {targetWeight != null && <span>目標体重 {targetWeight}kg</span>}
             {targetBodyFat != null && <span>目標体脂肪率 {targetBodyFat}%</span>}
@@ -2123,9 +2145,9 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
           <div style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
             {[["体重", first.weight, latest.weight, "kg"], ["体脂肪率", first.bodyFat, latest.bodyFat, "%"], ["骨格筋量", first.muscleMass, latest.muscleMass, "kg"]].map(([label, a, b, unit]) => (
               <div key={label}>
-                <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>{label}</div>
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 13 }}>
-                  <span style={{ color: C.dim }}>{a ?? "—"}</span> → <span style={{ color: C.gold }}>{b ?? "—"}{unit}</span>
+                  <span style={{ color: CARD_C.dim }}>{a ?? "—"}</span> → <span style={{ color: C.gold }}>{b ?? "—"}{unit}</span>
                 </div>
               </div>
             ))}
@@ -2148,8 +2170,8 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
                 <ResponsiveContainer width="100%" height="88%">
                   <LineChart data={chartData} margin={{ top: 4, right: 14, left: -14, bottom: 0 }}>
                     <CartesianGrid stroke={C.cardBorder} vertical={false} />
-                    <XAxis dataKey="date" tick={{ fill: C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} />
-                    <YAxis tick={{ fill: C.dim, fontSize: 11 }} axisLine={false} tickLine={false} domain={["auto", "auto"]} width={36} />
+                    <XAxis dataKey="date" tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} />
+                    <YAxis tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={false} tickLine={false} domain={["auto", "auto"]} width={36} />
                     <Tooltip contentStyle={{ background: C.bg, border: `1px solid ${C.cardBorder}`, fontSize: 12 }} />
                     <Line type="monotone" dataKey={metric.key} stroke={metric.color} strokeWidth={2.5} dot={{ r: 3.5, fill: metric.color }} connectNulls />
                   </LineChart>
@@ -2164,19 +2186,19 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
       <Card>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>腹筋1分間回数</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>腹筋1分間回数</div>
             <input type="number" placeholder="回" value={situps} onChange={e => setSitups(e.target.value)} style={{
               width: "100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center",
             }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>ベンチプレスMAX(kg)</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>ベンチプレスMAX(kg)</div>
             <input type="number" placeholder="kg" value={benchMax} onChange={e => setBenchMax(e.target.value)} style={{
               width: "100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center",
             }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>ヒップスラスト10回(kg)</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>ヒップスラスト10回(kg)</div>
             <input type="number" placeholder="kg" value={hipThrust} onChange={e => setHipThrust(e.target.value)} style={{
               width: "100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center",
             }} />
@@ -2185,20 +2207,20 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
         <button onClick={() => setBridge(v => !v)} style={{
           display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
           background: bridge ? C.goldSoft : "transparent", border: `1px solid ${bridge ? C.gold : C.cardBorder}`,
-          borderRadius: 8, padding: "10px 12px", cursor: "pointer", marginBottom: 8, color: C.ivory,
+          borderRadius: 8, padding: "10px 12px", cursor: "pointer", marginBottom: 8, color: CARD_C.ivory,
         }}>
           <span style={{ fontSize: 12.5 }}>ブリッジ/倒立ができるようになった</span>
-          <span style={{ width: 16, height: 16, borderRadius: "50%", border: `1px solid ${bridge ? C.gold : C.dim}`, background: bridge ? C.gold : "transparent" }} />
+          <span style={{ width: 16, height: 16, borderRadius: "50%", border: `1px solid ${bridge ? C.gold : CARD_C.dim}`, background: bridge ? C.gold : "transparent" }} />
         </button>
         <button onClick={() => setPhotoSubmitted(v => !v)} style={{
           display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
           background: photoSubmitted ? C.goldSoft : "transparent", border: `1px solid ${photoSubmitted ? C.gold : C.cardBorder}`,
-          borderRadius: 8, padding: "10px 12px", cursor: "pointer", marginBottom: 12, color: C.ivory,
+          borderRadius: 8, padding: "10px 12px", cursor: "pointer", marginBottom: 12, color: CARD_C.ivory,
         }}>
           <span style={{ fontSize: 12.5 }}>ボディ写真をトレーナーに提出済み</span>
-          <span style={{ width: 16, height: 16, borderRadius: "50%", border: `1px solid ${photoSubmitted ? C.gold : C.dim}`, background: photoSubmitted ? C.gold : "transparent" }} />
+          <span style={{ width: 16, height: 16, borderRadius: "50%", border: `1px solid ${photoSubmitted ? C.gold : CARD_C.dim}`, background: photoSubmitted ? C.gold : "transparent" }} />
         </button>
-        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 12, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.5 }}>
           ※写真データ自体の保存には対応していません。トレーナーへの提出有無のみ記録します。
         </div>
         <GoldButton onClick={handleSaveMonthly}>月次測定を記録</GoldButton>
@@ -2210,18 +2232,18 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
           {sortedMonthly.map(m => (
             <Card key={m.id}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: C.dim }}>{m.date}</span>
-                <button onClick={() => onDeleteMonthly(m.id)} style={{ background: "none", border: "none", color: C.dim, cursor: "pointer" }}><Trash2 size={13} /></button>
+                <span style={{ fontSize: 12, color: CARD_C.dim }}>{m.date}</span>
+                <button onClick={() => onDeleteMonthly(m.id)} style={{ background: "none", border: "none", color: CARD_C.dim, cursor: "pointer" }}><Trash2 size={13} /></button>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
                 {m.situps !== null && <span>腹筋 {m.situps}回</span>}
-                {m.benchMax !== null && <span style={{ color: C.dim }}>BP {m.benchMax}kg</span>}
-                {m.hipThrust !== null && <span style={{ color: C.dim }}>HT {m.hipThrust}kg</span>}
+                {m.benchMax !== null && <span style={{ color: CARD_C.dim }}>BP {m.benchMax}kg</span>}
+                {m.hipThrust !== null && <span style={{ color: CARD_C.dim }}>HT {m.hipThrust}kg</span>}
                 {m.bridge && <span style={{ color: C.gold }}>ブリッジ/倒立◎</span>}
                 {m.photoSubmitted && <span style={{ color: C.gold }}>写真提出済</span>}
               </div>
               {m.note && (
-                <div style={{ fontSize: 12, color: C.ivory, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{m.note}</div>
+                <div style={{ fontSize: 12, color: CARD_C.ivory, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{m.note}</div>
               )}
             </Card>
           ))}
@@ -2232,13 +2254,13 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
       {sorted.length === 0 ? <EmptyState text="記録がありません" /> : [...sorted].reverse().map(g => (
         <Card key={g.id}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: C.dim }}>{g.date}</span>
+            <span style={{ fontSize: 12, color: CARD_C.dim }}>{g.date}</span>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12.5, display: "flex", gap: 10 }}>
               {g.weight && <span>{g.weight}kg</span>}
-              {g.bodyFat && <span style={{ color: C.dim }}>{g.bodyFat}%</span>}
-              {g.muscleMass && <span style={{ color: C.dim }}>{g.muscleMass}kg筋</span>}
+              {g.bodyFat && <span style={{ color: CARD_C.dim }}>{g.bodyFat}%</span>}
+              {g.muscleMass && <span style={{ color: CARD_C.dim }}>{g.muscleMass}kg筋</span>}
             </div>
-            <button onClick={() => onDelete(g.id)} style={{ background: "none", border: "none", color: C.dim, cursor: "pointer" }}><Trash2 size={13} /></button>
+            <button onClick={() => onDelete(g.id)} style={{ background: "none", border: "none", color: CARD_C.dim, cursor: "pointer" }}><Trash2 size={13} /></button>
           </div>
         </Card>
       ))}
@@ -2322,10 +2344,10 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
         <button onClick={() => setPersonalTraining(v => !v)} style={{
           display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
           background: personalTraining ? C.goldSoft : "transparent", border: `1px solid ${personalTraining ? C.gold : C.cardBorder}`,
-          borderRadius: 8, padding: "10px 12px", cursor: "pointer", marginBottom: 12, color: C.ivory,
+          borderRadius: 8, padding: "10px 12px", cursor: "pointer", marginBottom: 12, color: CARD_C.ivory,
         }}>
           <span style={{ fontSize: 12.5 }}>パーソナルトレーニングを実施した</span>
-          <span style={{ width: 16, height: 16, borderRadius: "50%", border: `1px solid ${personalTraining ? C.gold : C.dim}`, background: personalTraining ? C.gold : "transparent" }} />
+          <span style={{ width: 16, height: 16, borderRadius: "50%", border: `1px solid ${personalTraining ? C.gold : CARD_C.dim}`, background: personalTraining ? C.gold : "transparent" }} />
         </button>
         <GoldButton onClick={handleSaveSession}>セッション情報を保存</GoldButton>
       </Card>
@@ -2339,7 +2361,7 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
           {[["reps", "回数"], ["sec", "秒数"]].map(([key, label]) => (
             <button key={key} onClick={() => setUnit(key)} style={{
               flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 11.5,
-              background: unit === key ? C.gold : "transparent", color: unit === key ? C.onAccent : C.ivory,
+              background: unit === key ? C.gold : "transparent", color: unit === key ? C.onAccent : CARD_C.ivory,
               border: `1px solid ${unit === key ? C.gold : C.cardBorder}`, cursor: "pointer",
             }}>{label}</button>
           ))}
@@ -2352,13 +2374,13 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
             flex: 1, padding: "10px 12px", borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13,
           }} />
         </div>
-        <div style={{ fontSize: 10, color: C.dim, marginBottom: 8 }}>※記録すると重量・回数から消費カロリーを概算して自動で表示します</div>
+        <div style={{ fontSize: 10, color: CARD_C.dim, marginBottom: 8 }}>※記録すると重量・回数から消費カロリーを概算して自動で表示します</div>
         <GoldButton onClick={handleSave}>記録する</GoldButton>
       </Card>
 
       <SectionLabel>自由記入コメント・写真</SectionLabel>
       <Card>
-        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 10, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 10, lineHeight: 1.6 }}>
           上の入力が面倒な場合は、こちらに自由に今日のトレーニング内容や感想を書いたり、写真を送るだけでもOKです。トレーナーが確認し、返信することもあります。
         </div>
         <textarea
@@ -2389,8 +2411,8 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
           <SectionLabel>コメント・写真の履歴</SectionLabel>
           {recentSessionNotes.map(s => (
             <Card key={s.id}>
-              <div style={{ fontSize: 11, color: C.dim, marginBottom: 6 }}>{s.date}</div>
-              {s.freeComment && <div style={{ fontSize: 12.5, color: C.ivory, whiteSpace: "pre-wrap", lineHeight: 1.7, marginBottom: s.freePhoto ? 8 : 0 }}>{s.freeComment}</div>}
+              <div style={{ fontSize: 11, color: CARD_C.dim, marginBottom: 6 }}>{s.date}</div>
+              {s.freeComment && <div style={{ fontSize: 12.5, color: CARD_C.ivory, whiteSpace: "pre-wrap", lineHeight: 1.7, marginBottom: s.freePhoto ? 8 : 0 }}>{s.freeComment}</div>}
               {s.freePhoto && <img src={s.freePhoto} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} />}
             </Card>
           ))}
@@ -2405,10 +2427,10 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
             <div key={w.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <span style={{ fontSize: 12.5 }}>{w.exercise}</span>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11.5, color: C.dim }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11.5, color: CARD_C.dim }}>
                   {w.reps}{w.unit === "sec" ? "秒" : "回"}×{w.weight}kg{w.calories ? ` ・約${w.calories}kcal` : ""}
                 </span>
-                <button onClick={() => onDelete(w.id)} style={{ background: "none", border: "none", color: C.dim, cursor: "pointer" }}><Trash2 size={12} /></button>
+                <button onClick={() => onDelete(w.id)} style={{ background: "none", border: "none", color: CARD_C.dim, cursor: "pointer" }}><Trash2 size={12} /></button>
               </div>
             </div>
           ))}
@@ -2532,24 +2554,24 @@ function GoalAndPhotos({ profileId }) {
           </>
         ) : (
           <>
-            <div style={{ fontSize: 13, color: goal ? C.ivory : C.dim, whiteSpace: "pre-wrap", marginBottom: 10, lineHeight: 1.7 }}>
+            <div style={{ fontSize: 13, color: goal ? CARD_C.ivory : CARD_C.dim, whiteSpace: "pre-wrap", marginBottom: 10, lineHeight: 1.7 }}>
               {goal || "まだ目標が設定されていません"}
             </div>
             <button onClick={() => { setGoalInput(goal); setEditingGoal(true); }} style={{
-              background: "none", border: `1px solid ${C.cardBorder}`, color: C.dim, borderRadius: 20, padding: "5px 12px", fontSize: 11, cursor: "pointer",
+              background: "none", border: `1px solid ${C.cardBorder}`, color: CARD_C.dim, borderRadius: 20, padding: "5px 12px", fontSize: 11, cursor: "pointer",
             }}>編集</button>
           </>
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>目標体重(kg)</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>目標体重(kg)</div>
             <input type="number" inputMode="decimal" value={targetWeight} onChange={e => handleTargetWeightChange(e.target.value)} placeholder="例: 55" style={{
               width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
               background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center", boxSizing: "border-box",
             }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>目標体脂肪率(%)</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>目標体脂肪率(%)</div>
             <input type="number" inputMode="decimal" value={targetBodyFat} onChange={e => handleTargetBodyFatChange(e.target.value)} placeholder="例: 20" style={{
               width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
               background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center", boxSizing: "border-box",
@@ -2565,7 +2587,7 @@ function GoalAndPhotos({ profileId }) {
           <PhotoSlot label={`アフター${afterMonths ? `(${afterMonths}ヶ月)` : ""}`} photo={afterPhoto} uploading={uploading === "after"} onSelect={f => handlePhoto("after", f)} />
         </div>
         <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>アフター経過月数</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>アフター経過月数</div>
           <input
             type="number" value={afterMonths} onChange={e => handleAfterMonthsChange(e.target.value)} placeholder="例: 3"
             style={{
@@ -2644,7 +2666,7 @@ function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
 
       {nextTier && (
         <Card>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: C.dim, marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: CARD_C.dim, marginBottom: 8 }}>
             <span>次のランク: {nextTier.name}</span>
             <span>{points} / {nextTier.min}</span>
           </div>
@@ -2656,13 +2678,13 @@ function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
 
       <SectionLabel>ポイント獲得ルール</SectionLabel>
       <Card>
-        <div style={{ fontSize: 12, color: C.ivory, lineHeight: 2 }}>
+        <div style={{ fontSize: 12, color: CARD_C.ivory, lineHeight: 2 }}>
           パーソナルトレーニング1回 → +2pt<br />
           自宅トレーニング3回 → +1pt<br />
           月次測定記録更新 → +3pt<br />
           直近2日で記録が無い日 → -1pt(0が下限)
         </div>
-        <div style={{ fontSize: 10.5, color: C.dim, marginTop: 10, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 10.5, color: CARD_C.dim, marginTop: 10, lineHeight: 1.6 }}>
           ※Emerald(150pt)以上に到達すると、以降は減点システムが適用されなくなります。
         </div>
       </Card>
@@ -2685,12 +2707,12 @@ function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
         <Card>
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, color: C.ivory }}>{profile.name}</div>
-              <div style={{ fontSize: 11, color: C.dim }}>{profile.furigana}</div>
+              <div style={{ fontSize: 14, color: CARD_C.ivory }}>{profile.name}</div>
+              <div style={{ fontSize: 11, color: CARD_C.dim }}>{profile.furigana}</div>
             </div>
-            <button onClick={() => setEditing(true)} style={{ background: "none", border: `1px solid ${C.cardBorder}`, color: C.dim, borderRadius: 20, padding: "5px 12px", fontSize: 11, cursor: "pointer" }}>編集</button>
+            <button onClick={() => setEditing(true)} style={{ background: "none", border: `1px solid ${C.cardBorder}`, color: CARD_C.dim, borderRadius: 20, padding: "5px 12px", fontSize: 11, cursor: "pointer" }}>編集</button>
           </div>
-          <div style={{ fontSize: 11.5, color: C.dim, marginTop: 10, lineHeight: 1.9 }}>
+          <div style={{ fontSize: 11.5, color: CARD_C.dim, marginTop: 10, lineHeight: 1.9 }}>
             生年月日: {profile.birthdate || "—"}<br />
             電話番号: {profile.phone || "—"}<br />
             住所: {profile.address || "—"}
@@ -2700,23 +2722,23 @@ function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
 
       {loaded && editing && (
         <Card>
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>お名前</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>お名前</div>
           <input value={name} onChange={e => setName(e.target.value)} style={{
             width: "100%", padding: "9px 10px", marginBottom: 10, borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13,
           }} />
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>ふりがな</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>ふりがな</div>
           <input value={furigana} onChange={e => setFurigana(e.target.value)} style={{
             width: "100%", padding: "9px 10px", marginBottom: 10, borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13,
           }} />
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>生年月日</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>生年月日</div>
           <input type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} style={{
             width: "100%", padding: "9px 10px", marginBottom: 10, borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13,
           }} />
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>電話番号</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>電話番号</div>
           <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} style={{
             width: "100%", padding: "9px 10px", marginBottom: 10, borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13,
           }} />
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>住所</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>住所</div>
           <input value={address} onChange={e => setAddress(e.target.value)} style={{
             width: "100%", padding: "9px 10px", marginBottom: 16, borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13,
           }} />
@@ -2836,13 +2858,13 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
         <>
           <SectionLabel>月間 全記録アクティビティ</SectionLabel>
           <Card style={{ height: 210 }}>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 8 }}>1日ごとに記録したカテゴリ数(食事・体調・トレーニング・成長、最大4)</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 8 }}>1日ごとに記録したカテゴリ数(食事・体調・トレーニング・成長、最大4)</div>
             <div style={{ height: 160 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={activityByDate} margin={{ top: 4, right: 10, left: -14, bottom: 0 }}>
                   <CartesianGrid stroke={C.cardBorder} vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} interval={4} />
-                  <YAxis tick={{ fill: C.dim, fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 4]} allowDecimals={false} width={24} />
+                  <XAxis dataKey="date" tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} interval={4} />
+                  <YAxis tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 4]} allowDecimals={false} width={24} />
                   <Tooltip contentStyle={{ background: C.bg, border: `1px solid ${C.cardBorder}`, fontSize: 12 }} />
                   <Line type="monotone" dataKey="total" stroke={C.gold} strokeWidth={2.5} dot={{ r: 3, fill: C.gold }} />
                 </LineChart>
@@ -2868,9 +2890,9 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={calorieByDate} margin={{ top: 4, right: 10, left: -14, bottom: 0 }}>
               <CartesianGrid stroke={C.cardBorder} vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false}
+              <XAxis dataKey="date" tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false}
                 interval={period === "month" ? 4 : 0} />
-              <YAxis tick={{ fill: C.dim, fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
+              <YAxis tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
               <Tooltip contentStyle={{ background: C.bg, border: `1px solid ${C.cardBorder}`, fontSize: 12 }} />
               <Line type="monotone" dataKey="calories" stroke={C.gold} strokeWidth={2.5} dot={{ r: 3, fill: C.gold }} />
             </LineChart>
@@ -2880,7 +2902,7 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
 
       {periodMeals.length > 0 && (
         <Card>
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 10 }}>食事記録({period === "week" ? "1週間分" : "1ヶ月分"})</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 10 }}>食事記録({period === "week" ? "1週間分" : "1ヶ月分"})</div>
           <div style={{ maxHeight: 260, overflowY: "auto" }}>
             {[...periodMeals].sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || ""))).map(m => (
               <div key={m.id} style={{
@@ -2888,11 +2910,11 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
                 padding: "8px 0", borderBottom: `1px solid ${C.cardBorder}`,
               }}>
                 <div>
-                  <div style={{ fontSize: 12, color: C.ivory }}>{m.name}</div>
-                  <div style={{ fontSize: 10, color: C.dim }}>{m.date} {m.time || ""}</div>
+                  <div style={{ fontSize: 12, color: CARD_C.ivory }}>{m.name}</div>
+                  <div style={{ fontSize: 10, color: CARD_C.dim }}>{m.date} {m.time || ""}</div>
                   <ExtraNutrients item={m} />
                 </div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.dim, textAlign: "right" }}>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: CARD_C.dim, textAlign: "right" }}>
                   {m.calories}kcal<br />P{m.protein} F{m.fat} C{m.carb}
                 </div>
               </div>
@@ -2935,8 +2957,8 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={growthChartData} margin={{ top: 4, right: 10, left: -14, bottom: 0 }}>
                 <CartesianGrid stroke={C.cardBorder} vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} />
-                <YAxis tick={{ fill: C.dim, fontSize: 11 }} axisLine={false} tickLine={false} domain={["auto", "auto"]} width={30} />
+                <XAxis dataKey="date" tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} />
+                <YAxis tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={false} tickLine={false} domain={["auto", "auto"]} width={30} />
                 <Tooltip contentStyle={{ background: C.bg, border: `1px solid ${C.cardBorder}`, fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="weight" name="体重" stroke={C.gold} strokeWidth={2.5} dot={{ r: 3, fill: C.gold }} connectNulls />
@@ -2946,7 +2968,7 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
             </ResponsiveContainer>
           </div>
         )}
-        <div style={{ fontSize: 10, color: C.dim, marginTop: 10 }}>※体重・体脂肪率・筋量は成長タブでInBody画像解析または手入力した最新データを反映しています</div>
+        <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 10 }}>※体重・体脂肪率・筋量は成長タブでInBody画像解析または手入力した最新データを反映しています</div>
       </Card>
 
       {period === "month" && periodMonthly.length > 0 && (
@@ -2954,16 +2976,16 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
           <SectionLabel>月次測定</SectionLabel>
           {periodMonthly.map(m => (
             <Card key={m.id}>
-              <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 6 }}>{m.date}</div>
+              <div style={{ fontSize: 11.5, color: CARD_C.dim, marginBottom: 6 }}>{m.date}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
                 {m.situps !== null && <span>腹筋 {m.situps}回</span>}
-                {m.benchMax !== null && <span style={{ color: C.dim }}>BP {m.benchMax}kg</span>}
-                {m.hipThrust !== null && <span style={{ color: C.dim }}>HT {m.hipThrust}kg</span>}
+                {m.benchMax !== null && <span style={{ color: CARD_C.dim }}>BP {m.benchMax}kg</span>}
+                {m.hipThrust !== null && <span style={{ color: CARD_C.dim }}>HT {m.hipThrust}kg</span>}
                 {m.bridge && <span style={{ color: C.gold }}>ブリッジ/倒立◎</span>}
                 {m.photoSubmitted && <span style={{ color: C.gold }}>写真提出済</span>}
               </div>
               {m.note && (
-                <div style={{ fontSize: 12, color: C.ivory, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{m.note}</div>
+                <div style={{ fontSize: 12, color: CARD_C.ivory, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{m.note}</div>
               )}
             </Card>
           ))}
@@ -2979,7 +3001,7 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
         </div>
         {exerciseList.length > 0 && (
           <div>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 8 }}>期間中に行った種目</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 8 }}>期間中に行った種目</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {exerciseList.map(name => (
                 <span key={name} style={{
@@ -2994,7 +3016,7 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
 
       {periodWorkouts.length > 0 && (
         <Card>
-          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 10 }}>トレーニング記録({period === "week" ? "1週間分" : "1ヶ月分"})</div>
+          <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 10 }}>トレーニング記録({period === "week" ? "1週間分" : "1ヶ月分"})</div>
           <div style={{ maxHeight: 260, overflowY: "auto" }}>
             {[...periodWorkouts].sort((a, b) => b.date.localeCompare(a.date)).map(w => (
               <div key={w.id} style={{
@@ -3002,10 +3024,10 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
                 padding: "8px 0", borderBottom: `1px solid ${C.cardBorder}`,
               }}>
                 <div>
-                  <div style={{ fontSize: 12, color: C.ivory }}>{w.exercise}</div>
-                  <div style={{ fontSize: 10, color: C.dim }}>{w.date}</div>
+                  <div style={{ fontSize: 12, color: CARD_C.ivory }}>{w.exercise}</div>
+                  <div style={{ fontSize: 10, color: CARD_C.dim }}>{w.date}</div>
                 </div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.dim, textAlign: "right" }}>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: CARD_C.dim, textAlign: "right" }}>
                   {w.reps}{w.unit === "sec" ? "秒" : "回"}×{w.weight}kg{w.calories ? ` ・約${w.calories}kcal` : ""}
                 </div>
               </div>
@@ -3018,15 +3040,15 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
         <>
           <SectionLabel>パーソナルトレーニング</SectionLabel>
           <Card>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 10 }}>トレーナーによる記録({period === "week" ? "1週間分" : "1ヶ月分"})</div>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 10 }}>トレーナーによる記録({period === "week" ? "1週間分" : "1ヶ月分"})</div>
             <div style={{ maxHeight: 260, overflowY: "auto" }}>
               {periodPersonalLogs.map(p => (
                 <div key={p.id} style={{ padding: "8px 0", borderBottom: `1px solid ${C.cardBorder}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <span style={{ fontSize: 12, color: C.gold }}>第{p.seq}回</span>
-                    <span style={{ fontSize: 10, color: C.dim }}>{p.date}</span>
+                    <span style={{ fontSize: 10, color: CARD_C.dim }}>{p.date}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: C.ivory, marginTop: 3, whiteSpace: "pre-wrap" }}>{p.menu}</div>
+                  <div style={{ fontSize: 12, color: CARD_C.ivory, marginTop: 3, whiteSpace: "pre-wrap" }}>{p.menu}</div>
                 </div>
               ))}
             </div>
@@ -3053,7 +3075,7 @@ function LiveStreamTab() {
     <div>
       <SectionLabel>ライブ配信</SectionLabel>
       <Card>
-        <div style={{ fontSize: 12.5, color: C.ivory, lineHeight: 1.8, marginBottom: 14 }}>
+        <div style={{ fontSize: 12.5, color: CARD_C.ivory, lineHeight: 1.8, marginBottom: 14 }}>
           毎週 火曜7:00〜/土曜8:00〜<br />
           一緒にトレーニングLive配信を開催中<br /><br />
           トレーニングのプログラムが何百種類以上観れますのでぜひチェックしてください!
@@ -3078,8 +3100,8 @@ function TrainerCommentsTab({ comments }) {
             ) : (
               list.map(c => (
                 <Card key={c.id}>
-                  <div style={{ fontSize: 10, color: C.dim, marginBottom: 6 }}>{c.date}</div>
-                  <div style={{ fontSize: 13, color: C.ivory, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{c.text}</div>
+                  <div style={{ fontSize: 10, color: CARD_C.dim, marginBottom: 6 }}>{c.date}</div>
+                  <div style={{ fontSize: 13, color: CARD_C.ivory, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{c.text}</div>
                 </Card>
               ))
             )}
