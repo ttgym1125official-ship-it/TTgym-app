@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, createContext, useContext } from "react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import {
   Utensils, Activity, TrendingUp, Dumbbell, Crown, Droplet, Camera,
   Plus, X, Trash2, Moon, Brain, Play, ChevronRight, Sparkles, BarChart3, Settings, MessageSquare
@@ -1273,30 +1273,49 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
           </div>
         </Card>
       ) : targets && targets.calories != null ? (
-        <Card style={{ height: 220, padding: "16px 10px 10px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 6px", marginBottom: 8 }}>
-            <div style={{ fontSize: 11.5, color: CARD_C.dim }}>1日の目安カロリー</div>
-            <div>
-              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 22, color: C.gold }}>{targets.calories}</span>
-              <span style={{ fontSize: 11, color: CARD_C.dim, marginLeft: 4 }}>kcal</span>
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 130, height: 130, position: "relative", flexShrink: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "P(タンパク質)", value: (targets.protein || 0) * 4, grams: targets.protein, color: C.gold },
+                      { name: "F(脂質)", value: (targets.fat || 0) * 9, grams: targets.fat, color: "#B8B2A7" },
+                      { name: "C(炭水化物)", value: (targets.carb || 0) * 4, grams: targets.carb, color: "#7A8B5C" },
+                    ]}
+                    dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={38} outerRadius={60}
+                    paddingAngle={2} stroke="none"
+                  >
+                    <Cell fill={C.gold} />
+                    <Cell fill="#B8B2A7" />
+                    <Cell fill="#7A8B5C" />
+                  </Pie>
+                  <Tooltip contentStyle={{ background: C.bg, border: `1px solid ${C.cardBorder}`, fontSize: 12 }} formatter={(v, n, item) => [`${item.payload.grams}g`, n]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{
+                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+                textAlign: "center", pointerEvents: "none",
+              }}>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, color: C.gold, lineHeight: 1.1 }}>{targets.calories}</div>
+                <div style={{ fontSize: 9, color: CARD_C.dim }}>kcal/日</div>
+              </div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                { label: "P(タンパク質)", value: targets.protein, color: C.gold },
+                { label: "F(脂質)", value: targets.fat, color: "#B8B2A7" },
+                { label: "C(炭水化物)", value: targets.carb, color: "#7A8B5C" },
+              ].map(row => (
+                <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: row.color, flexShrink: 0 }} />
+                  <span style={{ color: CARD_C.dim, flex: 1 }}>{row.label}</span>
+                  <span style={{ fontFamily: "'Space Mono', monospace", color: CARD_C.ivory }}>{row.value != null ? `${row.value}g` : "-"}</span>
+                </div>
+              ))}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height="72%">
-            <BarChart
-              data={[
-                { name: "P(タンパク質)", value: targets.protein },
-                { name: "F(脂質)", value: targets.fat },
-                { name: "C(炭水化物)", value: targets.carb },
-              ]}
-              margin={{ top: 4, right: 14, left: -14, bottom: 0 }}
-            >
-              <CartesianGrid stroke={C.cardBorder} vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: CARD_C.dim, fontSize: 10.5 }} axisLine={{ stroke: C.cardBorder }} tickLine={false} />
-              <YAxis tick={{ fill: CARD_C.dim, fontSize: 11 }} axisLine={false} tickLine={false} width={32} unit="g" />
-              <Tooltip contentStyle={{ background: C.bg, border: `1px solid ${C.cardBorder}`, fontSize: 12 }} />
-              <Bar dataKey="value" fill={C.gold} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
         </Card>
       ) : null}
 
@@ -1757,8 +1776,12 @@ const AGING_NUTRIENTS = [
 ];
 
 const AGING_PRINCIPLES = [
-  { key: "fasting", label: "オートファジー:14〜16時間の空腹時間を作れましたか?" },
-  { key: "mitochondria", label: "ミトコンドリア活性化:高強度トレーニング、またはNMN/NRを摂取しましたか?" },
+  {
+    key: "fasting",
+    label: "オートファジー:14〜16時間の空腹時間を作れましたか?",
+    note: "※毎日行う必要はありません。週に2〜3回など、無理のない範囲で定期的に行いましょう。",
+  },
+  { key: "mitochondria", label: "ミトコンドリア活性化:高強度トレーニングを行いましたか?" },
   { key: "antiGlycation", label: "抗酸化・抗糖化:血糖値の急上昇や焦げ・揚げ物(AGEs)を避けられましたか?" },
 ];
 
@@ -1897,7 +1920,10 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: CARD_C.dim, marginBottom: 8 }}>細胞若返り・抗老化チェック</div>
           {AGING_PRINCIPLES.map(p => (
-            <CheckToggle key={p.key} label={p.label} checked={!!agingChecklist[p.key]} onToggle={() => toggleAging(p.key)} />
+            <div key={p.key}>
+              <CheckToggle label={p.label} checked={!!agingChecklist[p.key]} onToggle={() => toggleAging(p.key)} />
+              {p.note && <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: -4, marginBottom: 8, paddingLeft: 2 }}>{p.note}</div>}
+            </div>
           ))}
         </div>
 
@@ -2035,27 +2061,6 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
           ))}
         </>
       )}
-
-      <SectionLabel>次のステップ</SectionLabel>
-      <Card>
-        <div style={{ fontSize: 11.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.7 }}>
-          今の状態に合わせて、次のようなサポートもご利用いただけます。気になるものがあれば、お気軽にご相談ください。
-        </div>
-        {[
-          { label: "パーソナルトレーニングを予約する", note: "マンツーマンで集中的にサポートします" },
-          { label: "ミールプログラムについて相談する", note: "食事面から理想の身体づくりをサポートします" },
-          { label: "ホームトレーニングメニューを相談する", note: "自宅でも継続できるメニューをご提案します" },
-          { label: "オンラインサポートについて相談する", note: "遠方の方・お忙しい方向けのオンライン対応です" },
-        ].map(item => (
-          <button key={item.label} onClick={() => window.open(liveUrl, "_blank")} style={{
-            width: "100%", display: "block", textAlign: "left", background: C.bg, border: `1px solid ${C.cardBorder}`,
-            borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "pointer",
-          }}>
-            <div style={{ fontSize: 12.5, color: C.gold }}>{item.label}</div>
-            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginTop: 3 }}>{item.note}</div>
-          </button>
-        ))}
-      </Card>
 
       <SectionLabel>補いたい栄養素(サプリメント)</SectionLabel>
       <Card>
