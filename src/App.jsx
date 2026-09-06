@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, createContext, useContext } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import {
   Utensils, Activity, TrendingUp, Dumbbell, Crown, Droplet, Camera,
@@ -11,12 +11,16 @@ import { fileToCompressedDataUrl } from "./imageUtils.js";
 
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');`;
 
-const C = {
-  bg: "#0D0D0D",
-  bg2: "#141311",
-  card: "#1A1917",
-  cardBorder: "#2C2A24",
-  cardBorderLight: "#3A3627",
+// SPACE_C: the deep, cosmic-black palette used only for the splash screen and
+// the very first registration screen (per the owner's request to keep those
+// two moments feeling premium/"space-like"). Deepened toward pure black
+// compared to the app's original single dark theme.
+const SPACE_C = {
+  bg: "#000000",
+  bg2: "#060606",
+  card: "#0B0B0B",
+  cardBorder: "#242018",
+  cardBorderLight: "#332C1E",
   gold: "#D4AF37",
   goldDim: "#8C7328",
   goldSoft: "#D4AF3722",
@@ -24,6 +28,26 @@ const C = {
   dim: "#8A8578",
   danger: "#B2483A",
 };
+
+// LIGHT_C: the white-based, feminine palette used everywhere else in the app
+// (everything after the registration screen). Same keys as SPACE_C so every
+// component that references `C.xxx` works unchanged under either theme.
+const LIGHT_C = {
+  bg: "#FFFBFC",
+  bg2: "#FFF3F6",
+  card: "#FFFFFF",
+  cardBorder: "#F0DCE2",
+  cardBorderLight: "#E7C3CE",
+  gold: "#C98BA0",
+  goldDim: "#9C5F73",
+  goldSoft: "#C98BA01F",
+  ivory: "#3A2E33",
+  dim: "#9C8790",
+  danger: "#C24B5C",
+};
+
+const ThemeContext = createContext(LIGHT_C);
+function useTheme() { return useContext(ThemeContext); }
 
 const TIERS = [
   { name: "Black", min: 0, color: "#3A3A3A" },
@@ -145,6 +169,7 @@ function fileToBase64(file) {
 /* ---------------- shared UI ---------------- */
 
 function SectionLabel({ children }) {
+  const C = useTheme();
   return (
     <div style={{
       fontFamily: "'Space Mono', monospace", fontSize: 10.5, letterSpacing: 2,
@@ -158,6 +183,7 @@ function SectionLabel({ children }) {
 }
 
 function Card({ children, style }) {
+  const C = useTheme();
   return (
     <div style={{
       background: `linear-gradient(155deg, ${C.card} 0%, #201E19 100%)`,
@@ -169,6 +195,7 @@ function Card({ children, style }) {
 }
 
 function GoldButton({ children, onClick, disabled, variant = "solid" }) {
+  const C = useTheme();
   const solid = variant === "solid";
   return (
     <button onClick={onClick} disabled={disabled} style={{
@@ -185,6 +212,7 @@ function GoldButton({ children, onClick, disabled, variant = "solid" }) {
 }
 
 function TabButton({ active, onClick, icon: Icon, label }) {
+  const C = useTheme();
   return (
     <button onClick={onClick} style={{
       flex: 1, background: "none", border: "none", cursor: "pointer",
@@ -199,10 +227,12 @@ function TabButton({ active, onClick, icon: Icon, label }) {
 }
 
 function EmptyState({ text }) {
+  const C = useTheme();
   return <div style={{ textAlign: "center", color: C.dim, fontSize: 12.5, padding: "24px 10px" }}>{text}</div>;
 }
 
 function BirthdayOverlay({ name, onClose }) {
+  const C = useTheme();
   const confetti = useMemo(() => Array.from({ length: 40 }, (_, i) => ({
     left: Math.random() * 100,
     delay: Math.random() * 2,
@@ -247,9 +277,147 @@ function BirthdayOverlay({ name, onClose }) {
   );
 }
 
+// Looks up an existing member profile by name + birthdate. Used by the
+// "登録済みの方はこちら" recovery flow on the registration screen for a returning
+// customer whose browser lost its local member id (cleared storage, new
+// device, etc.) and was wrongly shown the registration screen again.
+async function findProfileByNameAndBirthdate(name, birthdate) {
+  const normalizedName = name.trim();
+  if (!normalizedName || !birthdate) return null;
+  try {
+    const list = await window.storage.list("profile:");
+    const keys = list?.keys || [];
+    for (const k of keys) {
+      try {
+        const r = await window.storage.get(k, true);
+        if (!r) continue;
+        const p = JSON.parse(r.value);
+        if (p.registered && p.name && p.name.trim() === normalizedName && p.birthdate === birthdate) {
+          return p;
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return null;
+}
+
+function SplashOverlay({ phase }) {
+  const C = useTheme();
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 18,
+      background: `radial-gradient(ellipse 90% 60% at 50% 40%, #14110A 0%, ${C.bg2} 55%, ${C.bg} 100%)`,
+      opacity: phase === "fading" ? 0 : 1, transition: "opacity 0.5s ease",
+      pointerEvents: phase === "fading" ? "none" : "auto",
+    }}>
+      <Logo height={90} style={{
+        animation: "splashFadeIn 0.7s ease",
+        filter: "drop-shadow(0 4px 16px rgba(212,175,55,0.35))",
+      }} />
+      <div style={{
+        fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.gold, letterSpacing: 1,
+        animation: "splashFadeIn 0.9s ease 0.15s both",
+      }}>一緒に頑張っていきましょ!</div>
+    </div>
+  );
+}
+
+function RegisterScreen({
+  regName, setRegName, regFurigana, setRegFurigana, regBirthdate, setRegBirthdate,
+  regPhone, setRegPhone, regAddress, setRegAddress, authError, onSubmit, onRecovered,
+}) {
+  const C = useTheme();
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recName, setRecName] = useState("");
+  const [recBirthdate, setRecBirthdate] = useState("");
+  const [recStatus, setRecStatus] = useState(null); // null | "checking" | "notfound"
+
+  async function handleRecoverySubmit() {
+    if (!recName.trim() || !recBirthdate) {
+      setRecStatus("notfound");
+      return;
+    }
+    setRecStatus("checking");
+    const found = await findProfileByNameAndBirthdate(recName, recBirthdate);
+    if (found) {
+      onRecovered(found.id);
+    } else {
+      setRecStatus("notfound");
+    }
+  }
+
+  const inputStyle = {
+    width: "100%", padding: "10px 12px", marginBottom: 12, borderRadius: 8,
+    border: `1px solid ${C.cardBorder}`, background: C.card, color: C.ivory, fontSize: 13, boxSizing: "border-box",
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 40, overflowY: "auto", display: "flex", flexDirection: "column",
+      alignItems: "center", padding: "40px 24px",
+      background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
+    }}>
+      <Logo height={60} style={{ marginBottom: 8 }} />
+      <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 24, textAlign: "center", lineHeight: 1.8 }}>
+        ご利用の前に、お客様情報のご登録をお願いいたします。<br />全ての項目が必須です。
+      </div>
+      <div style={{ width: "100%", maxWidth: 300 }}>
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>お名前(フルネーム)</div>
+        <input value={regName} onChange={e => setRegName(e.target.value)} placeholder="山田 太郎" style={inputStyle} />
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>ふりがな</div>
+        <input value={regFurigana} onChange={e => setRegFurigana(e.target.value)} placeholder="やまだ たろう" style={inputStyle} />
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>生年月日</div>
+        <input type="date" value={regBirthdate} onChange={e => setRegBirthdate(e.target.value)} style={inputStyle} />
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>電話番号</div>
+        <input type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)} style={inputStyle} />
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>住所</div>
+        <input value={regAddress} onChange={e => setRegAddress(e.target.value)} style={{ ...inputStyle, marginBottom: 16 }} />
+        {authError && <div style={{ color: C.danger, fontSize: 12, marginBottom: 12, textAlign: "center" }}>{authError}</div>}
+        <GoldButton onClick={onSubmit}>登録する</GoldButton>
+
+        <div style={{ textAlign: "center", marginTop: 18 }}>
+          <button onClick={() => { setShowRecovery(v => !v); setRecStatus(null); }} style={{
+            background: "none", border: "none", color: C.dim, fontSize: 11.5, textDecoration: "underline", cursor: "pointer",
+          }}>登録済みの方はこちら</button>
+        </div>
+
+        {showRecovery && (
+          <div style={{ marginTop: 14, padding: 14, borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: C.card }}>
+            <div style={{ fontSize: 11, color: C.dim, marginBottom: 12, lineHeight: 1.7 }}>
+              以前ご登録済みで、この画面が表示されてしまった場合はこちらから復帰できます。お名前と生年月日をご入力ください。
+            </div>
+            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>お名前(フルネーム)</div>
+            <input value={recName} onChange={e => { setRecName(e.target.value); setRecStatus(null); }} placeholder="山田 太郎" style={inputStyle} />
+            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>生年月日</div>
+            <input type="date" value={recBirthdate} onChange={e => { setRecBirthdate(e.target.value); setRecStatus(null); }} style={{ ...inputStyle, marginBottom: 14 }} />
+            {recStatus === "notfound" && (
+              <div style={{ color: C.danger, fontSize: 11.5, marginBottom: 10, textAlign: "center" }}>
+                一致するご登録が見つかりませんでした。お名前・生年月日をご確認いただくか、ジムまでお問い合わせください。
+              </div>
+            )}
+            <GoldButton variant="outline" disabled={recStatus === "checking"} onClick={handleRecoverySubmit}>
+              {recStatus === "checking" ? "確認中…" : "この内容で復帰する"}
+            </GoldButton>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- App ---------------- */
 
 export default function App() {
+  return (
+    <ThemeContext.Provider value={LIGHT_C}>
+      <AppInner />
+    </ThemeContext.Provider>
+  );
+}
+
+function AppInner() {
+  const C = useTheme();
   const [tab, setTab] = useState("status");
   const [loaded, setLoaded] = useState(false);
   const [profileId, setProfileId] = useState(null);
@@ -427,6 +595,19 @@ export default function App() {
     setAuthPhase("pending");
   }
 
+  // Called when a returning customer used the "登録済みの方はこちら" recovery flow
+  // (name + birthdate lookup) to find their existing profile after this browser
+  // lost its local member id (e.g. storage was cleared). Adopting the found id
+  // and reloading is the simplest way to re-enter "as" that profile, since the
+  // rest of the app's data-loading effects all key off profileId from scratch.
+  function handleRecovered(foundId) {
+    try {
+      window.localStorage.setItem("ttgym_member_id", foundId);
+      window.storage.set("myProfileId", foundId).catch(() => {});
+    } catch (e) {}
+    window.location.reload();
+  }
+
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 1800); }
 
   const activeDates = new Set([
@@ -484,22 +665,9 @@ export default function App() {
       `}</style>
 
       {splashPhase !== "gone" && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 18,
-          background: `radial-gradient(ellipse 90% 60% at 50% 40%, #2A2410 0%, ${C.bg2} 55%, ${C.bg} 100%)`,
-          opacity: splashPhase === "fading" ? 0 : 1, transition: "opacity 0.5s ease",
-          pointerEvents: splashPhase === "fading" ? "none" : "auto",
-        }}>
-          <Logo height={90} style={{
-            animation: "splashFadeIn 0.7s ease",
-            filter: "drop-shadow(0 4px 16px rgba(212,175,55,0.35))",
-          }} />
-          <div style={{
-            fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.gold, letterSpacing: 1,
-            animation: "splashFadeIn 0.9s ease 0.15s both",
-          }}>一緒に頑張っていきましょ!</div>
-        </div>
+        <ThemeContext.Provider value={SPACE_C}>
+          <SplashOverlay phase={splashPhase} />
+        </ThemeContext.Provider>
       )}
 
       {birthdayOverlay && <BirthdayOverlay name={birthdayOverlay.name} onClose={() => setBirthdayOverlay(null)} />}
@@ -519,45 +687,17 @@ export default function App() {
       )}
 
       {authPhase === "register" && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 40, overflowY: "auto", display: "flex", flexDirection: "column",
-          alignItems: "center", padding: "40px 24px",
-          background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
-        }}>
-          <Logo height={60} style={{ marginBottom: 8 }} />
-          <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 24, textAlign: "center", lineHeight: 1.8 }}>
-            ご利用の前に、お客様情報のご登録をお願いいたします。<br />全ての項目が必須です。
-          </div>
-          <div style={{ width: "100%", maxWidth: 300 }}>
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>お名前(フルネーム)</div>
-            <input value={regName} onChange={e => setRegName(e.target.value)} placeholder="山田 太郎" style={{
-              width: "100%", padding: "10px 12px", marginBottom: 12, borderRadius: 8,
-              border: `1px solid ${C.cardBorder}`, background: C.card, color: C.ivory, fontSize: 13, boxSizing: "border-box",
-            }} />
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>ふりがな</div>
-            <input value={regFurigana} onChange={e => setRegFurigana(e.target.value)} placeholder="やまだ たろう" style={{
-              width: "100%", padding: "10px 12px", marginBottom: 12, borderRadius: 8,
-              border: `1px solid ${C.cardBorder}`, background: C.card, color: C.ivory, fontSize: 13, boxSizing: "border-box",
-            }} />
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>生年月日</div>
-            <input type="date" value={regBirthdate} onChange={e => setRegBirthdate(e.target.value)} style={{
-              width: "100%", padding: "10px 12px", marginBottom: 12, borderRadius: 8,
-              border: `1px solid ${C.cardBorder}`, background: C.card, color: C.ivory, fontSize: 13, boxSizing: "border-box",
-            }} />
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>電話番号</div>
-            <input type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)} style={{
-              width: "100%", padding: "10px 12px", marginBottom: 12, borderRadius: 8,
-              border: `1px solid ${C.cardBorder}`, background: C.card, color: C.ivory, fontSize: 13, boxSizing: "border-box",
-            }} />
-            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>住所</div>
-            <input value={regAddress} onChange={e => setRegAddress(e.target.value)} style={{
-              width: "100%", padding: "10px 12px", marginBottom: 16, borderRadius: 8,
-              border: `1px solid ${C.cardBorder}`, background: C.card, color: C.ivory, fontSize: 13, boxSizing: "border-box",
-            }} />
-            {authError && <div style={{ color: C.danger, fontSize: 12, marginBottom: 12, textAlign: "center" }}>{authError}</div>}
-            <GoldButton onClick={handleRegisterSubmit}>登録する</GoldButton>
-          </div>
-        </div>
+        <ThemeContext.Provider value={SPACE_C}>
+          <RegisterScreen
+            regName={regName} setRegName={setRegName}
+            regFurigana={regFurigana} setRegFurigana={setRegFurigana}
+            regBirthdate={regBirthdate} setRegBirthdate={setRegBirthdate}
+            regPhone={regPhone} setRegPhone={setRegPhone}
+            regAddress={regAddress} setRegAddress={setRegAddress}
+            authError={authError} onSubmit={handleRegisterSubmit}
+            onRecovered={handleRecovered}
+          />
+        </ThemeContext.Provider>
       )}
 
       {authPhase === "pending" && (
@@ -626,15 +766,15 @@ export default function App() {
       )}
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 90px" }}>
-        {tab === "meal" && <MealTab meals={meals} water={water}
+        {tab === "meal" && <MealTab meals={meals} water={water} profileId={profileId}
           onAddMeal={m => { setMeals(p => [m, ...p]); showToast("食事を記録しました"); }}
           onDeleteMeal={id => setMeals(p => p.filter(m => m.id !== id))}
           onAddWater={ml => setWater(p => ({ ...p, [todayISO()]: (p[todayISO()] || 0) + ml }))}
         />}
-        {tab === "condition" && <ConditionTab conditions={conditions}
+        {tab === "condition" && <ConditionTab conditions={conditions} comments={comments} profileId={profileId}
           onSave={entry => { setConditions(p => [entry, ...p.filter(c => c.date !== entry.date)]); showToast("体調を記録しました"); }}
         />}
-        {tab === "growth" && <GrowthTab growth={growth}
+        {tab === "growth" && <GrowthTab growth={growth} profileId={profileId}
           onAdd={g => { setGrowth(p => [g, ...p]); showToast("記録しました"); }}
           onDelete={id => setGrowth(p => p.filter(g => g.id !== id))}
           monthly={monthly}
@@ -675,7 +815,7 @@ export default function App() {
         maxWidth: 480, width: "100%", boxShadow: "0 -8px 20px -12px rgba(0,0,0,0.7)",
       }}>
         <TabButton active={tab === "status"} onClick={() => setTab("status")} icon={Crown} label="登録" />
-        <TabButton active={tab === "condition"} onClick={() => setTab("condition")} icon={Brain} label="体調" />
+        <TabButton active={tab === "condition"} onClick={() => setTab("condition")} icon={Brain} label="体調管理" />
         <TabButton active={tab === "meal"} onClick={() => setTab("meal")} icon={Utensils} label="食事" />
         <TabButton active={tab === "training"} onClick={() => setTab("training")} icon={Dumbbell} label="トレーニング" />
         <TabButton active={tab === "growth"} onClick={() => setTab("growth")} icon={TrendingUp} label="成長" />
@@ -978,7 +1118,8 @@ const INGREDIENTS = {
 
 const STORE_CHAINS = ["大戸屋", "やよい軒", "なかよし", "すき家", "鳥貴族", "なか卯", "サイゼリヤ"];
 
-function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater }) {
+function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId }) {
+  const C = useTheme();
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -1000,7 +1141,12 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater }) {
       protein: acc.protein + (m.protein || 0),
       fat: acc.fat + (m.fat || 0),
       carb: acc.carb + (m.carb || 0),
-    }), { calories: 0, protein: 0, fat: 0, carb: 0 });
+      fiber: acc.fiber + (m.fiber || 0),
+      vitaminC: acc.vitaminC + (m.vitaminC || 0),
+      potassium: acc.potassium + (m.potassium || 0),
+      calcium: acc.calcium + (m.calcium || 0),
+      iron: acc.iron + (m.iron || 0),
+    }), { calories: 0, protein: 0, fat: 0, carb: 0, fiber: 0, vitaminC: 0, potassium: 0, calcium: 0, iron: 0 });
     const pGrams = t.protein, fGrams = t.fat, cGrams = t.carb;
     const pCal = pGrams * 4, fCal = fGrams * 9, cCal = cGrams * 4;
     const totalCal = pCal + fCal + cCal || 1;
@@ -1009,6 +1155,21 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater }) {
       pPct: (pCal / totalCal) * 100, fPct: (fCal / totalCal) * 100, cPct: (cCal / totalCal) * 100,
     };
   }, [todaysMeals]);
+
+  const [targets, setTargets] = useState(null); // null while loading; {} object once loaded (fields may be null)
+  useEffect(() => {
+    if (!profileId) return;
+    (async () => {
+      try {
+        const r = await window.storage.get(`profile:${profileId}`, true);
+        const p = r ? JSON.parse(r.value) : {};
+        setTargets({
+          calories: p.targetCalories ?? null, protein: p.targetProtein ?? null,
+          fat: p.targetFat ?? null, carb: p.targetCarb ?? null,
+        });
+      } catch (e) { setTargets({}); }
+    })();
+  }, [profileId]);
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -1321,6 +1482,63 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
           </div>
         </div>
       )}
+      <SectionLabel>今日の目標達成度</SectionLabel>
+      {targets && targets.calories == null ? (
+        <Card>
+          <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, textAlign: "center" }}>
+            『TTGYMトレーナーがお客様の理想の摂取カロリーを設定中です。』
+          </div>
+        </Card>
+      ) : targets && targets.calories != null ? (
+        <Card>
+          {[
+            { label: "カロリー", value: dayTotals.calories, target: targets.calories, unit: "kcal" },
+            { label: "タンパク質(P)", value: dayTotals.protein, target: targets.protein, unit: "g" },
+            { label: "脂質(F)", value: dayTotals.fat, target: targets.fat, unit: "g" },
+            { label: "炭水化物(C)", value: dayTotals.carb, target: targets.carb, unit: "g" },
+          ].filter(row => row.target != null).map(row => {
+            const pct = Math.min(150, (row.value / row.target) * 100);
+            const over = row.value > row.target * 1.1;
+            const under = row.value < row.target * 0.85;
+            const barColor = over ? C.danger : (under ? "#B8B2A7" : C.gold);
+            return (
+              <div key={row.label} style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: C.dim, marginBottom: 4 }}>
+                  <span>{row.label}</span>
+                  <span style={{ fontFamily: "'Space Mono', monospace", color: barColor }}>
+                    {Math.round(row.value)} / {row.target}{row.unit} {over ? "(オーバー)" : under ? "(不足気味)" : "(良好)"}
+                  </span>
+                </div>
+                <div style={{ height: 6, background: C.cardBorder, borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${Math.min(100, pct)}%`, background: barColor }} />
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+      ) : null}
+
+      <SectionLabel>細胞若返り・抗老化(食事より自動集計)</SectionLabel>
+      <Card>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: C.dim, marginBottom: 4 }}>
+            <span>ビタミンC(目安 1000〜3000mg/日)</span>
+            <span style={{ fontFamily: "'Space Mono', monospace", color: dayTotals.vitaminC >= 1000 ? C.gold : "#B8B2A7" }}>
+              {Math.round(dayTotals.vitaminC)}mg
+            </span>
+          </div>
+          <div style={{ height: 6, background: C.cardBorder, borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.min(100, (dayTotals.vitaminC / 1000) * 100)}%`, background: dayTotals.vitaminC >= 1000 ? C.gold : "#B8B2A7" }} />
+          </div>
+        </div>
+        <div style={{ fontSize: 10.5, color: C.dim, lineHeight: 1.6 }}>
+          食物繊維 {Math.round(dayTotals.fiber)}g ・ カリウム {Math.round(dayTotals.potassium)}mg ・ カルシウム {Math.round(dayTotals.calcium)} ・ 鉄分 {Math.round(dayTotals.iron)}(いずれも写真解析による目安値)
+        </div>
+        <div style={{ fontSize: 10, color: C.dim, marginTop: 10, lineHeight: 1.6 }}>
+          ※アミノ酸(グルタミン等)やビタミンD/E、マグネシウム・亜鉛などのサプリメント由来の栄養素は写真から推定できないため、「体調管理」タブのチェックリストで記録してください。
+        </div>
+      </Card>
+
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1382,6 +1600,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
 }
 
 function ExtraNutrients({ item }) {
+  const C = useTheme();
   const hasExtra = item.fiber != null || item.sugar != null || item.sodium != null || item.potassium != null
     || item.vitaminA != null || item.vitaminC != null || item.calcium != null || item.iron != null;
   if (!hasExtra) return null;
@@ -1418,6 +1637,39 @@ const MENTAL_LEVELS = [
   { n: 4, label: "良好" }, { n: 5, label: "絶好調" },
 ];
 const MEAL_AMOUNTS = ["少なめ", "適量", "多め"];
+
+// Daily target ranges for cellular rejuvenation / anti-aging, as specified by
+// the gym owner. Amino acids and most vitamins/minerals here are typically
+// taken as supplements rather than reliably estimated from a meal photo, so
+// they're tracked as a self-report checklist rather than an auto-calculated
+// number — ticking a box records "摂取した" for that item today.
+const AGING_NUTRIENTS = [
+  { key: "glutamine", label: "グルタミン", range: "5〜10g", category: "アミノ酸" },
+  { key: "glycine", label: "グリシン", range: "3〜5g", category: "アミノ酸" },
+  { key: "nac", label: "NAC", range: "600〜1200mg", category: "アミノ酸" },
+  { key: "carnitine", label: "L-カルニチン", range: "500〜1000mg", category: "アミノ酸" },
+  { key: "arginine", label: "アルギニン/シトルリン", range: "3〜5g", category: "アミノ酸" },
+  { key: "vitaminC", label: "ビタミンC", range: "1000〜3000mg", category: "ビタミン" },
+  { key: "vitaminD3", label: "ビタミンD3", range: "2000〜5000IU", category: "ビタミン" },
+  { key: "vitaminE", label: "ビタミンE", range: "100〜400mg", category: "ビタミン" },
+  { key: "bComplex", label: "ビタミンB群(B1,B2,B6,B12等)", range: "25〜50mg", category: "ビタミン" },
+  { key: "magnesium", label: "マグネシウム", range: "400〜600mg", category: "ミネラル" },
+  { key: "zinc", label: "亜鉛", range: "15〜30mg", category: "ミネラル" },
+  { key: "selenium", label: "セレン", range: "100〜200μg", category: "ミネラル" },
+  { key: "silica", label: "シリカ", range: "30〜50mg", category: "ミネラル" },
+  // Additional items suggested for a beauty/health(美と健康)focus.
+  { key: "omega3", label: "オメガ3(EPA/DHA)", range: "1000〜2000mg", category: "追加提案" },
+  { key: "collagen", label: "コラーゲンペプチド", range: "5〜10g", category: "追加提案" },
+  { key: "coq10", label: "コエンザイムQ10", range: "100〜200mg", category: "追加提案" },
+  { key: "astaxanthin", label: "アスタキサンチン", range: "4〜12mg", category: "追加提案" },
+  { key: "biotin", label: "ビオチン", range: "2.5〜5mg", category: "追加提案" },
+];
+
+const AGING_PRINCIPLES = [
+  { key: "fasting", label: "オートファジー:14〜16時間の空腹時間を作れましたか?" },
+  { key: "mitochondria", label: "ミトコンドリア活性化:高強度トレーニング、またはNMN/NRを摂取しましたか?" },
+  { key: "antiGlycation", label: "抗酸化・抗糖化:血糖値の急上昇や焦げ・揚げ物(AGEs)を避けられましたか?" },
+];
 
 const ADVICE_POOL = {
   ideal: {
@@ -1458,6 +1710,7 @@ const ADVICE_POOL = {
 };
 
 function CheckToggle({ label, checked, onToggle }) {
+  const C = useTheme();
   return (
     <button onClick={onToggle} style={{
       display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
@@ -1473,7 +1726,8 @@ function CheckToggle({ label, checked, onToggle }) {
   );
 }
 
-function ConditionTab({ conditions, onSave }) {
+function ConditionTab({ conditions, onSave, comments, profileId }) {
+  const C = useTheme();
   const today = todayISO();
   const existing = conditions.find(c => c.date === today);
   const [bowel, setBowel] = useState(existing?.bowel ?? 2);
@@ -1485,6 +1739,24 @@ function ConditionTab({ conditions, onSave }) {
   const [preSleepMeal, setPreSleepMeal] = useState(existing?.preSleepMeal ?? "適量");
   const [morningFatigue, setMorningFatigue] = useState(existing?.morningFatigue ?? 2);
   const [mental, setMental] = useState(existing?.mental ?? 3);
+  const [mealHoursBeforeSleep, setMealHoursBeforeSleep] = useState(existing?.mealHoursBeforeSleep ?? "");
+  const [digitalDetox, setDigitalDetox] = useState(existing?.digitalDetox ?? false);
+  const [agingChecklist, setAgingChecklist] = useState(existing?.agingChecklist ?? {});
+
+  const conditionComments = [...(comments || [])].filter(c => c.type === "condition").sort((a, b) => b.date.localeCompare(a.date));
+  const liveUrl = "https://www.instagram.com/self.mobility?igsh=MXZvaTBlcGxpM2ttYQ%3D%3D&utm_source=qr";
+
+  function toggleAging(key) {
+    const next = { ...agingChecklist, [key]: !agingChecklist[key] };
+    setAgingChecklist(next);
+    onSave({
+      id: existing?.id || uid(), date: today, bowel, sleep, mental,
+      sunAM, bath10, exercise, sleepHours: sleepHours ? Number(sleepHours) : null,
+      preSleepMeal, morningFatigue,
+      mealHoursBeforeSleep: mealHoursBeforeSleep ? Number(mealHoursBeforeSleep) : null,
+      digitalDetox, agingChecklist: next,
+    });
+  }
 
   const status = useMemo(() => {
     const score = sleep + mental;
@@ -1525,6 +1797,19 @@ function ConditionTab({ conditions, onSave }) {
           <CheckToggle label="朝、日光を浴びましたか?" checked={sunAM} onToggle={() => setSunAM(v => !v)} />
           <CheckToggle label="湯船に10分以上浸かりましたか?" checked={bath10} onToggle={() => setBath10(v => !v)} />
           <CheckToggle label="運動・ストレッチはできましたか?" checked={exercise} onToggle={() => setExercise(v => !v)} />
+          <CheckToggle label="就寝1〜2時間前にデジタルデトックス(スマホ断ち)はできましたか?" checked={digitalDetox} onToggle={() => setDigitalDetox(v => !v)} />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>就寝の何時間前に最後の食事をしましたか?</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="number" step="0.5" inputMode="decimal" placeholder="3" value={mealHoursBeforeSleep}
+              onChange={e => setMealHoursBeforeSleep(e.target.value)} style={{
+                width: 90, padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
+                background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center",
+              }} />
+            <span style={{ fontSize: 12, color: C.dim }}>時間前</span>
+          </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -1626,16 +1911,90 @@ function ConditionTab({ conditions, onSave }) {
         id: existing?.id || uid(), date: today, bowel, sleep, mental,
         sunAM, bath10, exercise, sleepHours: sleepHours ? Number(sleepHours) : null,
         preSleepMeal, morningFatigue,
+        mealHoursBeforeSleep: mealHoursBeforeSleep ? Number(mealHoursBeforeSleep) : null,
+        digitalDetox, agingChecklist,
       })}>
         本日の記録を保存
       </GoldButton>
+
+      {conditionComments.length > 0 && (
+        <>
+          <SectionLabel>トレーナーからのコメント</SectionLabel>
+          {conditionComments.slice(0, 5).map(c => (
+            <Card key={c.id}>
+              <div style={{ fontSize: 10, color: C.dim, marginBottom: 6 }}>{c.date}</div>
+              <div style={{ fontSize: 13, color: C.ivory, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{c.text}</div>
+            </Card>
+          ))}
+        </>
+      )}
+
+      <SectionLabel>次のステップ</SectionLabel>
+      <Card>
+        <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 12, lineHeight: 1.7 }}>
+          今の状態に合わせて、次のようなサポートもご利用いただけます。気になるものがあれば、お気軽にご相談ください。
+        </div>
+        {[
+          { label: "パーソナルトレーニングを予約する", note: "マンツーマンで集中的にサポートします" },
+          { label: "ミールプログラムについて相談する", note: "食事面から理想の身体づくりをサポートします" },
+          { label: "ホームトレーニングメニューを相談する", note: "自宅でも継続できるメニューをご提案します" },
+          { label: "オンラインサポートについて相談する", note: "遠方の方・お忙しい方向けのオンライン対応です" },
+        ].map(item => (
+          <button key={item.label} onClick={() => window.open(liveUrl, "_blank")} style={{
+            width: "100%", display: "block", textAlign: "left", background: C.bg, border: `1px solid ${C.cardBorder}`,
+            borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "pointer",
+          }}>
+            <div style={{ fontSize: 12.5, color: C.gold }}>{item.label}</div>
+            <div style={{ fontSize: 10.5, color: C.dim, marginTop: 3 }}>{item.note}</div>
+          </button>
+        ))}
+      </Card>
+
+      <SectionLabel>細胞若返り・抗老化チェック</SectionLabel>
+      <Card>
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 12, lineHeight: 1.6 }}>
+          「美と健康」のために意識したい3つの原則です。チェックすると自動で保存されます。
+        </div>
+        {AGING_PRINCIPLES.map(p => (
+          <CheckToggle key={p.key} label={p.label} checked={!!agingChecklist[p.key]} onToggle={() => toggleAging(p.key)} />
+        ))}
+      </Card>
+      <Card>
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 12, lineHeight: 1.6 }}>
+          サプリメント等での摂取目安です。今日摂取したものにチェックしてください。
+        </div>
+        {["アミノ酸", "ビタミン", "ミネラル", "追加提案"].map(category => (
+          <div key={category} style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10.5, color: C.goldDim, marginBottom: 6, letterSpacing: 1 }}>{category}</div>
+            {AGING_NUTRIENTS.filter(n => n.category === category).map(n => (
+              <CheckToggle key={n.key} label={`${n.label}(目安 ${n.range})`} checked={!!agingChecklist[n.key]} onToggle={() => toggleAging(n.key)} />
+            ))}
+          </div>
+        ))}
+      </Card>
     </div>
   );
 }
 
 /* ---------------- Growth Tab ---------------- */
 
-function GrowthTab({ growth, onAdd, onDelete, monthly, onAddMonthly, onDeleteMonthly }) {
+function GrowthTab({ growth, onAdd, onDelete, monthly, onAddMonthly, onDeleteMonthly, profileId }) {
+  const C = useTheme();
+  const [targetWeight, setTargetWeight] = useState(null);
+  const [targetBodyFat, setTargetBodyFat] = useState(null);
+  useEffect(() => {
+    if (!profileId) return;
+    (async () => {
+      try {
+        const r = await window.storage.get(`profile:${profileId}`, true);
+        if (r) {
+          const p = JSON.parse(r.value);
+          setTargetWeight(p.targetWeight ?? null);
+          setTargetBodyFat(p.targetBodyFat ?? null);
+        }
+      } catch (e) {}
+    })();
+  }, [profileId]);
   const [weight, setWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
   const [muscle, setMuscle] = useState("");
@@ -1720,6 +2079,15 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
 
   return (
     <div>
+      {(targetWeight != null || targetBodyFat != null) && (
+        <Card style={{ borderColor: C.goldDim }}>
+          <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>目標(登録タブで設定)</div>
+          <div style={{ display: "flex", gap: 16, fontFamily: "'Space Mono', monospace", fontSize: 14, color: C.gold }}>
+            {targetWeight != null && <span>目標体重 {targetWeight}kg</span>}
+            {targetBodyFat != null && <span>目標体脂肪率 {targetBodyFat}%</span>}
+          </div>
+        </Card>
+      )}
       <SectionLabel>InBody 連携</SectionLabel>
       <Card>
         <button onClick={() => fileRef.current?.click()} style={{
@@ -1881,6 +2249,7 @@ const DRILLS = [
 ];
 
 function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
+  const C = useTheme();
   const [exercise, setExercise] = useState("");
   const [unit, setUnit] = useState("reps");
   const [reps, setReps] = useState("");
@@ -1889,6 +2258,20 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
   const today = todayISO();
   const existingSession = (sessions || []).find(s => s.date === today);
   const [personalTraining, setPersonalTraining] = useState(existingSession?.personalTraining ?? false);
+  const [freeComment, setFreeComment] = useState(existingSession?.freeComment ?? "");
+  const [freePhoto, setFreePhoto] = useState(existingSession?.freePhoto ?? null);
+  const [freeUploading, setFreeUploading] = useState(false);
+  const freePhotoRef = useRef(null);
+
+  async function handleFreePhotoSelect(file) {
+    if (!file) return;
+    setFreeUploading(true);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      setFreePhoto(dataUrl);
+    } catch (e) {}
+    setFreeUploading(false);
+  }
 
   const grouped = useMemo(() => {
     const map = {};
@@ -1909,9 +2292,21 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
   function handleSaveSession() {
     onSaveSession({
       id: existingSession?.id || uid(), date: today,
-      personalTraining,
+      personalTraining, freeComment, freePhoto,
     });
   }
+
+  function handleSaveFreeComment() {
+    onSaveSession({
+      id: existingSession?.id || uid(), date: today,
+      personalTraining, freeComment, freePhoto,
+    });
+  }
+
+  const recentSessionNotes = [...(sessions || [])]
+    .filter(s => s.freeComment || s.freePhoto)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 8);
 
   return (
     <div>
@@ -1954,6 +2349,47 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
         <GoldButton onClick={handleSave}>記録する</GoldButton>
       </Card>
 
+      <SectionLabel>自由記入コメント・写真</SectionLabel>
+      <Card>
+        <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 10, lineHeight: 1.6 }}>
+          上の入力が面倒な場合は、こちらに自由に今日のトレーニング内容や感想を書いたり、写真を送るだけでもOKです。トレーナーが確認し、返信することもあります。
+        </div>
+        <textarea
+          value={freeComment} onChange={e => setFreeComment(e.target.value)} rows={4}
+          placeholder="例: 今日は脚トレをやりました。スクワット中心で少しきつかったです。"
+          style={{
+            width: "100%", padding: "10px 12px", marginBottom: 10, borderRadius: 8, border: `1px solid ${C.cardBorder}`,
+            background: C.bg, color: C.ivory, fontSize: 13, boxSizing: "border-box", resize: "vertical",
+          }}
+        />
+        <button onClick={() => freePhotoRef.current?.click()} style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          background: "none", border: `1px dashed ${C.cardBorderLight}`, borderRadius: 10,
+          padding: "12px 0", color: C.gold, cursor: "pointer", marginBottom: 10,
+        }}>
+          <Camera size={16} /><span style={{ fontSize: 12.5 }}>{freeUploading ? "アップロード中…" : (freePhoto ? "写真を変更" : "写真を追加")}</span>
+        </button>
+        <input ref={freePhotoRef} type="file" accept="image/*" style={{ display: "none" }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFreePhotoSelect(f); e.target.value = ""; }} />
+        {freePhoto && (
+          <img src={freePhoto} alt="" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 8, marginBottom: 10 }} />
+        )}
+        <GoldButton onClick={handleSaveFreeComment}>この内容を保存する</GoldButton>
+      </Card>
+
+      {recentSessionNotes.length > 0 && (
+        <>
+          <SectionLabel>コメント・写真の履歴</SectionLabel>
+          {recentSessionNotes.map(s => (
+            <Card key={s.id}>
+              <div style={{ fontSize: 11, color: C.dim, marginBottom: 6 }}>{s.date}</div>
+              {s.freeComment && <div style={{ fontSize: 12.5, color: C.ivory, whiteSpace: "pre-wrap", lineHeight: 1.7, marginBottom: s.freePhoto ? 8 : 0 }}>{s.freeComment}</div>}
+              {s.freePhoto && <img src={s.freePhoto} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} />}
+            </Card>
+          ))}
+        </>
+      )}
+
       <SectionLabel>履歴</SectionLabel>
       {grouped.length === 0 ? <EmptyState text="記録がありません" /> : grouped.map(([date, items]) => (
         <Card key={date}>
@@ -1988,6 +2424,7 @@ async function patchProfile(profileId, patch) {
 }
 
 function PhotoSlot({ label, photo, uploading, onSelect }) {
+  const C = useTheme();
   const inputRef = useRef(null);
   return (
     <div style={{ flex: 1, textAlign: "center" }}>
@@ -2008,6 +2445,7 @@ function PhotoSlot({ label, photo, uploading, onSelect }) {
 }
 
 function GoalAndPhotos({ profileId }) {
+  const C = useTheme();
   const [loaded, setLoaded] = useState(false);
   const [goal, setGoal] = useState("");
   const [editingGoal, setEditingGoal] = useState(false);
@@ -2016,6 +2454,8 @@ function GoalAndPhotos({ profileId }) {
   const [afterPhoto, setAfterPhoto] = useState(null);
   const [afterMonths, setAfterMonths] = useState("");
   const [uploading, setUploading] = useState(null);
+  const [targetWeight, setTargetWeight] = useState("");
+  const [targetBodyFat, setTargetBodyFat] = useState("");
 
   useEffect(() => {
     if (!profileId) return;
@@ -2028,11 +2468,22 @@ function GoalAndPhotos({ profileId }) {
           setBeforePhoto(p.beforePhoto || null);
           setAfterPhoto(p.afterPhoto || null);
           setAfterMonths(p.afterMonths || "");
+          setTargetWeight(p.targetWeight != null ? String(p.targetWeight) : "");
+          setTargetBodyFat(p.targetBodyFat != null ? String(p.targetBodyFat) : "");
         }
       } catch (e) {}
       setLoaded(true);
     })();
   }, [profileId]);
+
+  function handleTargetWeightChange(v) {
+    setTargetWeight(v);
+    patchProfile(profileId, { targetWeight: v ? Number(v) : null });
+  }
+  function handleTargetBodyFatChange(v) {
+    setTargetBodyFat(v);
+    patchProfile(profileId, { targetBodyFat: v ? Number(v) : null });
+  }
 
   function saveGoal() {
     setGoal(goalInput);
@@ -2082,6 +2533,22 @@ function GoalAndPhotos({ profileId }) {
             }}>編集</button>
           </>
         )}
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>目標体重(kg)</div>
+            <input type="number" inputMode="decimal" value={targetWeight} onChange={e => handleTargetWeightChange(e.target.value)} placeholder="例: 55" style={{
+              width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
+              background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center", boxSizing: "border-box",
+            }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10.5, color: C.dim, marginBottom: 6 }}>目標体脂肪率(%)</div>
+            <input type="number" inputMode="decimal" value={targetBodyFat} onChange={e => handleTargetBodyFatChange(e.target.value)} placeholder="例: 20" style={{
+              width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
+              background: C.bg, color: C.ivory, fontSize: 13, textAlign: "center", boxSizing: "border-box",
+            }} />
+          </div>
+        </div>
       </Card>
 
       <SectionLabel>ビフォーアフター</SectionLabel>
@@ -2106,6 +2573,7 @@ function GoalAndPhotos({ profileId }) {
 }
 
 function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
+  const C = useTheme();
   const progress = nextTier ? Math.min(100, ((points - tier.min) / (nextTier.min - tier.min)) * 100) : 100;
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -2261,6 +2729,7 @@ function dateNDaysAgo(n) {
 }
 
 function StatBox({ label, value, unit }) {
+  const C = useTheme();
   return (
     <div style={{ flex: 1, textAlign: "center" }}>
       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, color: C.gold }}>{value}</div>
@@ -2270,6 +2739,7 @@ function StatBox({ label, value, unit }) {
 }
 
 function ReportTab({ meals, conditions, growth, workouts, water, sessions, monthly, personalLogs }) {
+  const C = useTheme();
   const [period, setPeriod] = useState("week");
   const days = period === "week" ? 7 : 30;
   const cutoff = dateNDaysAgo(days);
@@ -2566,9 +3036,11 @@ const COMMENT_TYPES = [
   { key: "weekly", label: "1週間のコメントとアドバイス" },
   { key: "monthly", label: "1ヶ月のコメントとアドバイス" },
   { key: "personal", label: "パーソナルのコメントとアドバイス" },
+  { key: "condition", label: "体調管理へのコメントとアドバイス" },
 ];
 
 function LiveStreamTab() {
+  const C = useTheme();
   const liveUrl = "https://www.instagram.com/self.mobility?igsh=MXZvaTBlcGxpM2ttYQ%3D%3D&utm_source=qr";
   return (
     <div>
@@ -2586,6 +3058,7 @@ function LiveStreamTab() {
 }
 
 function TrainerCommentsTab({ comments }) {
+  const C = useTheme();
   return (
     <div>
       {COMMENT_TYPES.map(({ key, label }) => {
@@ -2609,4 +3082,3 @@ function TrainerCommentsTab({ comments }) {
     </div>
   );
 }
-
