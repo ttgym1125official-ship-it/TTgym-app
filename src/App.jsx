@@ -27,23 +27,27 @@ const SPACE_C = {
   ivory: "#EDEAE0",
   dim: "#8A8578",
   danger: "#B2483A",
+  onAccent: C.onAccent,
 };
 
-// LIGHT_C: the white-based, feminine palette used everywhere else in the app
-// (everything after the registration screen). Same keys as SPACE_C so every
+// LIGHT_C: the plain white/black palette used everywhere else in the app
+// (everything after the registration screen) — simple, clean, no gradients or
+// tinted color; card/box separation comes from solid black borders and a
+// soft neutral shadow rather than color. Same keys as SPACE_C so every
 // component that references `C.xxx` works unchanged under either theme.
 const LIGHT_C = {
-  bg: "#FFFBFC",
-  bg2: "#FFF3F6",
+  bg: "#FFFFFF",
+  bg2: "#FFFFFF",
   card: "#FFFFFF",
-  cardBorder: "#F0DCE2",
-  cardBorderLight: "#E7C3CE",
-  gold: "#C98BA0",
-  goldDim: "#9C5F73",
-  goldSoft: "#C98BA01F",
-  ivory: "#3A2E33",
-  dim: "#9C8790",
-  danger: "#C24B5C",
+  cardBorder: "#000000",
+  cardBorderLight: "#000000",
+  gold: "#000000",
+  goldDim: "#333333",
+  goldSoft: "#0000000D",
+  ivory: "#111111",
+  dim: "#6B6B6B",
+  danger: "#B0201A",
+  onAccent: "#FFFFFF",
 };
 
 const ThemeContext = createContext(LIGHT_C);
@@ -186,9 +190,9 @@ function Card({ children, style }) {
   const C = useTheme();
   return (
     <div style={{
-      background: `linear-gradient(155deg, ${C.card} 0%, #201E19 100%)`,
-      border: `1px solid ${C.cardBorder}dd`, borderRadius: 14,
-      padding: 16, marginBottom: 12, boxShadow: "0 6px 18px -10px rgba(0,0,0,0.6)",
+      background: C.card,
+      border: `1px solid ${C.cardBorder}`, borderRadius: 14,
+      padding: 16, marginBottom: 12, boxShadow: "0 2px 10px -4px rgba(0,0,0,0.12)",
       ...style,
     }}>{children}</div>
   );
@@ -201,11 +205,11 @@ function GoldButton({ children, onClick, disabled, variant = "solid" }) {
     <button onClick={onClick} disabled={disabled} style={{
       width: "100%", padding: "13px 0", borderRadius: 9, cursor: disabled ? "default" : "pointer",
       fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 600, fontSize: 13.5, letterSpacing: 1,
-      background: solid ? (disabled ? C.cardBorder : `linear-gradient(135deg, #E4C158 0%, ${C.gold} 45%, ${C.goldDim} 100%)`) : "transparent",
-      color: solid ? (disabled ? C.dim : "#0D0D0D") : C.gold,
+      background: solid ? (disabled ? C.cardBorder : `linear-gradient(135deg, ${C.gold} 0%, ${C.goldDim} 100%)`) : "transparent",
+      color: solid ? (disabled ? C.dim : C.onAccent) : C.gold,
       border: solid ? "none" : `1px solid ${C.goldDim}`,
       opacity: disabled ? 0.6 : 1,
-      boxShadow: solid && !disabled ? "0 4px 14px -4px rgba(212,175,55,0.45)" : "none",
+      boxShadow: solid && !disabled ? "0 4px 14px -4px rgba(0,0,0,0.35)" : "none",
       transition: "opacity 0.15s ease, transform 0.1s ease",
     }}>{children}</button>
   );
@@ -237,7 +241,7 @@ function BirthdayOverlay({ name, onClose }) {
     left: Math.random() * 100,
     delay: Math.random() * 2,
     duration: 2.5 + Math.random() * 2,
-    color: [C.gold, "#F0D77A", "#EDEAE0", "#8C7328"][i % 4],
+    color: [C.gold, "#333333", "#999999", "#000000"][i % 4],
     size: 6 + Math.random() * 6,
     rotate: Math.random() * 360,
   })), []);
@@ -246,7 +250,7 @@ function BirthdayOverlay({ name, onClose }) {
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, zIndex: 60, display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center",
-      background: `radial-gradient(ellipse 90% 70% at 50% 30%, #3A2F10 0%, ${C.bg2} 55%, ${C.bg} 100%)`,
+      background: `radial-gradient(ellipse 90% 70% at 50% 30%, #F2F2F2 0%, ${C.bg2} 55%, ${C.bg} 100%)`,
       overflow: "hidden", cursor: "pointer",
     }}>
       {confetti.map((c, i) => (
@@ -260,7 +264,7 @@ function BirthdayOverlay({ name, onClose }) {
       <div style={{ fontSize: 46, animation: "birthdayPop 1s cubic-bezier(0.34, 1.56, 0.64, 1)", position: "relative" }}>🎉🎂🎉</div>
       <div style={{
         fontFamily: "'Noto Serif JP', serif", fontSize: 20, color: C.gold, marginTop: 18, lineHeight: 1.9,
-        animation: "splashFadeIn 0.9s ease 0.2s both", textShadow: "0 0 20px rgba(212,175,55,0.5)", position: "relative",
+        animation: "splashFadeIn 0.9s ease 0.2s both", textShadow: "0 0 16px rgba(0,0,0,0.15)", position: "relative",
       }}>
         【{name}様<br />お誕生日おめでとうございます！
       </div>
@@ -643,7 +647,7 @@ function AppInner() {
   return (
     <div style={{
       fontFamily: "'Noto Sans JP', sans-serif",
-      background: `radial-gradient(ellipse 120% 40% at 50% 0%, #221F16 0%, ${C.bg2} 45%, ${C.bg} 100%)`,
+      background: C.bg,
       minHeight: "100vh", color: C.ivory, display: "flex", flexDirection: "column",
       maxWidth: 480, margin: "0 auto", position: "relative",
     }}>
@@ -719,7 +723,7 @@ function AppInner() {
       <div style={{ padding: "22px 20px 16px", borderBottom: `1px solid ${C.cardBorder}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <Logo height={46} style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
+            <Logo height={46} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.18))" }} />
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 3, color: C.goldDim, marginTop: 6 }}>MEMBERS ONLY</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -803,16 +807,16 @@ function AppInner() {
       {toast && (
         <div style={{
           position: "absolute", bottom: 76, left: "50%", transform: "translateX(-50%)",
-          background: C.gold, color: "#0D0D0D", padding: "8px 16px", borderRadius: 8,
+          background: C.gold, color: C.onAccent, padding: "8px 16px", borderRadius: 8,
           fontSize: 12.5, fontWeight: 600, letterSpacing: 0.5, boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
         }}>{toast}</div>
       )}
 
       <div style={{
         position: "sticky", bottom: 0, display: "flex",
-        background: `linear-gradient(180deg, ${C.card} 0%, #17150F 100%)`,
+        background: C.card,
         borderTop: `1px solid ${C.cardBorder}`, borderRadius: "16px 16px 0 0",
-        maxWidth: 480, width: "100%", boxShadow: "0 -8px 20px -12px rgba(0,0,0,0.7)",
+        maxWidth: 480, width: "100%", boxShadow: "0 -6px 16px -10px rgba(0,0,0,0.25)",
       }}>
         <TabButton active={tab === "status"} onClick={() => setTab("status")} icon={Crown} label="登録" />
         <TabButton active={tab === "condition"} onClick={() => setTab("condition")} icon={Brain} label="体調管理" />
@@ -1403,7 +1407,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
                 <button key={c.key} onClick={() => { setIngCategory(c.key); setSelectedIng(null); setIngChain("all"); }} style={{
                   flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12,
                   background: ingCategory === c.key ? C.gold : "transparent",
-                  color: ingCategory === c.key ? "#0D0D0D" : C.ivory,
+                  color: ingCategory === c.key ? C.onAccent : C.ivory,
                   border: `1px solid ${ingCategory === c.key ? C.gold : C.cardBorder}`, cursor: "pointer",
                 }}>{c.label}</button>
               ))}
@@ -1414,7 +1418,7 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
                   <button key={chain} onClick={() => setIngChain(chain)} style={{
                     padding: "6px 12px", borderRadius: 20, fontSize: 11.5,
                     background: ingChain === chain ? C.gold : "transparent",
-                    color: ingChain === chain ? "#0D0D0D" : C.dim,
+                    color: ingChain === chain ? C.onAccent : C.dim,
                     border: `1px solid ${ingChain === chain ? C.gold : C.cardBorder}`, cursor: "pointer",
                   }}>{chain === "all" ? "全て" : chain}</button>
                 ))}
@@ -1786,7 +1790,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
               <button key={i} onClick={() => setBowel(i)} style={{
                 padding: "8px 10px", borderRadius: 8, fontSize: 12,
                 background: bowel === i ? C.gold : "transparent",
-                color: bowel === i ? "#0D0D0D" : C.ivory,
+                color: bowel === i ? C.onAccent : C.ivory,
                 border: `1px solid ${bowel === i ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>{opt}</button>
             ))}
@@ -1831,7 +1835,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
               <button key={l.n} onClick={() => setSleep(l.n)} style={{
                 flex: 1, padding: "8px 2px", borderRadius: 8,
                 background: sleep === l.n ? C.gold : "transparent",
-                color: sleep === l.n ? "#0D0D0D" : C.ivory,
+                color: sleep === l.n ? C.onAccent : C.ivory,
                 border: `1px solid ${sleep === l.n ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>
                 <div style={{ fontSize: 12, fontFamily: "'Space Mono', monospace" }}>{l.n}</div>
@@ -1853,7 +1857,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
               <button key={opt} onClick={() => setPreSleepMeal(opt)} style={{
                 flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12,
                 background: preSleepMeal === opt ? C.gold : "transparent",
-                color: preSleepMeal === opt ? "#0D0D0D" : C.ivory,
+                color: preSleepMeal === opt ? C.onAccent : C.ivory,
                 border: `1px solid ${preSleepMeal === opt ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>{opt}</button>
             ))}
@@ -1867,7 +1871,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
               <button key={l.n} onClick={() => setMorningFatigue(l.n)} style={{
                 flex: 1, padding: "8px 2px", borderRadius: 8,
                 background: morningFatigue === l.n ? C.gold : "transparent",
-                color: morningFatigue === l.n ? "#0D0D0D" : C.ivory,
+                color: morningFatigue === l.n ? C.onAccent : C.ivory,
                 border: `1px solid ${morningFatigue === l.n ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>
                 <div style={{ fontSize: 12, fontFamily: "'Space Mono', monospace" }}>{l.n}</div>
@@ -1886,7 +1890,7 @@ function ConditionTab({ conditions, onSave, comments, profileId }) {
               <button key={l.n} onClick={() => setMental(l.n)} style={{
                 flex: 1, padding: "8px 2px", borderRadius: 8,
                 background: mental === l.n ? C.gold : "transparent",
-                color: mental === l.n ? "#0D0D0D" : C.ivory,
+                color: mental === l.n ? C.onAccent : C.ivory,
                 border: `1px solid ${mental === l.n ? C.gold : C.cardBorder}`, cursor: "pointer",
               }}>
                 <div style={{ fontSize: 12, fontFamily: "'Space Mono', monospace" }}>{l.n}</div>
@@ -2332,7 +2336,7 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
           {[["reps", "回数"], ["sec", "秒数"]].map(([key, label]) => (
             <button key={key} onClick={() => setUnit(key)} style={{
               flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 11.5,
-              background: unit === key ? C.gold : "transparent", color: unit === key ? "#0D0D0D" : C.ivory,
+              background: unit === key ? C.gold : "transparent", color: unit === key ? C.onAccent : C.ivory,
               border: `1px solid ${unit === key ? C.gold : C.cardBorder}`, cursor: "pointer",
             }}>{label}</button>
           ))}
@@ -2615,7 +2619,7 @@ function StatusTab({ tier, nextTier, points, tierIdx, stats, profileId }) {
       <SectionLabel>メンバーシップ</SectionLabel>
       <div style={{
         borderRadius: 8, padding: "28px 22px", marginBottom: 18, position: "relative", overflow: "hidden",
-        background: `linear-gradient(135deg, #1A1917 0%, #232019 50%, #1A1917 100%)`,
+        background: `linear-gradient(135deg, #000000 0%, #1A1A1A 50%, #000000 100%)`,
         border: `1px solid ${tier.color}`,
       }}>
         <div style={{
@@ -2819,7 +2823,7 @@ function ReportTab({ meals, conditions, growth, workouts, water, sessions, month
           <button key={key} onClick={() => setPeriod(key)} style={{
             flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 12.5,
             background: period === key ? C.gold : "transparent",
-            color: period === key ? "#0D0D0D" : C.ivory,
+            color: period === key ? C.onAccent : C.ivory,
             border: `1px solid ${period === key ? C.gold : C.cardBorder}`, cursor: "pointer",
           }}>{label}</button>
         ))}
