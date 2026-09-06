@@ -31,49 +31,48 @@ const SPACE_C = {
   onAccent: "#0D0D0D",
 };
 
-// LIGHT_C: the original TTGYM design (gold accent color, same fonts/layout)
-// with the background switched from black to a soft, muted off-white — a
-// warm "aged paper" tone rather than stark pure white — for everyone after
-// the registration screen. The gold/goldDim accent and overall look are
-// unchanged from the app's original design, only the base surface is
-// off-white and body text is dark instead of light-on-dark. Same keys as
-// SPACE_C so every component that references `C.xxx` works unchanged under
-// either theme.
+// LIGHT_C: the app's main page/chrome palette (headers, tab bar, section
+// labels, page background). Per the owner's request to swap black and white
+// throughout, the page itself is now the dark surface (the same unified
+// black, #1A1917, used by the membership card) with light text, while each
+// Card renders as a light "island" on top of it (see CARD_C below). Same
+// keys as SPACE_C/CARD_C so every component that references `C.xxx` works
+// unchanged under any of the themes.
 const LIGHT_C = {
+  bg: "#1A1917",
+  bg2: "#1A1917",
+  card: "#1A1917",
+  cardShade: "#1A1917",
+  cardBorder: "#3A362C",
+  cardBorderLight: "#4A4536",
+  gold: "#D4AF37",
+  goldDim: "#8C7328",
+  goldSoft: "#D4AF3722",
+  ivory: "#FFFFFF",
+  dim: "#B0AA9C",
+  danger: "#E0685A",
+  onAccent: "#0D0D0D",
+};
+
+// CARD_C: applied inside every Card box — solid off-white with a dark
+// border/text, so the surrounding page can stay black while each card reads
+// as a clean light box (dark text, gold kept as an accent for
+// highlighted/selected states). This is the exact off-white the page
+// background used before the black/white swap, so the two surfaces are a
+// clean, deliberate inversion of each other.
+const CARD_C = {
   bg: "#F6F2E8",
   bg2: "#F6F2E8",
   card: "#F6F2E8",
-  cardShade: "#1A1917",
-  cardBorder: "#E4DFD3",
-  cardBorderLight: "#D8CBA8",
+  cardShade: "#F6F2E8",
+  cardBorder: "#1A1917",
+  cardBorderLight: "#8C7328",
   gold: "#D4AF37",
   goldDim: "#8C7328",
   goldSoft: "#D4AF3722",
   ivory: "#2A2620",
   dim: "#6B6558",
   danger: "#B2483A",
-  onAccent: "#0D0D0D",
-};
-
-// CARD_C: applied inside every Card box — solid black with a white
-// border/text, so the surrounding page can stay off-white while each card
-// reads as a clean black box (white text, gold kept as an accent for
-// highlighted/selected states). The black itself (#1A1917) is the exact
-// tone used by the membership card in StatusTab, so every black surface in
-// the app reads as the same "black", not several different near-blacks.
-const CARD_C = {
-  bg: "#1A1917",
-  bg2: "#1A1917",
-  card: "#1A1917",
-  cardShade: "#1A1917",
-  cardBorder: "#FFFFFF",
-  cardBorderLight: "#FFFFFF",
-  gold: "#D4AF37",
-  goldDim: "#8C7328",
-  goldSoft: "#D4AF3722",
-  ivory: "#FFFFFF",
-  dim: "#CCCCCC",
-  danger: "#E0685A",
   onAccent: "#0D0D0D",
 };
 
@@ -216,8 +215,8 @@ function SectionLabel({ children }) {
 function Card({ children, style }) {
   return (
     <div style={{
-      background: "#1A1917",
-      border: "1px solid #FFFFFF", borderRadius: 14,
+      background: "#F6F2E8",
+      border: "1px solid #1A1917", borderRadius: 14,
       padding: 16, marginBottom: 12, boxShadow: "0 6px 18px -12px rgba(0,0,0,0.35)",
       ...style,
     }}>
@@ -710,7 +709,7 @@ function AppInner() {
           alignItems: "center", justifyContent: "center", gap: 14, padding: 24, textAlign: "center",
           background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
         }}>
-          <Logo height={56} color="#000000" style={{ marginBottom: 8 }} />
+          <Logo height={56} color="#FFFFFF" style={{ marginBottom: 8 }} />
           <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.ivory }}>ご利用を停止しています</div>
           <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, maxWidth: 280 }}>
             現在このアカウントはご利用いただけません。詳しくはジムまでお問い合わせください。
@@ -738,7 +737,7 @@ function AppInner() {
           alignItems: "center", justifyContent: "center", gap: 14, padding: 24, textAlign: "center",
           background: `linear-gradient(180deg, ${C.bg2}, ${C.bg})`,
         }}>
-          <Logo height={56} color="#000000" style={{ marginBottom: 8 }} />
+          <Logo height={56} color="#FFFFFF" style={{ marginBottom: 8 }} />
           <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, color: C.gold }}>ご登録ありがとうございます</div>
           <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.8, maxWidth: 280 }}>
             現在スタッフが内容を確認しています。承認が完了すると自動的にご利用いただけるようになりますので、しばらくお待ちください。
@@ -751,7 +750,7 @@ function AppInner() {
       <div style={{ padding: "22px 20px 16px", borderBottom: `1px solid ${C.cardBorder}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <Logo height={46} color="#000000" style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
+            <Logo height={46} color="#FFFFFF" style={{ filter: "drop-shadow(0 2px 6px rgba(212,175,55,0.25))" }} />
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 3, color: C.goldDim, marginTop: 6 }}>MEMBERS ONLY</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
