@@ -41,7 +41,7 @@ const LIGHT_C = {
   bg: "#FFFFFF",
   bg2: "#FFFFFF",
   card: "#FFFFFF",
-  cardShade: "#F7F3E9",
+  cardShade: "#000000",
   cardBorder: "#E4DFD3",
   cardBorderLight: "#D8CBA8",
   gold: "#D4AF37",
