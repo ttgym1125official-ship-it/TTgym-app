@@ -32,16 +32,18 @@ const SPACE_C = {
 };
 
 // LIGHT_C: the original TTGYM design (gold accent color, same fonts/layout)
-// with the background switched from black to white for everyone after the
-// registration screen — the gold/goldDim accent and overall look are
-// unchanged from the app's original design, only the base surface is white
-// and body text is dark instead of light-on-dark. Same keys as SPACE_C so
-// every component that references `C.xxx` works unchanged under either theme.
+// with the background switched from black to a soft, muted off-white — a
+// warm "aged paper" tone rather than stark pure white — for everyone after
+// the registration screen. The gold/goldDim accent and overall look are
+// unchanged from the app's original design, only the base surface is
+// off-white and body text is dark instead of light-on-dark. Same keys as
+// SPACE_C so every component that references `C.xxx` works unchanged under
+// either theme.
 const LIGHT_C = {
-  bg: "#FFFFFF",
-  bg2: "#FFFFFF",
-  card: "#FFFFFF",
-  cardShade: "#000000",
+  bg: "#F6F2E8",
+  bg2: "#F6F2E8",
+  card: "#F6F2E8",
+  cardShade: "#1A1917",
   cardBorder: "#E4DFD3",
   cardBorderLight: "#D8CBA8",
   gold: "#D4AF37",
@@ -54,15 +56,16 @@ const LIGHT_C = {
 };
 
 // CARD_C: applied inside every Card box — solid black with a white
-// border/text, so the surrounding page can stay plain white while each card
+// border/text, so the surrounding page can stay off-white while each card
 // reads as a clean black box (white text, gold kept as an accent for
-// highlighted/selected states, matching the black "member card" look used
-// elsewhere in the app).
+// highlighted/selected states). The black itself (#1A1917) is the exact
+// tone used by the membership card in StatusTab, so every black surface in
+// the app reads as the same "black", not several different near-blacks.
 const CARD_C = {
-  bg: "#000000",
-  bg2: "#000000",
-  card: "#000000",
-  cardShade: "#000000",
+  bg: "#1A1917",
+  bg2: "#1A1917",
+  card: "#1A1917",
+  cardShade: "#1A1917",
   cardBorder: "#FFFFFF",
   cardBorderLight: "#FFFFFF",
   gold: "#D4AF37",
@@ -213,7 +216,7 @@ function SectionLabel({ children }) {
 function Card({ children, style }) {
   return (
     <div style={{
-      background: "#000000",
+      background: "#1A1917",
       border: "1px solid #FFFFFF", borderRadius: 14,
       padding: 16, marginBottom: 12, boxShadow: "0 6px 18px -12px rgba(0,0,0,0.35)",
       ...style,
