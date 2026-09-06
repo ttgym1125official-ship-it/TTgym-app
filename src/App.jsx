@@ -27,7 +27,7 @@ const SPACE_C = {
   ivory: "#EDEAE0",
   dim: "#8A8578",
   danger: "#B2483A",
-  onAccent: C.onAccent,
+  onAccent: "#0D0D0D",
 };
 
 // LIGHT_C: the plain white/black palette used everywhere else in the app
