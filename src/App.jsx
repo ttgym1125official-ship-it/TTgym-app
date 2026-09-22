@@ -320,6 +320,62 @@ function MicButton({ onTranscript, label = "音声で入力" }) {
   );
 }
 
+// Shown in the settings sheet. Generates (once) and displays a short code the
+// customer sends as a LINE message to link their LINE account to this app
+// profile — the /api/line-webhook serverless function is the other half:
+// it watches for that code in an incoming message and, on match, saves the
+// LINE user id onto this profile so future messages are recognized as this
+// customer. Uses the same kv_store (window.storage) the rest of the app
+// already reads/writes, under a separate `line_link_code:<CODE>` key so the
+// webhook can look a code up without needing to know the profile id first.
+function LineLinkSection({ profileId }) {
+  const C = useTheme();
+  const [code, setCode] = useState(null);
+  const [linked, setLinked] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profileId) return;
+    (async () => {
+      try {
+        const r = await window.storage.get(`profile:${profileId}`, true);
+        const p = r ? JSON.parse(r.value) : {};
+        setLinked(!!p.lineUserId);
+        if (p.lineLinkCode) {
+          setCode(p.lineLinkCode);
+        } else {
+          const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — read aloud/typed easily
+          const newCode = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+          await window.storage.set(`profile:${profileId}`, JSON.stringify({ ...p, lineLinkCode: newCode }), true);
+          await window.storage.set(`line_link_code:${newCode}`, profileId, true);
+          setCode(newCode);
+        }
+      } catch (e) {}
+      setLoading(false);
+    })();
+  }, [profileId]);
+
+  if (loading) return null;
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 8 }}>公式LINEとの連携</div>
+      {linked ? (
+        <div style={{ fontSize: 12.5, color: C.gold }}>✓ 連携済みです。LINEで話しかけると、記録データについて答えます。</div>
+      ) : (
+        <>
+          <div style={{
+            fontFamily: "'Space Mono', monospace", fontSize: 22, letterSpacing: 4, textAlign: "center",
+            padding: "14px 0", borderRadius: 8, border: `1px dashed ${C.cardBorderLight}`, color: C.gold, marginBottom: 8,
+          }}>{code || "----"}</div>
+          <div style={{ fontSize: 10.5, color: C.dim, lineHeight: 1.6 }}>
+            TTGYM公式LINEを友だち追加のうえ、このコードだけをメッセージで送ると連携できます。連携後はLINEで「今週の食事の合計カロリーは?」のように話しかけると答えます。
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -926,6 +982,8 @@ function AppInner() {
               このキーはこの端末のブラウザ内(localStorage)にのみ保存されます。画像解析の際、この端末からAnthropic社のAPIへ直接送信されます。console.anthropic.comで発行できます。
             </div>
             <GoldButton onClick={handleSaveApiKey}>保存する</GoldButton>
+            <div style={{ height: 1, background: C.cardBorder, margin: "18px 0" }} />
+            <LineLinkSection profileId={profileId} />
           </div>
         </div>
       )}
