@@ -884,6 +884,77 @@ function StaffLogin({ onUnlock }) {
   );
 }
 
+// Global (not per-member) list of nutrients the customer app can flag as
+// weekly-deficient from photo-analyzed meals, and the product link trainers
+// want shown when suggesting a supplement for that nutrient. Kept as a
+// single shared record (not per-member) since the recommended product is
+// the same for everyone. See App.jsx's TrainerCommentsTab, which reads
+// this same "global:supplementLinks" key to render the weekly advice.
+const SUPPLEMENT_LINK_ITEMS = [
+  { key: "vitaminC", label: "ビタミンC" },
+  { key: "fiber", label: "食物繊維" },
+  { key: "potassium", label: "カリウム" },
+  { key: "calcium", label: "カルシウム" },
+  { key: "iron", label: "鉄分" },
+  { key: "vitaminA", label: "ビタミンA" },
+];
+
+function SupplementLinksEditor() {
+  const [loaded, setLoaded] = useState(false);
+  const [links, setLinks] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get("global:supplementLinks", true);
+        setLinks(r ? JSON.parse(r.value) : {});
+      } catch (e) { setLinks({}); }
+      setLoaded(true);
+    })();
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await window.storage.set("global:supplementLinks", JSON.stringify(links), true);
+      setSavedAt(new Date().toLocaleTimeString("ja-JP"));
+    } catch (e) {}
+    setSaving(false);
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <Section title="週次栄養アドバイスのサプリ購入リンク(全会員共通)">
+      <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: 14 }}>
+        <div style={{ fontSize: 11, color: C.dim, lineHeight: 1.7, marginBottom: 12 }}>
+          お客様アプリの「コメント」タブに表示される、直近1週間で不足している栄養素の自動アドバイスに、ここで設定した商品リンクの「購入する」ボタンが付きます。空欄の成分はボタンが表示されません。
+        </div>
+        {SUPPLEMENT_LINK_ITEMS.map(item => (
+          <div key={item.key} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10.5, color: C.goldDim, marginBottom: 4 }}>{item.label}</div>
+            <input
+              type="url" placeholder="https://..." value={links[item.key] || ""}
+              onChange={e => setLinks(prev => ({ ...prev, [item.key]: e.target.value }))}
+              style={{
+                width: "100%", background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
+                padding: "8px 10px", color: C.ivory, fontSize: 12, boxSizing: "border-box",
+              }}
+            />
+          </div>
+        ))}
+        <button onClick={handleSave} disabled={saving} style={{
+          width: "100%", background: C.gold, color: "#0D0D0D", border: "none", borderRadius: 4,
+          padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.6 : 1, marginTop: 4,
+        }}>{saving ? "保存中…" : "リンクを保存する"}</button>
+        {savedAt && <div style={{ fontSize: 10, color: C.dim, marginTop: 6, textAlign: "center" }}>{savedAt} に保存しました</div>}
+      </div>
+    </Section>
+  );
+}
+
 function Dashboard() {
   const [loaded, setLoaded] = useState(false);
   const [members, setMembers] = useState([]);
@@ -947,6 +1018,8 @@ function Dashboard() {
           padding: "7px 14px", fontSize: 11.5, cursor: "pointer", opacity: refreshing ? 0.6 : 1,
         }}>{refreshing ? "更新中…" : "更新"}</button>
       </div>
+
+      <SupplementLinksEditor />
 
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: "12px 14px", marginBottom: 20 }}>
         <AlertTriangle size={16} color={C.goldDim} style={{ flexShrink: 0, marginTop: 1 }} />

@@ -826,7 +826,7 @@ function AppInner() {
           latestBodyFat: [...growth].sort((a, b) => b.date.localeCompare(a.date)).find(g => g.bodyFat)?.bodyFat,
         }} />}
         {tab === "report" && <ReportTab meals={meals} conditions={conditions} growth={growth} workouts={workouts} water={water} sessions={sessions} monthly={monthly} personalLogs={personalLogs} />}
-        {tab === "comments" && <TrainerCommentsTab comments={comments} />}
+        {tab === "comments" && <TrainerCommentsTab comments={comments} meals={meals} />}
         {tab === "live" && <LiveStreamTab />}
       </div>
 
@@ -3143,6 +3143,19 @@ const COMMENT_TYPES = [
   { key: "condition", label: "体調管理へのコメントとアドバイス" },
 ];
 
+// Food suggestions shown alongside the auto-generated weekly nutrient-gap
+// advice below. Sodium is handled separately (SODIUM_ADVICE) since it's a
+// "reduce this" nutrient rather than a "eat/supplement more of this" one.
+const NUTRIENT_FOOD_ADVICE = {
+  vitaminC: "赤・黄パプリカ、ブロッコリー、キウイ、いちご、柑橘類など",
+  fiber: "玄米・オートミール、ごぼう、きのこ類、海藻類、豆類など",
+  potassium: "バナナ、アボカド、ほうれん草、さつまいも、豆類など",
+  calcium: "乳製品、小魚(しらす等)、豆腐、小松菜、ごまなど",
+  iron: "赤身肉、レバー、ほうれん草、ひじき、あさりなど",
+  vitaminA: "にんじん、かぼちゃ、レバー、うなぎ、ほうれん草など",
+};
+const SODIUM_ADVICE = "加工食品・外食・漬物を控えめにし、だしや香辛料での減塩、麺類のスープを残すことを意識しましょう。";
+
 function LiveStreamTab() {
   const C = useTheme();
   const liveUrl = "https://www.instagram.com/self.mobility?igsh=MXZvaTBlcGxpM2ttYQ%3D%3D&utm_source=qr";
@@ -3161,10 +3174,82 @@ function LiveStreamTab() {
   );
 }
 
-function TrainerCommentsTab({ comments }) {
+function TrainerCommentsTab({ comments, meals }) {
   const C = useTheme();
+  const [supplementLinks, setSupplementLinks] = useState({});
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get("global:supplementLinks", true);
+        setSupplementLinks(r ? JSON.parse(r.value) : {});
+      } catch (e) {}
+    })();
+  }, []);
+
+  const weekly = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 6);
+    const cutoffISO = cutoff.toISOString().slice(0, 10);
+    const recent = (meals || []).filter(m => m.date >= cutoffISO);
+    if (recent.length < 3) return null;
+    const totals = recent.reduce((acc, m) => ({
+      fiber: acc.fiber + (m.fiber || 0),
+      vitaminC: acc.vitaminC + (m.vitaminC || 0),
+      potassium: acc.potassium + (m.potassium || 0),
+      calcium: acc.calcium + (m.calcium || 0),
+      iron: acc.iron + (m.iron || 0),
+      vitaminA: acc.vitaminA + (m.vitaminA || 0),
+      sodium: acc.sodium + (m.sodium || 0),
+    }), { fiber: 0, vitaminC: 0, potassium: 0, calcium: 0, iron: 0, vitaminA: 0, sodium: 0 });
+    const results = REJUVENATION_TARGETS.map(n => {
+      const value = (totals[n.key] || 0) / 7;
+      const isMax = n.mode === "max";
+      const ok = isMax ? value <= n.max : value >= n.min;
+      return { ...n, value, ok, isMax };
+    });
+    return { results, mealCount: recent.length };
+  }, [meals]);
+
   return (
     <div>
+      <SectionLabel>今週の栄養アドバイス(自動分析)</SectionLabel>
+      <Card style={{ borderColor: C.goldDim }}>
+        {weekly === null ? (
+          <EmptyState text="食事の記録がもう少し増えると、不足している栄養素を自動で分析します" />
+        ) : weekly.results.every(r => r.ok) ? (
+          <div style={{ fontSize: 12.5, color: C.gold, lineHeight: 1.7 }}>
+            直近7日間({weekly.mealCount}件の食事記録)では、主要な栄養素はいずれも目安の範囲内でした。素晴らしいペースです!
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.6 }}>
+              直近7日間({weekly.mealCount}件の食事記録・写真解析による目安値)をもとに自動分析しています。
+            </div>
+            {weekly.results.filter(r => !r.ok).map((r, i, arr) => {
+              const isSodium = r.key === "sodium";
+              const link = supplementLinks[r.key];
+              return (
+                <div key={r.key} style={{ marginBottom: i === arr.length - 1 ? 0 : 14, paddingBottom: i === arr.length - 1 ? 0 : 14, borderBottom: i === arr.length - 1 ? "none" : `1px solid ${C.cardBorder}` }}>
+                  <div style={{ fontSize: 13, color: C.gold, marginBottom: 4 }}>{r.label}が{isSodium ? "やや多め" : "不足気味"}です</div>
+                  <div style={{ fontSize: 11.5, color: CARD_C.dim, marginBottom: 6 }}>
+                    1日平均 {Math.round(r.value * 10) / 10}{r.unit}(目安 {isSodium ? `${r.max}${r.unit}未満` : `${r.min}〜${r.max}${r.unit}`})
+                  </div>
+                  <div style={{ fontSize: 12, color: CARD_C.ivory, lineHeight: 1.7 }}>
+                    {isSodium ? SODIUM_ADVICE : `おすすめ食材: ${NUTRIENT_FOOD_ADVICE[r.key] || ""}`}
+                  </div>
+                  {!isSodium && link && (
+                    <a href={link} target="_blank" rel="noopener noreferrer" style={{
+                      display: "inline-block", marginTop: 8, fontSize: 11.5, color: C.gold,
+                      border: `1px solid ${C.goldDim}`, borderRadius: 8, padding: "6px 12px", textDecoration: "none",
+                    }}>サプリを見る →</a>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+      </Card>
+
       {COMMENT_TYPES.map(({ key, label }) => {
         const list = [...(comments || [])].filter(c => c.type === key).sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || "").localeCompare(a.createdAt || ""));
         return (
@@ -3186,3 +3271,4 @@ function TrainerCommentsTab({ comments }) {
     </div>
   );
 }
+
