@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, createContext, useContext 
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import {
   Utensils, Activity, TrendingUp, Dumbbell, Crown, Droplet, Camera,
-  Plus, X, Trash2, Moon, Brain, Play, ChevronRight, Sparkles, BarChart3, Settings, MessageSquare
+  Plus, X, Trash2, Moon, Brain, Play, ChevronRight, Sparkles, BarChart3, Settings, MessageSquare, Mic
 } from "lucide-react";
 import { Logo } from "./logo.jsx";
 import { getApiKey, setApiKey } from "./apiKey.js";
@@ -184,6 +184,116 @@ async function callClaudeVision(base64Data, mediaType, prompt) {
       throw err2;
     }
   }
+}
+
+async function callClaudeTextOnce(prompt, apiKey) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error?.message || `API error (${response.status})`);
+  }
+  const text = (data.content || []).map(b => b.text || "").join("\n");
+  return extractJsonObject(text);
+}
+
+// Text-only sibling of callClaudeVision, used when the customer describes
+// something by voice (speech-to-text) instead of submitting a photo — same
+// API, same JSON-extraction contract, just no image content block.
+async function callClaudeText(prompt) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    const err = new Error("API_KEY_MISSING");
+    err.code = "API_KEY_MISSING";
+    throw err;
+  }
+  try {
+    return await callClaudeTextOnce(prompt, apiKey);
+  } catch (err) {
+    try {
+      return await callClaudeTextOnce(prompt, apiKey);
+    } catch (err2) {
+      err2.code = err2.code || "ANALYSIS_FAILED";
+      throw err2;
+    }
+  }
+}
+
+// Shared speech-to-text hook backing every microphone button in the app.
+// Uses the browser's built-in SpeechRecognition (Web Speech API). This works
+// on Chrome (Android/desktop) but is NOT supported in Safari on iPhone/iPad —
+// isSupported lets each mic button hide itself gracefully there instead of
+// showing a button that silently does nothing.
+function useSpeechToText() {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const SpeechRecognitionAPI = typeof window !== "undefined"
+    ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+    : null;
+  const isSupported = !!SpeechRecognitionAPI;
+
+  function start(onResult) {
+    if (!SpeechRecognitionAPI || listening) return;
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = "ja-JP";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join("");
+      onResult(transcript);
+    };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    setListening(true);
+    recognition.start();
+  }
+
+  function stop() {
+    recognitionRef.current?.stop();
+    setListening(false);
+  }
+
+  return { isSupported, listening, start, stop };
+}
+
+// Small reusable mic button: shows nothing if the browser doesn't support
+// speech recognition, otherwise toggles listening and reports the
+// transcript back via onTranscript. Visual state (pulsing while listening)
+// keeps the customer from wondering whether it's actually picking up audio.
+function MicButton({ onTranscript, label = "音声で入力" }) {
+  const C = useTheme();
+  const { isSupported, listening, start, stop } = useSpeechToText();
+  if (!isSupported) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => (listening ? stop() : start(onTranscript))}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        width: "100%", padding: "12px 0", borderRadius: 10, cursor: "pointer",
+        background: listening ? C.gold : "none",
+        border: `1px ${listening ? "solid" : "dashed"} ${listening ? C.gold : C.cardBorderLight}`,
+        color: listening ? C.onAccent : C.gold, fontSize: 12.5,
+        animation: listening ? "micPulse 1.2s ease-in-out infinite" : "none",
+      }}
+    >
+      <Mic size={16} />
+      <span>{listening ? "聞き取り中…話し終えたらもう一度タップ" : label}</span>
+    </button>
+  );
 }
 
 function fileToBase64(file) {
@@ -686,6 +796,7 @@ function AppInner() {
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: ${C.cardBorder}; border-radius: 4px; }
         @keyframes shine { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
+        @keyframes micPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes splashFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes popIn { 0% { opacity: 0; transform: scale(0.4); } 60% { opacity: 1; transform: scale(1.06); } 100% { transform: scale(1); } }
@@ -1219,6 +1330,27 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
     })();
   }, [profileId]);
 
+  function buildSafeMealResult(result) {
+    return {
+      name: typeof result.name === "string" && result.name.trim() ? result.name.trim() : "食事",
+      calories: toNum(result.calories) ?? 0,
+      protein: toNum(result.protein) ?? 0,
+      fat: toNum(result.fat) ?? 0,
+      carb: toNum(result.carb) ?? 0,
+      fiber: toNum(result.fiber),
+      sugar: toNum(result.sugar),
+      sodium: toNum(result.sodium),
+      potassium: toNum(result.potassium),
+      vitaminA: toNum(result.vitaminA),
+      vitaminC: toNum(result.vitaminC),
+      calcium: toNum(result.calcium),
+      iron: toNum(result.iron),
+      warning: !!result.warning,
+      warningItem: typeof result.warningItem === "string" ? result.warningItem : null,
+      alternative: typeof result.alternative === "string" ? result.alternative : null,
+    };
+  }
+
   async function handleFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1232,25 +1364,7 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
 小麦・グルテンや超加工食品が含まれると判断した場合は warning を true にし、warningItem に該当食材名、alternative にラグジュアリーで前向きなトーンの日本語の代替提案(例:「これを十割蕎麦に置き換えると、さらに神経伝達と腸内環境が覚醒します」のような文体)を入れてください。含まれない場合は warning: false, warningItem: null, alternative: null としてください。
 JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
 {"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`);
-      const safe = {
-        name: typeof result.name === "string" && result.name.trim() ? result.name.trim() : "食事",
-        calories: toNum(result.calories) ?? 0,
-        protein: toNum(result.protein) ?? 0,
-        fat: toNum(result.fat) ?? 0,
-        carb: toNum(result.carb) ?? 0,
-        fiber: toNum(result.fiber),
-        sugar: toNum(result.sugar),
-        sodium: toNum(result.sodium),
-        potassium: toNum(result.potassium),
-        vitaminA: toNum(result.vitaminA),
-        vitaminC: toNum(result.vitaminC),
-        calcium: toNum(result.calcium),
-        iron: toNum(result.iron),
-        warning: !!result.warning,
-        warningItem: typeof result.warningItem === "string" ? result.warningItem : null,
-        alternative: typeof result.alternative === "string" ? result.alternative : null,
-      };
-      setPreview({ ...safe, id: uid(), date: today, time: nowTime() });
+      setPreview({ ...buildSafeMealResult(result), id: uid(), date: today, time: nowTime() });
     } catch (err) {
       if (err.code === "API_KEY_MISSING") {
         setError("APIキーが未設定です。画面右上の⚙アイコンから設定してください。");
@@ -1260,6 +1374,31 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
     } finally {
       setAnalyzing(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleVoiceDescribe(transcript) {
+    if (!transcript || !transcript.trim()) return;
+    setError(null);
+    setAnalyzing(true);
+    try {
+      const result = await callClaudeText(
+        `お客様がスマートフォンに向かって話した、今日食べたものの説明です。この内容から食事を分析してください。話し言葉なので多少あいまいでも常識的に解釈してください。
+発言内容:「${transcript.trim()}」
+料理名、推定カロリー(kcal)、タンパク質(g)、脂質(g)、炭水化物(g)を算出してください。
+あわせて、五大栄養素の観点から次の項目も可能な範囲で推定してください: 食物繊維(g)、糖分(g)、ナトリウム(mg)、カリウム(mg)、ビタミンA(%DV目安)、ビタミンC(%DV目安)、カルシウム(%DV目安)、鉄分(%DV目安)。発言内容から正確に判断できない項目は null にしてください。
+小麦・グルテンや超加工食品が含まれると判断した場合は warning を true にし、warningItem に該当食材名、alternative にラグジュアリーで前向きなトーンの日本語の代替提案(例:「これを十割蕎麦に置き換えると、さらに神経伝達と腸内環境が覚醒します」のような文体)を入れてください。含まれない場合は warning: false, warningItem: null, alternative: null としてください。
+JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
+{"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`);
+      setPreview({ ...buildSafeMealResult(result), id: uid(), date: today, time: nowTime() });
+    } catch (err) {
+      if (err.code === "API_KEY_MISSING") {
+        setError("APIキーが未設定です。画面右上の⚙アイコンから設定してください。");
+      } else {
+        setError("解析に失敗しました。もう一度お試しください。");
+      }
+    } finally {
+      setAnalyzing(false);
     }
   }
 
@@ -1331,6 +1470,12 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
             <span style={{ fontSize: 12.5 }}>{analyzing ? "解析中…" : "食事の写真を撮影・選択"}</span>
           </button>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <MicButton
+            label={analyzing ? "解析中…" : "話して記録する(例:鶏胸肉とご飯を食べた)"}
+            onTranscript={handleVoiceDescribe}
+          />
         </div>
         {error && <div style={{ color: C.danger, fontSize: 12, marginTop: 10 }}>{error}</div>}
       </Card>
@@ -2466,6 +2611,12 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
             background: C.bg, color: C.ivory, fontSize: 13, boxSizing: "border-box", resize: "vertical",
           }}
         />
+        <div style={{ marginBottom: 10 }}>
+          <MicButton
+            label="話して入力する"
+            onTranscript={t => setFreeComment(prev => (prev ? `${prev} ${t}` : t))}
+          />
+        </div>
         <button onClick={() => freePhotoRef.current?.click()} style={{
           width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           background: "none", border: `1px dashed ${C.cardBorderLight}`, borderRadius: 10,
@@ -3164,7 +3315,6 @@ function LiveStreamTab() {
       <SectionLabel>ライブ配信</SectionLabel>
       <Card>
         <div style={{ fontSize: 12.5, color: CARD_C.ivory, lineHeight: 1.8, marginBottom: 14 }}>
-          毎週 火曜7:00〜/土曜8:00〜<br />
           一緒にトレーニングLive配信を開催中<br /><br />
           トレーニングのプログラムが何百種類以上観れますのでぜひチェックしてください!
         </div>
