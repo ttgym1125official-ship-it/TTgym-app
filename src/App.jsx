@@ -136,7 +136,25 @@ function extractJsonObject(text) {
   }
 }
 
-async function callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey) {
+// opts.webSearch lets specific callers (meal analysis) opt in to Anthropic's
+// server-side web_search tool, so a named restaurant/chain in the photo or
+// transcript can be looked up for real nutrition figures instead of a guess.
+// It's off by default so other callers (e.g. InBody photo OCR) are unaffected.
+async function callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey, opts = {}) {
+  const body = {
+    model: "claude-sonnet-5",
+    max_tokens: opts.maxTokens || 1000,
+    messages: [{
+      role: "user",
+      content: [
+        { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+        { type: "text", text: prompt },
+      ],
+    }],
+  };
+  if (opts.webSearch) {
+    body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }];
+  }
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -145,17 +163,7 @@ async function callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey) {
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     },
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
-          { type: "text", text: prompt },
-        ],
-      }],
-    }),
+    body: JSON.stringify(body),
   });
   const data = await response.json();
   if (!response.ok) {
@@ -165,7 +173,7 @@ async function callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey) {
   return extractJsonObject(text);
 }
 
-async function callClaudeVision(base64Data, mediaType, prompt) {
+async function callClaudeVision(base64Data, mediaType, prompt, opts = {}) {
   const apiKey = getApiKey();
   if (!apiKey) {
     const err = new Error("API_KEY_MISSING");
@@ -173,12 +181,12 @@ async function callClaudeVision(base64Data, mediaType, prompt) {
     throw err;
   }
   try {
-    return await callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey);
+    return await callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey, opts);
   } catch (err) {
     // One silent retry — covers transient network hiccups and the occasional
     // response that wraps its JSON in commentary badly enough that extraction fails.
     try {
-      return await callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey);
+      return await callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey, opts);
     } catch (err2) {
       err2.code = err2.code || "ANALYSIS_FAILED";
       throw err2;
@@ -186,7 +194,15 @@ async function callClaudeVision(base64Data, mediaType, prompt) {
   }
 }
 
-async function callClaudeTextOnce(prompt, apiKey) {
+async function callClaudeTextOnce(prompt, apiKey, opts = {}) {
+  const body = {
+    model: "claude-sonnet-5",
+    max_tokens: opts.maxTokens || 1000,
+    messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+  };
+  if (opts.webSearch) {
+    body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }];
+  }
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -195,11 +211,7 @@ async function callClaudeTextOnce(prompt, apiKey) {
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     },
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
-    }),
+    body: JSON.stringify(body),
   });
   const data = await response.json();
   if (!response.ok) {
@@ -212,7 +224,7 @@ async function callClaudeTextOnce(prompt, apiKey) {
 // Text-only sibling of callClaudeVision, used when the customer describes
 // something by voice (speech-to-text) instead of submitting a photo — same
 // API, same JSON-extraction contract, just no image content block.
-async function callClaudeText(prompt) {
+async function callClaudeText(prompt, opts = {}) {
   const apiKey = getApiKey();
   if (!apiKey) {
     const err = new Error("API_KEY_MISSING");
@@ -220,10 +232,10 @@ async function callClaudeText(prompt) {
     throw err;
   }
   try {
-    return await callClaudeTextOnce(prompt, apiKey);
+    return await callClaudeTextOnce(prompt, apiKey, opts);
   } catch (err) {
     try {
-      return await callClaudeTextOnce(prompt, apiKey);
+      return await callClaudeTextOnce(prompt, apiKey, opts);
     } catch (err2) {
       err2.code = err2.code || "ANALYSIS_FAILED";
       throw err2;
@@ -1360,10 +1372,12 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
       const b64 = await fileToBase64(file);
       const result = await callClaudeVision(b64, file.type || "image/jpeg",
         `この食事の写真を分析してください。料理名、推定カロリー(kcal)、タンパク質(g)、脂質(g)、炭水化物(g)を算出してください。
+写真に写っているお店のロゴ・パッケージ・容器・レシート・看板などから、具体的な店名・チェーン店名・ブランド名が特定できる場合は、必ずインターネット検索でそのお店の公式サイトや信頼できる情報源から実際のメニュー・栄養成分情報を調べ、それに近い数値を使って計算してください。店名が特定できない一般的な料理の場合は、無理に検索せず、一般的な標準分量をもとに推定してください。
 あわせて、五大栄養素の観点から次の項目も可能な範囲で推定してください: 食物繊維(g)、糖分(g)、ナトリウム(mg)、カリウム(mg)、ビタミンA(%DV目安)、ビタミンC(%DV目安)、カルシウム(%DV目安)、鉄分(%DV目安)。写真から正確に判断できない項目は null にしてください。
 小麦・グルテンや超加工食品が含まれると判断した場合は warning を true にし、warningItem に該当食材名、alternative にラグジュアリーで前向きなトーンの日本語の代替提案(例:「これを十割蕎麦に置き換えると、さらに神経伝達と腸内環境が覚醒します」のような文体)を入れてください。含まれない場合は warning: false, warningItem: null, alternative: null としてください。
-JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
-{"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`);
+検索や思考の過程は一切出力せず、最終的な回答として、JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
+{"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`,
+        { webSearch: true, maxTokens: 1500 });
       setPreview({ ...buildSafeMealResult(result), id: uid(), date: today, time: nowTime() });
     } catch (err) {
       if (err.code === "API_KEY_MISSING") {
@@ -1385,11 +1399,13 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
       const result = await callClaudeText(
         `お客様がスマートフォンに向かって話した、今日食べたものの説明です。この内容から食事を分析してください。話し言葉なので多少あいまいでも常識的に解釈してください。
 発言内容:「${transcript.trim()}」
+発言の中に具体的な店名・チェーン店名・ブランド名(例:高級寿司店、有名ステーキ店、ファストフードチェーンなど)が含まれている場合は、必ずインターネット検索でそのお店の公式サイトや信頼できる情報源から実際のメニュー・栄養成分情報を調べ、それに近い数値を使って計算してください。「一人前」「1皿」のような分量表現があれば、その店の標準的な提供量として扱ってください。店名が含まれない一般的な料理の場合は、無理に検索せず、一般的な標準分量をもとに推定してください。
 料理名、推定カロリー(kcal)、タンパク質(g)、脂質(g)、炭水化物(g)を算出してください。
 あわせて、五大栄養素の観点から次の項目も可能な範囲で推定してください: 食物繊維(g)、糖分(g)、ナトリウム(mg)、カリウム(mg)、ビタミンA(%DV目安)、ビタミンC(%DV目安)、カルシウム(%DV目安)、鉄分(%DV目安)。発言内容から正確に判断できない項目は null にしてください。
 小麦・グルテンや超加工食品が含まれると判断した場合は warning を true にし、warningItem に該当食材名、alternative にラグジュアリーで前向きなトーンの日本語の代替提案(例:「これを十割蕎麦に置き換えると、さらに神経伝達と腸内環境が覚醒します」のような文体)を入れてください。含まれない場合は warning: false, warningItem: null, alternative: null としてください。
-JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
-{"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`);
+検索や思考の過程は一切出力せず、最終的な回答として、JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
+{"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`,
+        { webSearch: true, maxTokens: 1500 });
       setPreview({ ...buildSafeMealResult(result), id: uid(), date: today, time: nowTime() });
     } catch (err) {
       if (err.code === "API_KEY_MISSING") {
@@ -1473,9 +1489,12 @@ JSON以外の文字列(前置き、コードブロック記号など)は一切�
         </div>
         <div style={{ marginTop: 10 }}>
           <MicButton
-            label={analyzing ? "解析中…" : "話して記録する(例:鶏胸肉とご飯を食べた)"}
+            label={analyzing ? "解析中…" : "話して記録する(例:ウルフギャングで牛肉を一人前食べた)"}
             onTranscript={handleVoiceDescribe}
           />
+          <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 6, lineHeight: 1.6 }}>
+            お店の名前を一緒に言うと、AIがそのお店の情報を調べてカロリー計算の精度を上げます(例:「〇〇(店名)で△△を一人前食べた」)
+          </div>
         </div>
         {error && <div style={{ color: C.danger, fontSize: 12, marginTop: 10 }}>{error}</div>}
       </Card>
@@ -2510,7 +2529,41 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
   const [freeComment, setFreeComment] = useState(existingSession?.freeComment ?? "");
   const [freePhoto, setFreePhoto] = useState(existingSession?.freePhoto ?? null);
   const [freeUploading, setFreeUploading] = useState(false);
+  const [voiceAnalyzing, setVoiceAnalyzing] = useState(false);
   const freePhotoRef = useRef(null);
+
+  // Speech-to-text for training: unlike meal photos/receipts, the weight and
+  // rep counts here are numbers the customer already knows exactly (not a
+  // "how many grams was that?" guess), so there's no web-search accuracy gap
+  // to close. What voice input CAN still remove is the typing itself — so on
+  // top of dropping the raw transcript into the free-comment box, this also
+  // asks the AI to pull out the exercise/reps/weight and pre-fill the
+  // structured fields above, so the existing calorie formula (reps × weight)
+  // still runs on exact numbers. The customer reviews and taps 記録する themselves.
+  async function handleVoiceTraining(transcript) {
+    if (!transcript || !transcript.trim()) return;
+    setFreeComment(prev => (prev ? `${prev} ${transcript}` : transcript));
+    setVoiceAnalyzing(true);
+    try {
+      const result = await callClaudeText(
+        `以下は、お客様がスマートフォンに向かって話した、本日のトレーニング内容です。話し言葉なので多少あいまいでも常識的に解釈してください。
+発言内容:「${transcript.trim()}」
+この発言から中心となるトレーニング種目を1つ抽出し、種目名(exercise)、回数か秒数か(unit: "reps" または "sec")、その回数または秒数(count)、使用した重量(kg。自重トレーニングや重量が分からない場合は0)を推定してください。具体的なトレーニング内容が読み取れない場合は exercise を null にしてください。
+JSON以外の文字列は一切含めず、次の形式のJSONのみを返してください:
+{"exercise": string|null, "unit": "reps"|"sec", "count": number|null, "weight": number|null}`);
+      if (result && result.exercise) {
+        setExercise(String(result.exercise));
+        setUnit(result.unit === "sec" ? "sec" : "reps");
+        if (result.count != null) setReps(String(result.count));
+        setWeight(String(result.weight ?? 0));
+      }
+    } catch (e) {
+      // Silent: the transcript already landed in the free-comment box above,
+      // so a failed parse just means the structured fields aren't pre-filled.
+    } finally {
+      setVoiceAnalyzing(false);
+    }
+  }
 
   async function handleFreePhotoSelect(file) {
     if (!file) return;
@@ -2574,6 +2627,15 @@ function TrainingTab({ workouts, onAdd, onDelete, sessions, onSaveSession }) {
 
       <SectionLabel>本日のトレーニング</SectionLabel>
       <Card>
+        <div style={{ marginBottom: 8 }}>
+          <MicButton
+            label={voiceAnalyzing ? "解析中…" : "話して入力する(例:スクワットを20kgで15回)"}
+            onTranscript={handleVoiceTraining}
+          />
+          <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 6, lineHeight: 1.6 }}>
+            種目名・回数・重量を話すと、下の欄にAIが自動入力します。内容を確認してから「記録する」を押してください。
+          </div>
+        </div>
         <input placeholder="種目" value={exercise} onChange={e => setExercise(e.target.value)} style={{
           width: "100%", padding: "10px 12px", marginBottom: 8, borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13,
         }} />
