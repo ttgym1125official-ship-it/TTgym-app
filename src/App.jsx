@@ -288,23 +288,35 @@ function useSpeechToText() {
 function MicButton({ onTranscript, label = "音声で入力" }) {
   const C = useTheme();
   const { isSupported, listening, start, stop } = useSpeechToText();
-  if (!isSupported) return null;
+  // Always shown, even when unsupported — this one-line note is the plain-language
+  // answer to "why can't I use voice input", instead of the feature just silently
+  // not being there. iPhone's built-in Safari lacks the browser API this needs;
+  // Android and Google Chrome (including Chrome on iPhone) support it.
+  const note = (
+    <div style={{ fontSize: 10, color: C.dim, marginTop: isSupported ? 6 : 0, lineHeight: 1.6 }}>
+      ※音声入力は「Safari」(iPhone標準ブラウザ)では使えません。Androidまたは「Google Chrome」アプリではご利用いただけます。
+    </div>
+  );
+  if (!isSupported) return note;
   return (
-    <button
-      type="button"
-      onClick={() => (listening ? stop() : start(onTranscript))}
-      style={{
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        width: "100%", padding: "12px 0", borderRadius: 10, cursor: "pointer",
-        background: listening ? C.gold : "none",
-        border: `1px ${listening ? "solid" : "dashed"} ${listening ? C.gold : C.cardBorderLight}`,
-        color: listening ? C.onAccent : C.gold, fontSize: 12.5,
-        animation: listening ? "micPulse 1.2s ease-in-out infinite" : "none",
-      }}
-    >
-      <Mic size={16} />
-      <span>{listening ? "聞き取り中…話し終えたらもう一度タップ" : label}</span>
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={() => (listening ? stop() : start(onTranscript))}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          width: "100%", padding: "12px 0", borderRadius: 10, cursor: "pointer",
+          background: listening ? C.gold : "none",
+          border: `1px ${listening ? "solid" : "dashed"} ${listening ? C.gold : C.cardBorderLight}`,
+          color: listening ? C.onAccent : C.gold, fontSize: 12.5,
+          animation: listening ? "micPulse 1.2s ease-in-out infinite" : "none",
+        }}
+      >
+        <Mic size={16} />
+        <span>{listening ? "聞き取り中…話し終えたらもう一度タップ" : label}</span>
+      </button>
+      {note}
+    </div>
   );
 }
 
@@ -1300,6 +1312,15 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
   const [selectedIng, setSelectedIng] = useState(null);
   const [ingGrams, setIngGrams] = useState("100");
   const fileRef = useRef(null);
+  // Cross-modality memory: if the customer takes a photo and then, within a
+  // few minutes, also uses the mic (or vice versa), the second action is
+  // combined with the first into a single richer analysis call instead of
+  // two independent, overwriting ones — genuinely more accurate than either
+  // alone, since the model sees both the image and the spoken context
+  // (e.g. a store name the photo alone doesn't show).
+  const lastPhotoRef = useRef(null);
+  const lastVoiceRef = useRef(null);
+  const COMBINE_WINDOW_MS = 3 * 60 * 1000;
   const today = todayISO();
   const todaysMeals = meals.filter(m => m.date === today);
   const todaysWater = water[today] || 0;
@@ -1370,15 +1391,21 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
     setAnalyzing(true);
     try {
       const b64 = await fileToBase64(file);
-      const result = await callClaudeVision(b64, file.type || "image/jpeg",
+      const mediaType = file.type || "image/jpeg";
+      const recentVoice = lastVoiceRef.current && (Date.now() - lastVoiceRef.current.ts < COMBINE_WINDOW_MS)
+        ? lastVoiceRef.current.transcript : null;
+      const result = await callClaudeVision(b64, mediaType,
         `この食事の写真を分析してください。料理名、推定カロリー(kcal)、タンパク質(g)、脂質(g)、炭水化物(g)を算出してください。
-写真に写っているお店のロゴ・パッケージ・容器・レシート・看板などから、具体的な店名・チェーン店名・ブランド名が特定できる場合は、必ずインターネット検索でそのお店の公式サイトや信頼できる情報源から実際のメニュー・栄養成分情報を調べ、それに近い数値を使って計算してください。店名が特定できない一般的な料理の場合は、無理に検索せず、一般的な標準分量をもとに推定してください。
+写真に写っているお店のロゴ・パッケージ・容器・レシート・看板などから、具体的な店名・チェーン店名・ブランド名が特定できる場合は、必ずインターネット検索でそのお店の公式サイトや信頼できる情報源から実際のメニュー・栄養成分情報を調べ、それに近い数値を使って計算してください。店名が特定できない一般的な料理の場合は、無理に検索せず、一般的な標準分量をもとに推定してください。${recentVoice ? `
+お客様は少し前に音声で次のように話しています:「${recentVoice}」。これは写真と同じ食事についての補足情報(店名や分量など)の可能性が高いので、写真の内容とあわせて、より正確な判断に活用してください。` : ""}
 あわせて、五大栄養素の観点から次の項目も可能な範囲で推定してください: 食物繊維(g)、糖分(g)、ナトリウム(mg)、カリウム(mg)、ビタミンA(%DV目安)、ビタミンC(%DV目安)、カルシウム(%DV目安)、鉄分(%DV目安)。写真から正確に判断できない項目は null にしてください。
 小麦・グルテンや超加工食品が含まれると判断した場合は warning を true にし、warningItem に該当食材名、alternative にラグジュアリーで前向きなトーンの日本語の代替提案(例:「これを十割蕎麦に置き換えると、さらに神経伝達と腸内環境が覚醒します」のような文体)を入れてください。含まれない場合は warning: false, warningItem: null, alternative: null としてください。
 検索や思考の過程は一切出力せず、最終的な回答として、JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
 {"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`,
         { webSearch: true, maxTokens: 1500 });
       setPreview({ ...buildSafeMealResult(result), id: uid(), date: today, time: nowTime() });
+      lastPhotoRef.current = { b64, mediaType, ts: Date.now() };
+      if (recentVoice) lastVoiceRef.current = null; // consumed into this combined analysis
     } catch (err) {
       if (err.code === "API_KEY_MISSING") {
         setError("APIキーが未設定です。画面右上の⚙アイコンから設定してください。");
@@ -1396,17 +1423,23 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
     setError(null);
     setAnalyzing(true);
     try {
-      const result = await callClaudeText(
-        `お客様がスマートフォンに向かって話した、今日食べたものの説明です。この内容から食事を分析してください。話し言葉なので多少あいまいでも常識的に解釈してください。
+      const recentPhoto = lastPhotoRef.current && (Date.now() - lastPhotoRef.current.ts < COMBINE_WINDOW_MS)
+        ? lastPhotoRef.current : null;
+      const promptText = `お客様がスマートフォンに向かって話した、今日食べたものの説明です。この内容から食事を分析してください。話し言葉なので多少あいまいでも常識的に解釈してください。
 発言内容:「${transcript.trim()}」
-発言の中に具体的な店名・チェーン店名・ブランド名(例:高級寿司店、有名ステーキ店、ファストフードチェーンなど)が含まれている場合は、必ずインターネット検索でそのお店の公式サイトや信頼できる情報源から実際のメニュー・栄養成分情報を調べ、それに近い数値を使って計算してください。「一人前」「1皿」のような分量表現があれば、その店の標準的な提供量として扱ってください。店名が含まれない一般的な料理の場合は、無理に検索せず、一般的な標準分量をもとに推定してください。
+発言の中に具体的な店名・チェーン店名・ブランド名(例:高級寿司店、有名ステーキ店、ファストフードチェーンなど)が含まれている場合は、必ずインターネット検索でそのお店の公式サイトや信頼できる情報源から実際のメニュー・栄養成分情報を調べ、それに近い数値を使って計算してください。「一人前」「1皿」のような分量表現があれば、その店の標準的な提供量として扱ってください。店名が含まれない一般的な料理の場合は、無理に検索せず、一般的な標準分量をもとに推定してください。${recentPhoto ? `
+あわせて、お客様が少し前に撮影した食事の写真も添付します。写真に写っている実際の量・具材と、この発言内容の両方を踏まえて、より正確に判断してください。` : ""}
 料理名、推定カロリー(kcal)、タンパク質(g)、脂質(g)、炭水化物(g)を算出してください。
-あわせて、五大栄養素の観点から次の項目も可能な範囲で推定してください: 食物繊維(g)、糖分(g)、ナトリウム(mg)、カリウム(mg)、ビタミンA(%DV目安)、ビタミンC(%DV目安)、カルシウム(%DV目安)、鉄分(%DV目安)。発言内容から正確に判断できない項目は null にしてください。
+あわせて、五大栄養素の観点から次の項目も可能な範囲で推定してください: 食物繊維(g)、糖分(g)、ナトリウム(mg)、カリウム(mg)、ビタミンA(%DV目安)、ビタミンC(%DV目安)、カルシウム(%DV目安)、鉄分(%DV目安)。判断できない項目は null にしてください。
 小麦・グルテンや超加工食品が含まれると判断した場合は warning を true にし、warningItem に該当食材名、alternative にラグジュアリーで前向きなトーンの日本語の代替提案(例:「これを十割蕎麦に置き換えると、さらに神経伝達と腸内環境が覚醒します」のような文体)を入れてください。含まれない場合は warning: false, warningItem: null, alternative: null としてください。
 検索や思考の過程は一切出力せず、最終的な回答として、JSON以外の文字列(前置き、コードブロック記号など)は一切含めず、次の形式のJSONのみを返してください:
-{"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`,
-        { webSearch: true, maxTokens: 1500 });
+{"name": string, "calories": number, "protein": number, "fat": number, "carb": number, "fiber": number|null, "sugar": number|null, "sodium": number|null, "potassium": number|null, "vitaminA": number|null, "vitaminC": number|null, "calcium": number|null, "iron": number|null, "warning": boolean, "warningItem": string|null, "alternative": string|null}`;
+      const result = recentPhoto
+        ? await callClaudeVision(recentPhoto.b64, recentPhoto.mediaType, promptText, { webSearch: true, maxTokens: 1500 })
+        : await callClaudeText(promptText, { webSearch: true, maxTokens: 1500 });
       setPreview({ ...buildSafeMealResult(result), id: uid(), date: today, time: nowTime() });
+      lastVoiceRef.current = { transcript: transcript.trim(), ts: Date.now() };
+      if (recentPhoto) lastPhotoRef.current = null; // consumed into this combined analysis
     } catch (err) {
       if (err.code === "API_KEY_MISSING") {
         setError("APIキーが未設定です。画面右上の⚙アイコンから設定してください。");
@@ -1494,6 +1527,8 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
           />
           <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 6, lineHeight: 1.6 }}>
             お店の名前を一緒に言うと、AIがそのお店の情報を調べてカロリー計算の精度を上げます(例:「〇〇(店名)で△△を一人前食べた」)
+            <br />
+            ※写真と音声の両方を使うと(例:写真を撮ってから店名を話す)、さらに精度が上がります
           </div>
         </div>
         {error && <div style={{ color: C.danger, fontSize: 12, marginTop: 10 }}>{error}</div>}
