@@ -377,8 +377,8 @@ function MealLogEditor({ memberId, meals, onAdded }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 10, color: C.dim, marginBottom: 8 }}>食事記録をこちらから追加</div>
-      <div style={{ background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: 10, marginBottom: 10 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, marginBottom: 8 }}>🍽 食事記録をこちらから追加</div>
+      <div style={{ background: C.bg, border: `1px solid ${C.gold}`, borderRadius: 4, padding: 10, marginBottom: 10 }}>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
           width: "100%", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
           padding: "7px 8px", color: C.ivory, fontSize: 12, marginBottom: 8, boxSizing: "border-box",
@@ -801,6 +801,11 @@ function MemberDetail({ member, onMemberUpdated }) {
         <KPI label="月次測定" value={data.monthly.length} unit="件" />
       </div>
 
+      <MealLogEditor
+        memberId={member.id} meals={data.meals}
+        onAdded={entry => setData(d => ({ ...d, meals: [...d.meals, entry] }))}
+      />
+
       <GoalAndPhotosEditor memberId={member.id} profile={profile} onSaved={setProfile} />
 
       <NutritionTargetEditor memberId={member.id} profile={profile} onSaved={setProfile} />
@@ -838,11 +843,6 @@ function MemberDetail({ member, onMemberUpdated }) {
           </div>
         </div>
       )}
-
-      <MealLogEditor
-        memberId={member.id} meals={data.meals}
-        onAdded={entry => setData(d => ({ ...d, meals: [...d.meals, entry] }))}
-      />
 
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 10, color: C.dim, marginBottom: 8 }}>食事内容(直近10件)</div>
