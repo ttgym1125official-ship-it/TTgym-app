@@ -334,6 +334,86 @@ function MonthlyLogEditor({ memberId, monthly, onAdded }) {
   );
 }
 
+// Lets staff log a meal on a member's behalf (e.g. from a phone call, or to
+// correct/backfill a record) without needing the member's own app/API key —
+// it writes straight into the same data:<id>:meals collection the member
+// app reads, so it shows up in their timeline and daily totals immediately.
+function MealLogEditor({ memberId, meals, onAdded }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [name, setName] = useState("");
+  const [calories, setCalories] = useState("");
+  const [protein, setProtein] = useState("");
+  const [fat, setFat] = useState("");
+  const [carb, setCarb] = useState("");
+  const [saving, setSaving] = useState(false);
+  const sorted = [...(meals || [])].sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || "")));
+
+  async function handleAdd() {
+    if (!name.trim()) return;
+    setSaving(true);
+    const entry = {
+      id: newId(), date, time: new Date().toTimeString().slice(0, 5),
+      name: name.trim(),
+      calories: calories ? Number(calories) : 0,
+      protein: protein ? Number(protein) : 0,
+      fat: fat ? Number(fat) : 0,
+      carb: carb ? Number(carb) : 0,
+      fiber: null, sugar: null, sodium: null, potassium: null, vitaminA: null, vitaminC: null, calcium: null, iron: null,
+      warning: false, warningItem: null, alternative: null,
+    };
+    // Read the freshest stored value right before writing so a meal the
+    // member logged themselves since this screen loaded isn't overwritten.
+    let latest = meals || [];
+    try {
+      const r = await window.storage.get(`data:${memberId}:meals`, true);
+      if (r) latest = JSON.parse(r.value);
+    } catch (e) {}
+    const next = [...latest, entry];
+    await window.storage.set(`data:${memberId}:meals`, JSON.stringify(next), true).catch(() => {});
+    onAdded(entry);
+    setName(""); setCalories(""); setProtein(""); setFat(""); setCarb("");
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 10, color: C.dim, marginBottom: 8 }}>食事記録をこちらから追加</div>
+      <div style={{ background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: 10, marginBottom: 10 }}>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
+          width: "100%", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
+          padding: "7px 8px", color: C.ivory, fontSize: 12, marginBottom: 8, boxSizing: "border-box",
+        }} />
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="料理名(例:唐揚げ定食)" style={{
+          width: "100%", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
+          padding: "7px 8px", color: C.ivory, fontSize: 12.5, marginBottom: 8, boxSizing: "border-box",
+        }} />
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          {[["kcal", calories, setCalories], ["P(g)", protein, setProtein], ["F(g)", fat, setFat], ["C(g)", carb, setCarb]].map(([ph, v, setter]) => (
+            <input key={ph} type="number" inputMode="decimal" value={v} onChange={e => setter(e.target.value)} placeholder={ph} style={{
+              flex: 1, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4,
+              padding: "8px 4px", color: C.ivory, fontSize: 12, textAlign: "center", boxSizing: "border-box",
+            }} />
+          ))}
+        </div>
+        <button onClick={handleAdd} disabled={saving || !name.trim()} style={{
+          width: "100%", background: C.gold, color: "#0D0D0D", border: "none", borderRadius: 4,
+          padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer",
+          opacity: (saving || !name.trim()) ? 0.6 : 1,
+        }}>{saving ? "保存中…" : "食事記録を追加"}</button>
+      </div>
+      {sorted.length === 0 ? <div style={{ fontSize: 11.5, color: C.dim }}>記録なし</div> : sorted.slice(0, 6).map(m => (
+        <div key={m.id} style={{ padding: "6px 0", borderBottom: `1px solid ${C.cardBorder}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5 }}>
+            <span style={{ color: C.ivory }}>{m.name}</span>
+            <span style={{ fontFamily: "'Space Mono', monospace", color: C.dim }}>{m.calories}kcal</span>
+          </div>
+          <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>{m.date}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function GoalAndPhotosEditor({ memberId, profile, onSaved }) {
   const [goal, setGoal] = useState(profile.goal || "");
   const [editingGoal, setEditingGoal] = useState(false);
@@ -758,6 +838,11 @@ function MemberDetail({ member, onMemberUpdated }) {
           </div>
         </div>
       )}
+
+      <MealLogEditor
+        memberId={member.id} meals={data.meals}
+        onAdded={entry => setData(d => ({ ...d, meals: [...d.meals, entry] }))}
+      />
 
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 10, color: C.dim, marginBottom: 8 }}>食事内容(直近10件)</div>

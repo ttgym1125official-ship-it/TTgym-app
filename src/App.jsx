@@ -1369,6 +1369,11 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
   const [ingChain, setIngChain] = useState("all");
   const [selectedIng, setSelectedIng] = useState(null);
   const [ingGrams, setIngGrams] = useState("100");
+  const [manualName, setManualName] = useState("");
+  const [manualCalories, setManualCalories] = useState("");
+  const [manualProtein, setManualProtein] = useState("");
+  const [manualFat, setManualFat] = useState("");
+  const [manualCarb, setManualCarb] = useState("");
   const fileRef = useRef(null);
   // Cross-modality memory: if the customer takes a photo and then, within a
   // few minutes, also uses the mic (or vice versa), the second action is
@@ -1509,6 +1514,35 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
     }
   }
 
+  // Lets a customer who already knows the nutrition facts (e.g. from a
+  // package label) type the dish name into the AI, reusing the exact same
+  // analysis path as the voice input above — just driven by typed text
+  // instead of a spoken transcript.
+  async function handleManualAnalyze() {
+    if (!manualName.trim() || analyzing) return;
+    await handleVoiceDescribe(manualName.trim());
+  }
+
+  // For customers who'd rather skip the AI entirely and enter calories/PFC
+  // themselves. Goes through the same "preview" step as every other entry
+  // path so they can double-check before it lands in the timeline.
+  function handleManualAdd() {
+    if (!manualName.trim()) { setError("料理名を入力してください"); return; }
+    setError(null);
+    setPreview({
+      id: uid(), date: today, time: nowTime(), warning: false,
+      name: manualName.trim(),
+      calories: toNum(manualCalories) ?? 0,
+      protein: toNum(manualProtein) ?? 0,
+      fat: toNum(manualFat) ?? 0,
+      carb: toNum(manualCarb) ?? 0,
+      fiber: null, sugar: null, sodium: null, potassium: null,
+      vitaminA: null, vitaminC: null, calcium: null, iron: null,
+      warningItem: null, alternative: null,
+    });
+    setManualName(""); setManualCalories(""); setManualProtein(""); setManualFat(""); setManualCarb("");
+  }
+
   return (
     <div>
       <SectionLabel>1日の目安(PFC・カロリー)</SectionLabel>
@@ -1590,6 +1624,38 @@ function MealTab({ meals, water, onAddMeal, onDeleteMeal, onAddWater, profileId 
           </div>
         </div>
         {error && <div style={{ color: C.danger, fontSize: 12, marginTop: 10 }}>{error}</div>}
+      </Card>
+
+      <SectionLabel>手動で入力</SectionLabel>
+      <Card>
+        <input placeholder="料理名(例:唐揚げ定食)" value={manualName} onChange={e => setManualName(e.target.value)} style={{
+          width: "100%", padding: "10px 12px", marginBottom: 8, borderRadius: 8,
+          border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory, fontSize: 13, boxSizing: "border-box",
+        }} />
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          {[["カロリー", manualCalories, setManualCalories], ["P(g)", manualProtein, setManualProtein], ["F(g)", manualFat, setManualFat], ["C(g)", manualCarb, setManualCarb]].map(([ph, v, setter]) => (
+            <input key={ph} type="number" inputMode="decimal" placeholder={ph} value={v} onChange={e => setter(e.target.value)} style={{
+              flex: 1, padding: "9px 4px", borderRadius: 8, border: `1px solid ${C.cardBorder}`,
+              background: C.bg, color: C.ivory, fontSize: 12, textAlign: "center", boxSizing: "border-box",
+            }} />
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={handleManualAnalyze} disabled={analyzing || !manualName.trim()} style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            background: "none", border: `1px solid ${C.goldDim}`, borderRadius: 8, color: C.gold,
+            padding: "10px 0", fontSize: 12.5, cursor: (analyzing || !manualName.trim()) ? "default" : "pointer",
+            opacity: (analyzing || !manualName.trim()) ? 0.5 : 1,
+          }}>
+            <Sparkles size={13} /> {analyzing ? "計算中…" : "AIに計算してもらう"}
+          </button>
+          <div style={{ flex: 1 }}>
+            <GoldButton onClick={handleManualAdd}>この数値で記録する</GoldButton>
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: CARD_C.dim, marginTop: 8, lineHeight: 1.6 }}>
+          「AIに計算してもらう」は料理名だけでカロリー・PFCを自動計算します(店名も一緒に入れると精度アップ)。ご自身で数値がわかる場合は数値を入力して「この数値で記録する」を押してください。
+        </div>
       </Card>
 
       {preview && (
