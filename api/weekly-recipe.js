@@ -1,7 +1,7 @@
 // Vercel Cron Job (see "crons" in vercel.json) — every Saturday 08:00 JST
 // (Friday 23:00 UTC) broadcasts that week's 週刊 Body Make Recipe to every
-// friend of the TTGYM LINE Official Account: the card image
-// (public/recipes/vol<N>.png) followed by the recipe text.
+// friend of the TTGYM LINE Official Account: the dish photo (if the recipe
+// has one), the card image (public/recipes/vol<N>.png), then the recipe text.
 //
 // Required Vercel environment variables:
 //   LINE_CHANNEL_ACCESS_TOKEN — same one api/line-webhook.js uses
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   }
 
   const host = process.env.VERCEL_PROJECT_PRODUCTION_URL || req.headers.host;
-  const imageUrl = `https://${host}/recipes/vol${recipe.vol}.png`;
+  const image = path => ({ type: "image", originalContentUrl: `https://${host}${path}`, previewImageUrl: `https://${host}${path}` });
   const response = await fetch("https://api.line.me/v2/bot/message/broadcast", {
     method: "POST",
     headers: {
@@ -68,7 +68,8 @@ export default async function handler(req, res) {
     },
     body: JSON.stringify({
       messages: [
-        { type: "image", originalContentUrl: imageUrl, previewImageUrl: imageUrl },
+        ...(recipe.photo ? [image(recipe.photo)] : []),
+        image(`/recipes/vol${recipe.vol}.png`),
         { type: "text", text: recipeMessageText(recipe) },
       ],
     }),

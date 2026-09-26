@@ -3562,6 +3562,10 @@ function RecipeTab() {
             </button>
             {open && (
               <div style={{ padding: "0 14px 16px" }}>
+                {r.photo && (
+                  <img src={r.photo} alt={r.title} loading="lazy"
+                    style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 10 }} />
+                )}
                 <img src={`/recipes/vol${r.vol}.png`} alt={r.title} loading="lazy"
                   style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 14 }} />
                 <div style={{ fontSize: 12, fontWeight: 600, color: CARD_C.goldDim, marginBottom: 6 }}>🍴 材料(1人分)</div>

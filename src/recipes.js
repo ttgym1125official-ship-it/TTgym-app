@@ -5,6 +5,9 @@
 // `publishAt` has passed. Add next week's recipe by appending an entry with
 // the next vol number and the following Saturday 08:00 JST, plus its card
 // image at public/recipes/vol<N>.png (see scripts/render-recipe-cards.mjs).
+// Optionally set `photo` to a finished-dish photo under public/recipes/photos/
+// (e.g. "/recipes/photos/vol19.jpg", JPEG under 1MB) — it is then shown above
+// the card in the app and sent as the first image on LINE.
 //
 // Nutrition values are per 1 serving, estimated from 日本食品標準成分表.
 
