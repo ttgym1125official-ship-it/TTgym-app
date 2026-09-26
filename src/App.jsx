@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo, useRef, createContext, useContext 
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import {
   Utensils, Activity, TrendingUp, Dumbbell, Crown, Droplet, Camera,
-  Plus, X, Trash2, Moon, Brain, Play, ChevronRight, Sparkles, BarChart3, Settings, MessageSquare, Mic
+  Plus, X, Trash2, Moon, Brain, Play, ChevronRight, Sparkles, BarChart3, Settings, MessageSquare, Mic, ChefHat
 } from "lucide-react";
 import { Logo } from "./logo.jsx";
 import { getApiKey, setApiKey } from "./apiKey.js";
 import { getMemberId, supabaseConfigured } from "./supabaseClient.js";
 import { fileToCompressedDataUrl } from "./imageUtils.js";
+import { publishedRecipes } from "./recipes.js";
 
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');`;
 
@@ -1020,6 +1021,7 @@ function AppInner() {
         }} />}
         {tab === "report" && <ReportTab meals={meals} conditions={conditions} growth={growth} workouts={workouts} water={water} sessions={sessions} monthly={monthly} personalLogs={personalLogs} />}
         {tab === "comments" && <TrainerCommentsTab comments={comments} meals={meals} />}
+        {tab === "recipe" && <RecipeTab />}
         {tab === "live" && <LiveStreamTab />}
       </div>
 
@@ -1044,6 +1046,7 @@ function AppInner() {
         <TabButton active={tab === "growth"} onClick={() => setTab("growth")} icon={TrendingUp} label="成長" />
         <TabButton active={tab === "report"} onClick={() => setTab("report")} icon={BarChart3} label="レポート" />
         <TabButton active={tab === "comments"} onClick={() => setTab("comments")} icon={MessageSquare} label="コメント" />
+        <TabButton active={tab === "recipe"} onClick={() => setTab("recipe")} icon={ChefHat} label="レシピ" />
         <TabButton active={tab === "live"} onClick={() => setTab("live")} icon={Play} label="配信" />
       </div>
         </>
@@ -3527,6 +3530,70 @@ const NUTRIENT_FOOD_ADVICE = {
   vitaminA: "にんじん、かぼちゃ、レバー、うなぎ、ほうれん草など",
 };
 const SODIUM_ADVICE = "加工食品・外食・漬物を控えめにし、だしや香辛料での減塩、麺類のスープを残すことを意識しましょう。";
+
+function RecipeTab() {
+  const C = useTheme();
+  const recipes = useMemo(() => publishedRecipes(), []);
+  const [openVol, setOpenVol] = useState(recipes[0]?.vol ?? null);
+  const fmt = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+  return (
+    <div>
+      <SectionLabel>週刊 Body Make Recipe</SectionLabel>
+      <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 12, lineHeight: 1.6 }}>
+        毎週土曜 朝8:00に新しいレシピが届きます(公式LINEにも同時配信)。
+      </div>
+      {recipes.length === 0 && <EmptyState text="最初のレシピは今週土曜 朝8:00に公開されます" />}
+      {recipes.map(r => {
+        const open = openVol === r.vol;
+        const n = r.nutrition;
+        return (
+          <Card key={r.vol} style={{ padding: 0, overflow: "hidden" }}>
+            <button onClick={() => setOpenVol(open ? null : r.vol)} style={{
+              width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left",
+              padding: 14, display: "flex", alignItems: "center", gap: 12,
+            }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: CARD_C.goldDim, minWidth: 48 }}>vol.{r.vol}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: CARD_C.ivory }}>{r.title}</div>
+                <div style={{ fontSize: 11, color: CARD_C.dim, marginTop: 2 }}>{n.kcal}kcal ・ P{fmt(n.p)}g ・ {r.minutes}分</div>
+              </div>
+              <ChevronRight size={16} color={CARD_C.dim} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
+            </button>
+            {open && (
+              <div style={{ padding: "0 14px 16px" }}>
+                <img src={`/recipes/vol${r.vol}.png`} alt={r.title} loading="lazy"
+                  style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 14 }} />
+                <div style={{ fontSize: 12, fontWeight: 600, color: CARD_C.goldDim, marginBottom: 6 }}>🍴 材料(1人分)</div>
+                {r.ingredients.map((line, i) => (
+                  <div key={i} style={{ fontSize: 12.5, color: CARD_C.ivory, lineHeight: 1.8 }}>{line}</div>
+                ))}
+                <div style={{ fontSize: 12, fontWeight: 600, color: CARD_C.goldDim, margin: "14px 0 6px" }}>🍳 作り方</div>
+                {r.steps.map((step, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, fontSize: 12.5, color: CARD_C.ivory, lineHeight: 1.7, marginBottom: 6 }}>
+                    <span style={{ color: CARD_C.gold, fontWeight: 700 }}>{i + 1}.</span><span>{step}</span>
+                  </div>
+                ))}
+                <div style={{ fontSize: 12, fontWeight: 600, color: CARD_C.goldDim, margin: "14px 0 6px" }}>📊 栄養成分表示(1人分)</div>
+                <div style={{ fontSize: 12.5, color: CARD_C.ivory, lineHeight: 1.8 }}>
+                  エネルギー {n.kcal}kcal / P {fmt(n.p)}g / F {fmt(n.f)}g / C {fmt(n.c)}g<br />
+                  <span style={{ color: CARD_C.dim, fontSize: 11.5 }}>(糖質 {fmt(n.sugar)}g / 食物繊維 {fmt(n.fiber)}g)</span>
+                </div>
+                <div style={{
+                  marginTop: 14, padding: "10px 12px", background: "#FFFFFF", borderLeft: `2px solid ${CARD_C.gold}`,
+                  fontSize: 12, lineHeight: 1.8, color: CARD_C.ivory, whiteSpace: "pre-line",
+                }}>
+                  <div style={{ fontWeight: 700, color: CARD_C.goldDim, marginBottom: 4 }}>💡 TTGYM's Point</div>
+                  {r.point}
+                </div>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
 
 function LiveStreamTab() {
   const C = useTheme();
