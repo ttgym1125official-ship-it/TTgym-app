@@ -2,7 +2,8 @@
 // and the Saturday LINE broadcast (api/weekly-recipe.js).
 //
 // A recipe becomes visible in the app, and is broadcast on LINE, once its
-// `publishAt` has passed. Add next week's recipe by appending an entry with
+// `publishAt` has passed (use 07:30 JST so the 08:00 JST cron always finds it).
+// `notice` is an optional one-off message shown at the top of TTGYM's Point. Add next week's recipe by appending an entry with
 // the next vol number and the following Saturday 08:00 JST, plus its card
 // image at public/recipes/vol<N>.png (see scripts/render-recipe-cards.mjs).
 // Optionally set `image` to a different card image under public/recipes/ (e.g.
@@ -14,7 +15,10 @@
 export const RECIPES = [
   {
     vol: 19,
-    publishAt: "2026-10-03T08:00:00+09:00",
+    publishAt: "2026-09-29T07:30:00+09:00",
+    notice:
+      "システムの不具合により、約1ヶ月のあいだレシピ配信がストップしていました。楽しみにしてくださっていた皆さま、本当に申し訳ありません！\n" +
+      "今日から配信を再開し、これからは毎週土曜の朝8時に新しいレシピをお届けします。引き続きよろしくお願いします！",
     title: "鶏むねのねぎ塩レモン",
     tag: "下味冷凍OK",
     minutes: 10,
@@ -38,7 +42,7 @@ export const RECIPES = [
   },
   {
     vol: 20,
-    publishAt: "2026-10-10T08:00:00+09:00",
+    publishAt: "2026-10-03T07:30:00+09:00",
     title: "鮭ときのこのみそ漬け",
     tag: "下味冷凍OK",
     minutes: 12,
@@ -62,7 +66,7 @@ export const RECIPES = [
   },
   {
     vol: 21,
-    publishAt: "2026-10-17T08:00:00+09:00",
+    publishAt: "2026-10-10T07:30:00+09:00",
     title: "豚ヒレのしょうが焼き",
     tag: "下味冷凍OK",
     minutes: 10,
@@ -86,7 +90,7 @@ export const RECIPES = [
   },
   {
     vol: 22,
-    publishAt: "2026-10-24T08:00:00+09:00",
+    publishAt: "2026-10-17T07:30:00+09:00",
     title: "牛もも肉とごぼうのすき煮",
     tag: "25分",
     minutes: 25,
@@ -110,7 +114,7 @@ export const RECIPES = [
   },
   {
     vol: 23,
-    publishAt: "2026-10-31T08:00:00+09:00",
+    publishAt: "2026-10-24T07:30:00+09:00",
     title: "きのこソースの豆腐ハンバーグ",
     tag: "25分",
     minutes: 25,
@@ -164,6 +168,7 @@ export function recipeMessageText(r) {
     "",
     "💡 TTGYM's Point",
     "",
+    ...(r.notice ? ["🙇 お知らせ", r.notice, ""] : []),
     "✅ このレシピの良さ",
     r.point.good,
     "",
