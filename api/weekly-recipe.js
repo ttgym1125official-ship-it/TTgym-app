@@ -1,5 +1,6 @@
-// Vercel Cron Job (see "crons" in vercel.json) — every Saturday 08:00 JST
-// (Friday 23:00 UTC) broadcasts that week's 週刊 Body Make Recipe to every
+// Vercel Cron Job (see "crons" in vercel.json) — runs daily at 08:00 JST
+// (23:00 UTC) and, whenever a recipe's publishAt has just passed (normally
+// Saturday), broadcasts that 週刊 Body Make Recipe to every
 // friend of the TTGYM LINE Official Account: the recipe card image, then the
 // title, nutrition and TTGYM's Point as text.
 //
