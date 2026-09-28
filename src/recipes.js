@@ -5,9 +5,9 @@
 // `publishAt` has passed. Add next week's recipe by appending an entry with
 // the next vol number and the following Saturday 08:00 JST, plus its card
 // image at public/recipes/vol<N>.png (see scripts/render-recipe-cards.mjs).
-// Optionally set `photo` to a finished-dish photo under public/recipes/photos/
-// (e.g. "/recipes/photos/vol19.jpg", JPEG under 1MB) — it is then shown above
-// the card in the app and sent as the first image on LINE.
+// Optionally set `image` to a different card image under public/recipes/ (e.g.
+// the Canva-designed "/recipes/vol19.jpg", JPEG under 1MB) — it is then used in
+// the app and on LINE instead of the generated vol<N>.png card.
 //
 // Nutrition values are per 1 serving, estimated from 日本食品標準成分表.
 
@@ -30,10 +30,11 @@ export const RECIPES = [
       "器に盛り、仕上げにレモン汁（分量外）をひとかけすれば香りが立って完成！",
     ],
     nutrition: { kcal: 238, p: 35.6, f: 7.1, c: 6.2, sugar: 5.5, fiber: 0.7 },
-    point:
-      "タンパク質35.6gに対して脂質わずか7.1g！減量期の主菜として最強クラスの一皿です。\n" +
-      "下味冷凍しておけば、トレ後に帰って焼くだけで10分でタンパク質補給が完了！\n" +
-      "レモンのクエン酸と鶏むね肉のイミダペプチドで疲労回復もサポート。ご飯150gを足しても約490kcalに収まります！",
+    point: {
+      good: "下味冷凍しておけば、帰って焼くだけで10分。脂質7.1gなのにタンパク質は35.6g、レモンでさっぱり最後まで食べやすい一皿です。",
+      forWho: "減量中で脂質を抑えたい人／仕事帰りでも自炊を続けたい人／トレーニング後すぐにタンパク質を摂りたい人",
+      nutrition: "鶏むね肉の良質なタンパク質で筋肉の材料をしっかり補給。イミダペプチドとレモンのクエン酸が疲労回復をサポートし、翌日に疲れを残しにくくなります。",
+    },
   },
   {
     vol: 20,
@@ -53,10 +54,11 @@ export const RECIPES = [
       "焼き色がついたら裏返し、きのこも加えて蓋をし弱火で5分蒸し焼き。鮭に火が通ったら完成！",
     ],
     nutrition: { kcal: 232, p: 30.1, f: 7.4, c: 8.9, sugar: 5.6, fiber: 3.3 },
-    point:
-      "鮭のアスタキサンチンは強力な抗酸化成分！追い込んだ後の筋肉のダメージケアにぴったりです。\n" +
-      "タンパク質30gに加え、きのこで食物繊維もしっかり摂れて腸内環境も整う！\n" +
-      "みそのコクでご飯が進むので、増量期はご飯多め、減量期はきのこを増やしてカサ増しがおすすめです！",
+    point: {
+      good: "みそ漬けで冷凍するから味がしっかり染みて、焼くだけでごはんが進む主菜に。きのこ入りでボリュームも満点です。",
+      forWho: "魚が不足しがちな人／筋肉痛や疲れが残りやすい人／お腹の調子を整えたい人",
+      nutrition: "タンパク質30.1gに加え、鮭のアスタキサンチン(抗酸化成分)が運動で受けたダメージをケア。EPA・DHAで体のコンディションを整え、きのこの食物繊維3.3gで腸内環境もサポートします。",
+    },
   },
   {
     vol: 21,
@@ -76,10 +78,11 @@ export const RECIPES = [
       "千切りキャベツと一緒に盛り付けて完成！",
     ],
     nutrition: { kcal: 298, p: 35.9, f: 9.7, c: 14.5, sugar: 12.7, fiber: 1.8 },
-    point:
-      "定番のしょうが焼きも、バラやロースではなく「ヒレ」を使えば脂質は1/3以下に！\n" +
-      "豚肉は糖質をエネルギーに変えるビタミンB1が食材トップクラス。トレーニングのパフォーマンス維持に欠かせません。\n" +
-      "生姜で体を温めて代謝もアップ！ガッツリ食べたい日の救世主です！",
+    point: {
+      good: "定番のしょうが焼きを脂質の少ないヒレ肉でアレンジ。ガッツリ感はそのままに脂質は9.7gに抑えられます。",
+      forWho: "減量中でもお肉をしっかり食べたい人／疲れやすい・だるさを感じる人／ハードに追い込んでいる人",
+      nutrition: "豚肉に豊富なビタミンB1が糖質をエネルギーに変え、トレーニング中のスタミナ切れを防ぎます。タンパク質35.9gで筋肉づくりも◎、生姜で体が温まり代謝もサポート。",
+    },
   },
   {
     vol: 22,
@@ -99,10 +102,11 @@ export const RECIPES = [
       "器に盛って完成！雑穀米と一緒に食べるのがおすすめです。",
     ],
     nutrition: { kcal: 249, p: 25.9, f: 5.6, c: 20.9, sugar: 15.1, fiber: 5.8 },
-    point:
-      "牛もも肉は鉄分・亜鉛・クレアチンが豊富で、筋力アップを狙う人の強い味方！\n" +
-      "ごぼうとしらたきで食物繊維5.8gと満足感もたっぷり。すき焼き風の甘辛味でも脂質はわずか5.6gです。\n" +
-      "週末のご褒美ごはんも、食材選びひとつでしっかりボディメイク仕様にできます！",
+    point: {
+      good: "すき焼き風の甘辛味なのに脂質はわずか5.6g。ごぼうとしらたきで食べ応えも満点の和の主菜です。",
+      forWho: "筋力・パワーを伸ばしたい人／貧血気味・疲れやすい人／週末に満足感のある和食を食べたい人",
+      nutrition: "牛もも肉の鉄分・亜鉛・クレアチンが、筋力アップと全身への酸素の運搬をサポート。ごぼうとしらたきの食物繊維5.8gで満腹感が続き、間食防止にもつながります。",
+    },
   },
   {
     vol: 23,
@@ -122,10 +126,11 @@ export const RECIPES = [
       "ハンバーグにたっぷりのきのこソースをかけて完成！",
     ],
     nutrition: { kcal: 342, p: 38.1, f: 13.9, c: 16.9, sugar: 14.4, fiber: 2.5 },
-    point:
-      "ひき肉を鶏むねに、つなぎを豆腐にすることで、ふっくら大きいのにタンパク質38.1g！\n" +
-      "動物性と植物性、2種類のタンパク質を一度に摂れるので、アミノ酸バランスも◎。\n" +
-      "ハンバーグが食べたい日も我慢不要。ボディメイク中の「満足感」はこれで作れます！",
+    point: {
+      good: "鶏むねひき肉と豆腐で作るから、ふっくら大きいのにタンパク質38.1g。きのこソースで満足感もたっぷりです。",
+      forWho: "ハンバーグを我慢したくない減量中の人／家族と同じメニューで体づくりしたい人／タンパク質量をしっかり稼ぎたい人",
+      nutrition: "動物性(鶏肉・卵)と植物性(豆腐)のタンパク質を一度に摂れてアミノ酸バランスが◎。豆腐のカルシウム・イソフラボンも摂れて、筋肉と骨の両方をサポートします。",
+    },
   },
 ];
 
@@ -141,28 +146,31 @@ function fmt(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-// The LINE message text, in the same layout as the vol.1〜18 posts.
+export function recipeImage(r) {
+  return r.image || `/recipes/vol${r.vol}.png`;
+}
+
+// The LINE message text sent under the card image (the image already shows the
+// ingredients and steps, so the text is the title, nutrition and TTGYM's Point).
 export function recipeMessageText(r) {
   const n = r.nutrition;
   return [
     `📱 【週刊：Body Make Recipe vol.${r.vol}】`,
     "",
     `「${r.title}」です！`,
+    "材料と作り方は画像をチェック👆",
     "",
-    "🍴 材料（1人分）",
-    ...r.ingredients,
-    "",
-    "🍳 作り方",
-    r.steps.map((s, i) => `${i + 1}. ${s}`).join("\n\n"),
-    "",
-    "📊 栄養成分表示（1人分）",
-    "",
-    ` エネルギー： ${n.kcal} kcal`,
-    ` P（タンパク質）： ${fmt(n.p)} g`,
-    ` F（脂質）： ${fmt(n.f)} g`,
-    ` C（炭水化物）： ${fmt(n.c)} g（糖質 ${fmt(n.sugar)}g / 食物繊維 ${fmt(n.fiber)}g）`,
+    `📊 1人分：${n.kcal}kcal ／ P ${fmt(n.p)}g ／ F ${fmt(n.f)}g ／ C ${fmt(n.c)}g`,
     "",
     "💡 TTGYM's Point",
-    r.point,
+    "",
+    "✅ このレシピの良さ",
+    r.point.good,
+    "",
+    "🙋 こんな人におすすめ",
+    r.point.forWho,
+    "",
+    "💪 摂れる栄養とカラダへの効果",
+    r.point.nutrition,
   ].join("\n");
 }

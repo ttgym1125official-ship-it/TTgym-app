@@ -1,20 +1,22 @@
 // Vercel Cron Job (see "crons" in vercel.json) — every Saturday 08:00 JST
 // (Friday 23:00 UTC) broadcasts that week's 週刊 Body Make Recipe to every
-// friend of the TTGYM LINE Official Account: the dish photo (if the recipe
-// has one), the card image (public/recipes/vol<N>.png), then the recipe text.
+// friend of the TTGYM LINE Official Account: the recipe card image, then the
+// title, nutrition and TTGYM's Point as text.
 //
 // Required Vercel environment variables:
 //   LINE_CHANNEL_ACCESS_TOKEN — same one api/line-webhook.js uses
-//   CRON_SECRET               — any long random string; Vercel sends it as
-//                                "Authorization: Bearer <CRON_SECRET>" on cron
-//                                calls, so nobody else can trigger a broadcast
+//   CRON_SECRET (optional)    — if set, Vercel sends it as
+//                                "Authorization: Bearer <CRON_SECRET>" and other
+//                                callers are rejected. Without it the endpoint is
+//                                open, which is harmless: it only ever sends the
+//                                already-due vol, and each vol at most once.
 //
 // Each broadcast counts one message per friend against the LINE plan's
 // monthly quota. A vol is only ever sent once (tracked in kv_store under
 // `recipe_broadcast:vol<N>`), so a duplicate or retried cron call is a no-op.
 
 import { createClient } from "@supabase/supabase-js";
-import { publishedRecipes, recipeMessageText } from "../src/recipes.js";
+import { publishedRecipes, recipeImage, recipeMessageText } from "../src/recipes.js";
 
 const SUPABASE_URL = "https://udfbnjatqjdswokuoqoo.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable__rOCDCsWxALHCdQbYfGcBg_7TPateU2";
@@ -39,7 +41,7 @@ async function kvSet(key, value) {
 
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
+  if (secret && req.headers.authorization !== `Bearer ${secret}`) {
     res.status(401).send("unauthorized");
     return;
   }
@@ -68,8 +70,7 @@ export default async function handler(req, res) {
     },
     body: JSON.stringify({
       messages: [
-        ...(recipe.photo ? [image(recipe.photo)] : []),
-        image(`/recipes/vol${recipe.vol}.png`),
+        image(recipeImage(recipe)),
         { type: "text", text: recipeMessageText(recipe) },
       ],
     }),

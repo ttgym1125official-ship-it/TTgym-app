@@ -8,7 +8,7 @@ import { Logo } from "./logo.jsx";
 import { getApiKey, setApiKey } from "./apiKey.js";
 import { getMemberId, supabaseConfigured } from "./supabaseClient.js";
 import { fileToCompressedDataUrl } from "./imageUtils.js";
-import { publishedRecipes } from "./recipes.js";
+import { publishedRecipes, recipeImage } from "./recipes.js";
 
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');`;
 
@@ -3562,11 +3562,7 @@ function RecipeTab() {
             </button>
             {open && (
               <div style={{ padding: "0 14px 16px" }}>
-                {r.photo && (
-                  <img src={r.photo} alt={r.title} loading="lazy"
-                    style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 10 }} />
-                )}
-                <img src={`/recipes/vol${r.vol}.png`} alt={r.title} loading="lazy"
+                <img src={recipeImage(r)} alt={r.title} loading="lazy"
                   style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 14 }} />
                 <div style={{ fontSize: 12, fontWeight: 600, color: CARD_C.goldDim, marginBottom: 6 }}>🍴 材料(1人分)</div>
                 {r.ingredients.map((line, i) => (
@@ -3588,7 +3584,12 @@ function RecipeTab() {
                   fontSize: 12, lineHeight: 1.8, color: CARD_C.ivory, whiteSpace: "pre-line",
                 }}>
                   <div style={{ fontWeight: 700, color: CARD_C.goldDim, marginBottom: 4 }}>💡 TTGYM's Point</div>
-                  {r.point}
+                  {[["✅ このレシピの良さ", r.point.good], ["🙋 こんな人におすすめ", r.point.forWho], ["💪 摂れる栄養とカラダへの効果", r.point.nutrition]].map(([label, body]) => (
+                    <div key={label} style={{ marginTop: 6 }}>
+                      <div style={{ fontWeight: 600 }}>{label}</div>
+                      <div>{body}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
