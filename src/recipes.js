@@ -16,6 +16,7 @@ export const RECIPES = [
   {
     vol: 19,
     publishAt: "2026-09-29T07:30:00+09:00",
+    image: "/recipes/vol19.jpg",
     notice:
       "システムの不具合により、約1ヶ月のあいだレシピ配信がストップしていました。楽しみにしてくださっていた皆さま、本当に申し訳ありません！\n" +
       "今日から配信を再開し、これからは毎週土曜の朝8時に新しいレシピをお届けします。引き続きよろしくお願いします！",
@@ -43,6 +44,7 @@ export const RECIPES = [
   {
     vol: 20,
     publishAt: "2026-10-03T07:30:00+09:00",
+    image: "/recipes/vol20.jpg",
     title: "鮭ときのこのみそ漬け",
     tag: "下味冷凍OK",
     minutes: 12,
@@ -67,6 +69,7 @@ export const RECIPES = [
   {
     vol: 21,
     publishAt: "2026-10-10T07:30:00+09:00",
+    image: "/recipes/vol21.jpg",
     title: "豚ヒレのしょうが焼き",
     tag: "下味冷凍OK",
     minutes: 10,
@@ -91,6 +94,7 @@ export const RECIPES = [
   {
     vol: 22,
     publishAt: "2026-10-17T07:30:00+09:00",
+    image: "/recipes/vol22.jpg",
     title: "牛もも肉とごぼうのすき煮",
     tag: "25分",
     minutes: 25,
@@ -115,6 +119,7 @@ export const RECIPES = [
   {
     vol: 23,
     publishAt: "2026-10-24T07:30:00+09:00",
+    image: "/recipes/vol23.jpg",
     title: "きのこソースの豆腐ハンバーグ",
     tag: "25分",
     minutes: 25,
