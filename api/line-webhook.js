@@ -1,8 +1,9 @@
 // Vercel Serverless Function (Node.js runtime) — receives events from the
 // TTGYM LINE Official Account (Messaging API) and either (a) links a LINE
 // user to an app profile via a one-time code the customer types into LINE
-// (shown to them in the app's 設定 screen — see LineLinkSection in App.jsx),
-// or (b) answers a free-form question about that customer's own recorded
+// (shown to them in the app's 設定 screen — see LineLinkSection in App.jsx;
+// unlinked customers get no automatic reply unless they send a code or ask
+// about 連携), or (b) answers a free-form question about that customer's own recorded
 // data, using the same Supabase kv_store the rest of the app reads/writes.
 //
 // Required Vercel environment variables (Project Settings → Environment
@@ -168,18 +169,25 @@ export default async function handler(req, res) {
 
       const linkedProfileId = await kvGet(`line_user:${lineUserId}`);
       if (!linkedProfileId) {
-        // Not linked yet — the only thing we accept from an unlinked user is
-        // their 6-character linking code from the app's 設定 screen.
-        const candidateCode = text.toUpperCase().replace(/[^A-Z0-9]/g, "");
-        const profileId = candidateCode ? await kvGet(`line_link_code:${candidateCode}`) : null;
-        if (profileId) {
-          await kvSet(`line_user:${lineUserId}`, profileId);
-          const profileRaw = await kvGet(`profile:${profileId}`);
-          const profile = safeJson(profileRaw, {});
-          await kvSet(`profile:${profileId}`, JSON.stringify({ ...profile, lineUserId }));
-          await replyToLine(replyToken, "連携が完了しました!これからLINEでお気軽に「今週の食事の合計カロリーは?」のように話しかけてください。");
-        } else {
-          await replyToLine(replyToken, "まだ連携されていません。TTGYMアプリの「設定」画面に表示されている連携コード(6文字)を、そのままメッセージで送ってください。");
+        // Not linked yet. Stay silent on ordinary messages so staff can
+        // reply to them by hand from LINE Official Account Manager's chat —
+        // only answer when the customer sends what looks like their
+        // 6-character linking code (from the app's 設定 screen) or asks
+        // about 連携 in words.
+        const normalized = text.normalize("NFKC").toUpperCase().replace(/\s/g, "");
+        if (/^[A-Z0-9]{6}$/.test(normalized)) {
+          const profileId = await kvGet(`line_link_code:${normalized}`);
+          if (profileId) {
+            await kvSet(`line_user:${lineUserId}`, profileId);
+            const profileRaw = await kvGet(`profile:${profileId}`);
+            const profile = safeJson(profileRaw, {});
+            await kvSet(`profile:${profileId}`, JSON.stringify({ ...profile, lineUserId }));
+            await replyToLine(replyToken, "連携が完了しました!これからLINEでお気軽に「今週の食事の合計カロリーは?」のように話しかけてください。");
+          } else {
+            await replyToLine(replyToken, "連携コードが見つかりませんでした。TTGYMアプリの「設定」画面に表示されている6文字のコードを、もう一度そのまま送ってください。");
+          }
+        } else if (/連携/.test(text)) {
+          await replyToLine(replyToken, "TTGYMアプリの「設定」画面(右上の歯車)に表示されている連携コード(6文字)を、このトークにそのまま送ってください。送るだけで連携が完了します。");
         }
         continue;
       }
