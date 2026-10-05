@@ -1,0 +1,40 @@
+# Backup trigger for the 週刊 Body Make Recipe LINE broadcast.
+#
+# The Vercel cron (vercel.json) calls /api/weekly-recipe at 08:00 JST. This
+# workflow calls the same endpoint again later the same morning, so a week
+# still goes out if the Vercel cron did not fire or LINE returned an error.
+# The endpoint sends each vol only once, so the extra calls are no-ops when
+# the 08:00 broadcast already succeeded. A non-200 response fails the run,
+# and GitHub emails the repository owner.
+#
+# To resend a vol that failed to go out, run this workflow manually
+# ("Run workflow") with the vol number.
+
+name: Weekly recipe backup
+
+on:
+  schedule:
+    - cron: "15 0 * * *" # 09:15 JST
+    - cron: "0 3 * * *" # 12:00 JST
+  workflow_dispatch:
+    inputs:
+      vol:
+        description: "Vol number to send now (leave empty for this week's)"
+        required: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/weekly-recipe
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VOL: ${{ github.event.inputs.vol }}
+        run: |
+          url="https://t-tgym-app.vercel.app/api/weekly-recipe"
+          if [ -n "$VOL" ]; then url="$url?vol=$VOL"; fi
+          status=$(curl -sS --max-time 60 -o body.json -w '%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" "$url")
+          echo "HTTP $status"
+          cat body.json; echo
+          test "$status" = "200"
