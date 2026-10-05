@@ -43,7 +43,7 @@ export const RECIPES = [
   },
   {
     vol: 20,
-    publishAt: "2026-10-03T07:30:00+09:00",
+    publishAt: "2026-10-06T07:30:00+09:00",
     image: "/recipes/vol20.jpg",
     title: "鮭ときのこのみそ漬け",
     tag: "下味冷凍OK",

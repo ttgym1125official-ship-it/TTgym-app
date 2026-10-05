@@ -12,6 +12,10 @@
 //                                open, which is harmless: it only ever sends the
 //                                already-due vol, and each vol at most once.
 //
+// .github/workflows/weekly-recipe-backup.yml calls this endpoint as well, as a
+// backup in case the Vercel cron does not fire; a failure there shows up as a
+// failed GitHub Actions run (and a notification email to the repo owner).
+//
 // Each broadcast counts one message per friend against the LINE plan's
 // monthly quota. A vol is only ever sent once (tracked in kv_store under
 // `recipe_broadcast:vol<N>`), so a duplicate or retried cron call is a no-op.
@@ -48,9 +52,14 @@ export default async function handler(req, res) {
   }
 
   const now = new Date();
-  const recipe = publishedRecipes(now)[0];
-  if (!recipe || now.getTime() - new Date(recipe.publishAt).getTime() > MAX_LATENESS_MS) {
-    res.status(200).json({ sent: false, reason: "no recipe due this week" });
+  // `?vol=N` sends that (already published) vol even if it is past
+  // MAX_LATENESS — used to catch up a week that failed to go out.
+  const requestedVol = Number(req.query?.vol);
+  const recipe = requestedVol
+    ? publishedRecipes(now).find(r => r.vol === requestedVol)
+    : publishedRecipes(now)[0];
+  if (!recipe || (!requestedVol && now.getTime() - new Date(recipe.publishAt).getTime() > MAX_LATENESS_MS)) {
+    res.status(200).json({ sent: false, reason: requestedVol ? `vol.${requestedVol} is not published` : "no recipe due this week" });
     return;
   }
 
@@ -79,6 +88,7 @@ export default async function handler(req, res) {
 
   if (!response.ok) {
     const detail = await response.text();
+    console.error(`weekly-recipe: LINE broadcast of vol.${recipe.vol} failed`, response.status, detail);
     res.status(502).json({ sent: false, vol: recipe.vol, status: response.status, detail });
     return;
   }
