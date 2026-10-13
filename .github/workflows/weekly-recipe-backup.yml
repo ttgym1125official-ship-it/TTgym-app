@@ -33,8 +33,16 @@ jobs:
         run: |
           url="https://t-tgym-app.vercel.app/api/weekly-recipe"
           if [ -n "$VOL" ]; then url="$url?vol=$VOL"; fi
+          : > body.json
           status=$(curl -sS --max-time 60 -o body.json -w '%{http_code}' \
-            -H "Authorization: Bearer $CRON_SECRET" "$url")
+            -H "Authorization: Bearer $CRON_SECRET" "$url" || true)
           echo "HTTP $status"
           cat body.json; echo
-          test "$status" = "200"
+          # Also surface the response as an annotation so it is visible on
+          # the run page (and via the check-runs API) without opening logs.
+          if [ "$status" = "200" ]; then
+            echo "::notice title=weekly-recipe::HTTP $status $(head -c 900 body.json | tr '\n' ' ')"
+          else
+            echo "::error title=weekly-recipe::HTTP $status $(head -c 900 body.json | tr '\n' ' ')"
+            exit 1
+          fi
