@@ -43,7 +43,7 @@ export const RECIPES = [
   },
   {
     vol: 20,
-    publishAt: "2026-10-06T07:30:00+09:00",
+    publishAt: "2026-10-14T07:30:00+09:00",
     image: "/recipes/vol20.jpg",
     title: "鮭ときのこのみそ漬け",
     tag: "下味冷凍OK",
@@ -68,7 +68,7 @@ export const RECIPES = [
   },
   {
     vol: 21,
-    publishAt: "2026-10-10T07:30:00+09:00",
+    publishAt: "2026-10-17T07:30:00+09:00",
     image: "/recipes/vol21.jpg",
     title: "豚ヒレのしょうが焼き",
     tag: "下味冷凍OK",
@@ -93,7 +93,7 @@ export const RECIPES = [
   },
   {
     vol: 22,
-    publishAt: "2026-10-17T07:30:00+09:00",
+    publishAt: "2026-10-24T07:30:00+09:00",
     image: "/recipes/vol22.jpg",
     title: "牛もも肉とごぼうのすき煮",
     tag: "25分",
@@ -118,7 +118,7 @@ export const RECIPES = [
   },
   {
     vol: 23,
-    publishAt: "2026-10-24T07:30:00+09:00",
+    publishAt: "2026-10-31T07:30:00+09:00",
     image: "/recipes/vol23.jpg",
     title: "きのこソースの豆腐ハンバーグ",
     tag: "25分",
@@ -143,7 +143,7 @@ export const RECIPES = [
   },
   {
     vol: 24,
-    publishAt: "2026-10-31T07:30:00+09:00",
+    publishAt: "2026-11-07T07:30:00+09:00",
     image: "/recipes/vol24.jpg",
     title: "たらと小松菜の豆乳みそスープ",
     tag: "腸活スープ",
@@ -168,7 +168,7 @@ export const RECIPES = [
   },
   {
     vol: 25,
-    publishAt: "2026-11-07T07:30:00+09:00",
+    publishAt: "2026-11-14T07:30:00+09:00",
     image: "/recipes/vol25.jpg",
     title: "ささみの塩昆布炒め",
     tag: "時短10分",
