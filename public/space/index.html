@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TTGYM スペースレンタル｜キックボクシングエリア 1時間3,000円</title>
+<meta name="description" content="TTGYMのキックボクシングエリアを10:00〜14:00限定で時間貸し。1時間3,000円。自主練・出張パーソナル・ミット練習に。予約は公式LINEから。" />
+<!-- SNS経由だけで静かに集客するため検索エンジンには載せない設定。Google検索にも出したくなったらこの1行を消す -->
+<meta name="robots" content="noindex" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="キックボクシングエリア、貸します。1時間3,000円｜TTGYM" />
+<meta property="og:description" content="10:00〜14:00限定。自主練・出張パーソナル・ミット練習に。予約は公式LINEから。" />
+<meta property="og:image" content="/space/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#0D0D0D" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0D0D0D;
+    --bg2: #161616;
+    --card: #1C1C1C;
+    --line: #2C2C2C;
+    --text: #FAFAFA;
+    --muted: #B8B2A7;
+    --gold: #D4AF37;
+    --gold-soft: rgba(212, 175, 55, 0.12);
+    --red: #E2504B;
+    --line-green: #06C755;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans JP', system-ui, sans-serif; line-height: 1.75;
+    -webkit-font-smoothing: antialiased; padding-bottom: 84px;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+  .serif { font-family: 'Noto Serif JP', serif; }
+  .mono { font-family: 'Space Mono', monospace; }
+
+  header.top { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; max-width: 720px; margin: 0 auto; }
+  .logo { font-family: 'Noto Serif JP', serif; font-weight: 700; letter-spacing: 3px; color: var(--gold); font-size: 20px; }
+  .tag { font-size: 11px; letter-spacing: 2px; color: var(--muted); border: 1px solid var(--line); padding: 3px 10px; border-radius: 99px; }
+
+  .hero { padding: 40px 0 56px; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(600px 300px at 85% 10%, rgba(212,175,55,0.16), transparent 70%),
+      repeating-linear-gradient(135deg, transparent 0 22px, rgba(255,255,255,0.025) 22px 23px);
+    pointer-events: none;
+  }
+  .eyebrow { color: var(--gold); font-weight: 700; letter-spacing: 3px; font-size: 13px; }
+  h1 { font-family: 'Noto Serif JP', serif; font-weight: 900; font-size: clamp(34px, 9vw, 56px); line-height: 1.25; margin: 12px 0 20px; }
+  h1 em { font-style: normal; color: var(--gold); }
+  .lead { color: var(--muted); font-size: 15px; margin: 0 0 28px; }
+  .price-badge { display: inline-flex; align-items: baseline; gap: 8px; background: var(--gold-soft); border: 1px solid rgba(212,175,55,0.4); border-radius: 14px; padding: 14px 20px; margin-bottom: 8px; }
+  .price-badge .yen { font-family: 'Space Mono', monospace; font-size: 40px; color: var(--gold); line-height: 1; }
+  .price-badge .unit { font-size: 14px; color: var(--muted); }
+  .time-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 28px; }
+  .chip { font-size: 13px; padding: 6px 12px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); }
+  .chip.warn { border-color: rgba(226,80,75,0.5); color: #FFB3B0; }
+
+  .btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; text-decoration: none; font-weight: 900; font-size: 17px; border-radius: 14px; padding: 18px 20px; transition: transform .15s ease, filter .15s ease; }
+  .btn:active { transform: scale(0.98); }
+  .btn-line { background: var(--line-green); color: #fff; box-shadow: 0 10px 30px rgba(6,199,85,0.25); }
+  .btn-line:hover { filter: brightness(1.05); }
+  .btn-sub { margin-top: 10px; background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; font-size: 14px; padding: 13px; }
+  .btn svg { width: 24px; height: 24px; flex: none; }
+  .note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; }
+
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  section.alt { background: var(--bg2); }
+  h2 { font-family: 'Noto Serif JP', serif; font-size: clamp(24px, 6vw, 32px); line-height: 1.4; margin: 0 0 8px; }
+  .sec-label { font-family: 'Space Mono', monospace; color: var(--gold); font-size: 12px; letter-spacing: 3px; }
+  .sec-lead { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .icon { font-size: 26px; line-height: 1; margin-bottom: 10px; }
+
+  .plan { position: relative; border-radius: 18px; padding: 24px; margin-bottom: 14px; }
+  .plan.main { background: linear-gradient(160deg, #22201A, #171717); border: 1.5px solid var(--gold); }
+  .plan.shoot { background: var(--card); border: 1px solid var(--line); }
+  .plan .badge { position: absolute; top: -12px; left: 20px; background: var(--gold); color: #111; font-size: 12px; font-weight: 900; padding: 3px 12px; border-radius: 99px; }
+  .plan h3 { margin: 4px 0 8px; font-size: 18px; }
+  .plan .p { font-family: 'Space Mono', monospace; font-size: 36px; color: var(--gold); line-height: 1.1; }
+  .plan.shoot .p { color: var(--text); }
+  .plan .p small { font-family: 'Noto Sans JP', sans-serif; font-size: 14px; color: var(--muted); margin-left: 4px; }
+  .plan ul { margin: 14px 0 0; padding: 0; list-style: none; font-size: 14px; }
+  .plan li { padding: 6px 0 6px 24px; position: relative; border-top: 1px dashed var(--line); }
+  .plan li::before { content: "✓"; position: absolute; left: 2px; color: var(--gold); font-weight: 700; }
+  .plan li.ng::before { content: "×"; color: var(--red); }
+
+  .nophoto { display: flex; gap: 16px; align-items: flex-start; background: rgba(226,80,75,0.08); border: 1px solid rgba(226,80,75,0.4); border-radius: 16px; padding: 20px; margin-top: 8px; }
+  .nophoto .mark { flex: none; width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--red); display: grid; place-items: center; position: relative; font-size: 22px; }
+  .nophoto .mark::after { content: ""; position: absolute; width: 3px; height: 56px; background: var(--red); transform: rotate(45deg); }
+  .nophoto h3 { margin: 0 0 4px; font-size: 16px; color: #FFB3B0; }
+  .nophoto p { margin: 0; font-size: 13px; color: var(--muted); }
+
+  .spec { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .spec th, .spec td { text-align: left; padding: 14px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .spec th { width: 34%; color: var(--muted); font-weight: 500; }
+
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+  .steps li { counter-increment: s; position: relative; padding: 0 0 26px 58px; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--gold); color: #111; font-family: 'Space Mono', monospace; font-weight: 700; display: grid; place-items: center; }
+  .steps li::after { content: ""; position: absolute; left: 19px; top: 44px; bottom: 4px; width: 2px; background: var(--line); }
+  .steps li:last-child::after { display: none; }
+  .steps h3 { margin: 6px 0 2px; font-size: 16px; }
+  .steps p { margin: 0; color: var(--muted); font-size: 14px; }
+  .msg { margin-top: 10px; background: #1F2A22; border: 1px solid #2E4535; border-radius: 12px; padding: 12px 14px; font-size: 13px; white-space: pre-line; color: #D9F2E1; }
+
+  .rules { list-style: none; padding: 0; margin: 0; }
+  .rules li { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; display: flex; gap: 12px; }
+  .rules li b { display: block; }
+  .rules li span { color: var(--muted); font-size: 13px; }
+  .rules .n { font-family: 'Space Mono', monospace; color: var(--gold); flex: none; width: 24px; }
+
+  details { border-bottom: 1px solid var(--line); padding: 4px 0; }
+  summary { cursor: pointer; list-style: none; padding: 14px 28px 14px 0; font-weight: 700; font-size: 15px; position: relative; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; position: absolute; right: 4px; top: 10px; color: var(--gold); font-size: 22px; font-weight: 400; }
+  details[open] summary::after { content: "−"; }
+  details p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+
+  .final { text-align: center; padding: 64px 0 40px; }
+  .final h2 { margin-bottom: 12px; }
+  .scarcity { display: inline-block; font-size: 13px; color: var(--gold); border: 1px solid rgba(212,175,55,0.4); border-radius: 99px; padding: 4px 14px; margin-bottom: 20px; }
+
+  footer { text-align: center; color: #6E6A62; font-size: 12px; padding: 24px 20px 32px; border-top: 1px solid var(--line); }
+
+  .sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(13,13,13,0.92); backdrop-filter: blur(10px); border-top: 1px solid var(--line); transform: translateY(110%); transition: transform .25s ease; }
+  .sticky.show { transform: none; }
+  .sticky .inner { max-width: 720px; margin: 0 auto; display: flex; gap: 10px; align-items: center; }
+  .sticky .info { flex: none; font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .sticky .info b { display: block; font-family: 'Space Mono', monospace; color: var(--gold); font-size: 16px; }
+  .sticky .btn { padding: 14px; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<!--
+  ===== ここだけ書き換えればOK =====
+  data-line-id   : 公式LINEのベーシックID（@から始まるID）。LINE Official Account Manager → ホーム右上
+  data-line-url  : 友だち追加URL（https://lin.ee/xxxx）。同じ画面の「友だちを増やす」→「URLを作成」
+  data-address   : 住所（番地まで出すかは任意。予約確定後にLINEで送る運用なら「〇〇駅 徒歩〇分」だけでもOK）
+  data-capacity  : 同時利用の最大人数
+-->
+<div id="config" hidden
+  data-line-id="@000aaaaa"
+  data-line-url="https://lin.ee/XXXXXXX"
+  data-address="〇〇駅 徒歩〇分（詳しい住所は予約確定後にLINEでお送りします）"
+  data-capacity="4"
+></div>
+
+<header class="top">
+  <div class="logo">TTGYM</div>
+  <div class="tag">SPACE RENTAL</div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">昼の空き時間だけ／1日4枠限定</div>
+    <h1 class="serif">キックボクシング<br />エリア、<em>貸します。</em></h1>
+    <p class="lead">サンドバッグもマットも揃ったパーソナルジムの一角を、1時間単位で使い放題。自主練にも、出張パーソナルにも。</p>
+    <div class="price-badge"><span class="yen">¥3,000</span><span class="unit">／1時間（税込）</span></div>
+    <div class="time-row">
+      <span class="chip">⏰ 10:00〜14:00</span>
+      <span class="chip">👥 最大<span data-fill="capacity">4</span>名まで同料金</span>
+      <span class="chip warn">📵 撮影は禁止</span>
+    </div>
+    <a class="btn btn-line js-reserve" href="#">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.48 3 2 6.58 2 11c0 3.96 3.55 7.27 8.35 7.9.33.07.77.22.88.5.1.25.07.65.03.9l-.14.85c-.04.25-.2.98.86.53 1.06-.45 5.73-3.37 7.82-5.78C21.25 14.3 22 12.74 22 11c0-4.42-4.48-8-10-8z"/></svg>
+      LINEで空き状況を確認する
+    </a>
+    <p class="note">送信するだけで予約フォームが届きます／返信は営業時間内</p>
+  </div>
+</div>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="sec-label">FOR YOU</div>
+    <h2>こんな人に使われています</h2>
+    <p class="sec-lead">大手ジムだと気をつかう「打撃系」や「ミット」も、ここなら気兼ねなく。</p>
+    <div class="grid2">
+      <div class="card"><div class="icon">🥊</div><h3>キック・ボクシングの自主練</h3><p>サンドバッグを好きなだけ叩ける。ジムの混雑時間を避けたい方に。</p></div>
+      <div class="card"><div class="icon">🤝</div><h3>ミット打ち・2人練習</h3><p>友人や練習仲間とミット持ち合い。同料金で複数人OK。</p></div>
+      <div class="card"><div class="icon">🏋️</div><h3>フリーのトレーナーさん</h3><p>お客様とのセッション会場に。レンタルジムより落ち着いた空間。</p></div>
+      <div class="card"><div class="icon">🧘</div><h3>ストレッチ・体幹・ダンス</h3><p>マットの広いスペースで、自分のペースで動きたい方に。</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">PRICE</div>
+    <h2>料金プラン</h2>
+    <p class="sec-lead">追加料金なし。1時間単位でご予約いただけます。</p>
+
+    <div class="plan main">
+      <span class="badge">基本はこちら</span>
+      <h3>スタンダード</h3>
+      <div class="p">¥3,000<small>／1時間</small></div>
+      <ul>
+        <li>キックボクシングエリアを時間内使い放題</li>
+        <li>サンドバッグ・マット・備品の利用込み</li>
+        <li>最大<span data-fill="capacity">4</span>名まで同料金</li>
+        <li class="ng">写真・動画の撮影は不可（スマホ含む）</li>
+      </ul>
+    </div>
+
+    <div class="plan shoot">
+      <h3>撮影プラン</h3>
+      <div class="p">¥30,000<small>／1時間</small></div>
+      <ul>
+        <li>写真・動画の撮影OK（SNS投稿・商用利用も可）</li>
+        <li>撮影内容は事前にLINEでご相談ください</li>
+        <li>他のお客様が映り込まないよう時間を調整します</li>
+      </ul>
+    </div>
+
+    <div class="nophoto">
+      <div class="mark">📷</div>
+      <div>
+        <h3>撮影禁止にしている理由</h3>
+        <p>ジムを利用する会員さんのプライバシーと、トレーニング空間を守るためです。フォーム確認の動画も含め、撮影は撮影プランのみとさせてください。無断撮影が確認された場合は撮影プラン料金をご請求します。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="sec-label">SPACE</div>
+    <h2>スペース・設備</h2>
+    <p class="sec-lead">ジム内の「大きいほうの1面」をそのままお使いいただけます。</p>
+    <table class="spec">
+      <tr><th>利用時間</th><td>10:00〜14:00（最終スタート 13:00）</td></tr>
+      <tr><th>利用単位</th><td>1時間〜（準備・片付けを含む）</td></tr>
+      <tr><th>エリア</th><td>キックボクシングエリア（マット敷き）</td></tr>
+      <tr><th>設備</th><td>サンドバッグ／マット／更衣スペース</td></tr>
+      <tr><th>持ち物</th><td>室内シューズ or 裸足OK、グローブ・バンテージ、タオル、飲み物</td></tr>
+      <tr><th>人数</th><td>最大<span data-fill="capacity">4</span>名</td></tr>
+      <tr><th>場所</th><td data-fill="address">〇〇駅 徒歩〇分</td></tr>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">FLOW</div>
+    <h2>予約の流れ</h2>
+    <p class="sec-lead">会員登録・入会金は不要。LINEだけで完結します。</p>
+    <ol class="steps">
+      <li><h3>LINEで「スペース予約」と送る</h3><p>下のボタンを押すと、メッセージが入力された状態でLINEが開きます。</p></li>
+      <li><h3>希望の日時を送る</h3><p>届いたフォームに日時・人数・プランを書いて返信。</p>
+        <div class="msg">希望日：10/20（月）
+時間：11:00〜13:00
+人数：2名
+プラン：スタンダード</div></li>
+      <li><h3>予約確定・事前決済</h3><p>空きを確認してスタッフからご連絡します。お支払いは事前にお願いしています。</p></li>
+      <li><h3>当日はそのまま来るだけ</h3><p>受付で名前を伝えて利用スタート。時間になったら片付けて終了です。</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="sec-label">RULES</div>
+    <h2>ご利用ルール</h2>
+    <p class="sec-lead">気持ちよく使っていただくための約束です。予約時に同意いただきます。</p>
+    <ul class="rules">
+      <li><span class="n">01</span><div><b>撮影は撮影プランのみ</b><span>写真・動画ともに不可（スマホ・三脚・フォーム確認含む）。無断撮影は撮影プラン料金をご請求します。</span></div></li>
+      <li><span class="n">02</span><div><b>時間厳守</b><span>準備・着替え・片付けも利用時間内でお願いします。延長は空きがある場合のみ。</span></div></li>
+      <li><span class="n">03</span><div><b>隣のエリアはパーソナル利用中のことがあります</b><span>大声・音楽の大音量はご遠慮ください。</span></div></li>
+      <li><span class="n">04</span><div><b>土足禁止・使用後は軽く清掃</b><span>汗はタオルで拭き取りをお願いします。</span></div></li>
+      <li><span class="n">05</span><div><b>ケガ・事故は自己責任</b><span>設備を壊した場合は実費をご負担いただく場合があります。</span></div></li>
+      <li><span class="n">06</span><div><b>キャンセル</b><span>前日まで無料／当日キャンセル・無断キャンセルは料金の100%を頂戴します。</span></div></li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">FAQ</div>
+    <h2>よくある質問</h2>
+    <details><summary>ジムの会員じゃなくても使えますか？</summary><p>はい、どなたでもご利用いただけます。入会金・登録料もかかりません。</p></details>
+    <details><summary>1人でも予約できますか？</summary><p>もちろんです。1名でも最大<span data-fill="capacity">4</span>名でも料金は同じです。</p></details>
+    <details><summary>自分のお客様を連れてきてセッションしてもいいですか？</summary><p>はい、フリーのトレーナーさんのご利用も歓迎です。人数に応じて事前にお知らせください。</p></details>
+    <details><summary>フォームチェック用にスマホで少しだけ撮りたいのですが…</summary><p>申し訳ありませんが、短時間・自分用でも撮影はお受けしていません。撮影したい場合は撮影プランをご利用ください。</p></details>
+    <details><summary>ミットやグローブは借りられますか？</summary><p>備品の有無は予約時にLINEでお問い合わせください。基本的にはご自身でのお持ち込みをおすすめしています。</p></details>
+    <details><summary>支払い方法は？</summary><p>予約確定時にLINEでご案内します。事前決済をお願いしています。</p></details>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap">
+    <div class="scarcity">1日4枠だけの限定スペース</div>
+    <h2 class="serif">空いている時間、<br />聞くだけでもOK。</h2>
+    <p class="sec-lead">LINEで「スペース予約」と送るだけ。</p>
+    <a class="btn btn-line js-reserve" href="#">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.48 3 2 6.58 2 11c0 3.96 3.55 7.27 8.35 7.9.33.07.77.22.88.5.1.25.07.65.03.9l-.14.85c-.04.25-.2.98.86.53 1.06-.45 5.73-3.37 7.82-5.78C21.25 14.3 22 12.74 22 11c0-4.42-4.48-8-10-8z"/></svg>
+      LINEで空き状況を確認する
+    </a>
+    <a class="btn btn-sub js-friend" href="#">まずは友だち追加だけする</a>
+  </div>
+</div>
+
+<footer>© TTGYM — Personal Training Gym</footer>
+
+<div class="sticky" id="sticky">
+  <div class="inner">
+    <div class="info"><b>¥3,000</b>／1時間</div>
+    <a class="btn btn-line js-reserve" href="#">LINEで予約する</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  var cfg = document.getElementById("config").dataset;
+
+  // どのSNSから来たかを予約メッセージに入れる（各SNSのプロフィールに ?from=x / ?from=threads / ?from=tiktok を付けたURLを貼る）
+  var params = new URLSearchParams(location.search);
+  var sources = { x: "X", threads: "Threads", tiktok: "TikTok", ig: "Instagram" };
+  var from = sources[(params.get("from") || params.get("utm_source") || "").toLowerCase()] || "";
+
+  var text = "スペース予約\n希望日：\n時間：\n人数：\nプラン：スタンダード" + (from ? "\nきっかけ：" + from : "");
+  // oaMessage は公式LINEのトーク画面を、メッセージ入力済みの状態で開くLINE公式のURL形式
+  var reserveUrl = "https://line.me/R/oaMessage/" + encodeURIComponent(cfg.lineId) + "/?" + encodeURIComponent(text);
+
+  document.querySelectorAll(".js-reserve").forEach(function (a) { a.href = reserveUrl; });
+  document.querySelectorAll(".js-friend").forEach(function (a) { a.href = cfg.lineUrl; });
+  document.querySelectorAll('[data-fill="capacity"]').forEach(function (el) { el.textContent = cfg.capacity; });
+  document.querySelectorAll('[data-fill="address"]').forEach(function (el) { el.textContent = cfg.address; });
+
+  // ファーストビューのボタンが見えなくなったら下部固定ボタンを出す
+  var sticky = document.getElementById("sticky");
+  var heroBtn = document.querySelector(".hero .js-reserve");
+  var finalBtn = document.querySelector(".final .js-reserve");
+  var visible = new Set();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { e.isIntersecting ? visible.add(e.target) : visible.delete(e.target); });
+    sticky.classList.toggle("show", visible.size === 0);
+  });
+  io.observe(heroBtn);
+  io.observe(finalBtn);
+})();
+</script>
+</body>
+</html>
