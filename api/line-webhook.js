@@ -135,6 +135,16 @@ ${JSON.stringify(context)}
   return await callClaudeText(prompt);
 }
 
+// Reply for the space-rental LP's prefilled message. If the customer already
+// filled in a date, just acknowledge it — staff confirm availability and
+// payment by hand from LINE Official Account Manager's chat.
+function spaceRentalReply(text) {
+  if (/希望日[：:][ \t　]*[^\s]/.test(text)) {
+    return "貸切予約のご希望ありがとうございます!\n空き状況を確認して、スタッフから折り返しご連絡します。少々お待ちください。\n\n※撮影(写真・動画)は撮影プランのみ可能です\n※前日までキャンセル無料/当日キャンセルは100%";
+  }
+  return "貸切予約ありがとうございます!\n下の内容をコピーして、ご希望を書いて送ってください。\n\n希望日:\n時間:(9:00〜14:00の間で1時間単位)\n人数:(最大8名)\nプラン:スタンダード(¥5,000/h・撮影不可)or 撮影プラン(¥35,000/h)\nグローブ・ミット:あり(¥2,000)/なし\nお名前:";
+}
+
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
@@ -166,6 +176,13 @@ export default async function handler(req, res) {
       const replyToken = event.replyToken;
       const text = (event.message.text || "").trim();
       if (!lineUserId || !replyToken) continue;
+
+      // Space-rental bookings (from the /space LP) come in for members and
+      // non-members alike, so handle them before the linked/unlinked split.
+      if (/貸切予約|スペース予約|スペースレンタル|場所貸し/.test(text)) {
+        await replyToLine(replyToken, spaceRentalReply(text));
+        continue;
+      }
 
       const linkedProfileId = await kvGet(`line_user:${lineUserId}`);
       if (!linkedProfileId) {
