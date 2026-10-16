@@ -1,4 +1,4 @@
-// Renders the share card (OGP image) for the space-rental LP to
+// Renders the share card (OGP image) for the private-gym rental LP to
 // public/space/og.png — the image X / Threads / LINE show when the LP link
 // is posted.
 //
@@ -6,6 +6,7 @@
 //   node scripts/render-space-og.mjs
 
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,26 +22,25 @@ async function loadChromium() {
   }
 }
 
+const photo = "data:image/jpeg;base64," + readFileSync(path.join(root, "public", "space", "img", "bag.jpg")).toString("base64");
+
 const html = `<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;900&family=Noto+Serif+JP:wght@900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;900&family=Montserrat:wght@800&display=swap" rel="stylesheet">
 <style>
-  body { margin:0; width:1200px; height:630px; background:#0D0D0D; color:#FAFAFA; font-family:'Noto Sans JP',sans-serif; position:relative; overflow:hidden; }
-  .bg { position:absolute; inset:0; background: radial-gradient(700px 400px at 90% 0%, rgba(212,175,55,.22), transparent 70%), repeating-linear-gradient(135deg, transparent 0 30px, rgba(255,255,255,.03) 30px 31px); }
-  .in { position:absolute; inset:64px 72px; display:flex; flex-direction:column; }
-  .logo { font-family:'Noto Serif JP',serif; color:#D4AF37; letter-spacing:6px; font-size:30px; font-weight:900; }
-  h1 { font-family:'Noto Serif JP',serif; font-weight:900; font-size:84px; line-height:1.2; margin:28px 0 0; }
-  h1 em { font-style:normal; color:#D4AF37; }
-  .row { margin-top:auto; display:flex; align-items:flex-end; gap:28px; }
-  .price { font-family:'Space Mono',monospace; font-size:88px; color:#D4AF37; line-height:1; }
-  .price small { font-family:'Noto Sans JP'; font-size:30px; color:#B8B2A7; }
-  .chips { display:flex; gap:12px; margin-left:auto; }
-  .chip { font-size:26px; font-weight:500; padding:10px 22px; border-radius:99px; border:2px solid #2C2C2C; background:#1C1C1C; }
-  .chip.r { border-color:rgba(226,80,75,.6); color:#FFB3B0; }
-</style></head><body><div class="bg"></div><div class="in">
-  <div class="logo">TTGYM SPACE RENTAL</div>
-  <h1>キックボクシングエリア、<br><em>貸します。</em></h1>
-  <div class="row"><div class="price">¥3,000<small> /1時間</small></div>
-  <div class="chips"><span class="chip">10:00〜14:00</span><span class="chip r">撮影禁止</span></div></div>
+  body { margin:0; width:1200px; height:630px; background:#111; color:#fff; font-family:'Noto Sans JP',sans-serif; position:relative; overflow:hidden; }
+  .ph { position:absolute; right:0; top:0; width:560px; height:630px; background:url(${photo}) center/cover; }
+  .ph::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,#111 0%,rgba(17,17,17,.3) 45%,rgba(17,17,17,0) 100%); }
+  .giant { position:absolute; left:-10px; bottom:-40px; font-family:'Montserrat'; font-weight:800; font-size:240px; color:rgba(255,255,255,.06); line-height:1; }
+  .in { position:absolute; left:72px; top:64px; bottom:64px; width:760px; display:flex; flex-direction:column; }
+  .brand { font-family:'Montserrat'; font-weight:800; font-size:34px; letter-spacing:4px; }
+  h1 { font-weight:900; font-size:82px; line-height:1.28; margin:26px 0 0; letter-spacing:2px; }
+  .row { margin-top:auto; display:flex; gap:14px; }
+  .chip { font-size:30px; font-weight:900; padding:12px 26px; background:linear-gradient(90deg,#4A7CF0,#8EA5E6); }
+  .chip.k { background:#fff; color:#111; }
+</style></head><body><div class="ph"></div><div class="giant">PRIVATE</div><div class="in">
+  <div class="brand">TTGYM</div>
+  <h1>このジム、<br>まるごと貸切。</h1>
+  <div class="row"><span class="chip">1時間 ¥5,000</span><span class="chip k">最大8名</span><span class="chip k">9:00–14:00</span></div>
 </div></body></html>`;
 
 const chromium = await loadChromium();

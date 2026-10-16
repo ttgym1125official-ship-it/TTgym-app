@@ -3,145 +3,191 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TTGYM スペースレンタル｜キックボクシングエリア 1時間3,000円</title>
-<meta name="description" content="TTGYMのキックボクシングエリアを10:00〜14:00限定で時間貸し。1時間3,000円。自主練・出張パーソナル・ミット練習に。予約は公式LINEから。" />
+<title>TTGYM 貸切プライベートジム｜1時間5,000円・最大8名</title>
+<meta name="description" content="TTGYMのジムを9:00〜14:00限定でまるごと貸切。1時間5,000円・最大8名まで同料金。サンドバッグ・バトルロープ完備。予約は公式LINEから。" />
 <!-- SNS経由だけで静かに集客するため検索エンジンには載せない設定。Google検索にも出したくなったらこの1行を消す -->
 <meta name="robots" content="noindex" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="キックボクシングエリア、貸します。1時間3,000円｜TTGYM" />
-<meta property="og:description" content="10:00〜14:00限定。自主練・出張パーソナル・ミット練習に。予約は公式LINEから。" />
+<meta property="og:title" content="このジム、まるごと貸切。1時間5,000円｜TTGYM" />
+<meta property="og:description" content="9:00〜14:00限定・最大8名まで同料金。サンドバッグ・バトルロープ完備。予約は公式LINEから。" />
 <meta property="og:image" content="/space/og.png" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="theme-color" content="#0D0D0D" />
+<meta name="theme-color" content="#111111" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0D0D0D;
-    --bg2: #161616;
-    --card: #1C1C1C;
-    --line: #2C2C2C;
-    --text: #FAFAFA;
-    --muted: #B8B2A7;
-    --gold: #D4AF37;
-    --gold-soft: rgba(212, 175, 55, 0.12);
-    --red: #E2504B;
-    --line-green: #06C755;
+    --ink: #222222;
+    --sub: #5E6470;
+    --paper: #FFFFFF;
+    --pale: #E4EAFA;
+    --gray: #F3F4F7;
+    --line: #DADDE5;
+    --black: #111111;
+    --blue: #4A7CF0;
+    --blue2: #8EA5E6;
+    --grad: linear-gradient(90deg, var(--blue), var(--blue2));
+    --en: 'Montserrat', 'Noto Sans JP', sans-serif;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: 'Noto Sans JP', system-ui, sans-serif; line-height: 1.75;
-    -webkit-font-smoothing: antialiased; padding-bottom: 84px;
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'Noto Sans JP', system-ui, sans-serif; line-height: 1.9; letter-spacing: .06em;
+    -webkit-font-smoothing: antialiased; padding-bottom: 96px; overflow-x: hidden;
   }
+  img, video { display: block; max-width: 100%; }
   a { color: inherit; }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
-  .serif { font-family: 'Noto Serif JP', serif; }
-  .mono { font-family: 'Space Mono', monospace; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 32px; }
+  .center { text-align: center; }
 
-  header.top { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; max-width: 720px; margin: 0 auto; }
-  .logo { font-family: 'Noto Serif JP', serif; font-weight: 700; letter-spacing: 3px; color: var(--gold); font-size: 20px; }
-  .tag { font-size: 11px; letter-spacing: 2px; color: var(--muted); border: 1px solid var(--line); padding: 3px 10px; border-radius: 99px; }
-
-  .hero { padding: 40px 0 56px; position: relative; overflow: hidden; }
-  .hero::before {
-    content: ""; position: absolute; inset: 0;
-    background:
-      radial-gradient(600px 300px at 85% 10%, rgba(212,175,55,0.16), transparent 70%),
-      repeating-linear-gradient(135deg, transparent 0 22px, rgba(255,255,255,0.025) 22px 23px);
-    pointer-events: none;
+  /* ---------- CTA ---------- */
+  .cta {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 22px 16px; background: var(--grad); color: #fff;
+    font-weight: 900; font-size: 18px; letter-spacing: .12em; text-decoration: none;
+    box-shadow: 0 8px 24px rgba(74,124,240,.25); transition: filter .15s, transform .15s;
   }
-  .eyebrow { color: var(--gold); font-weight: 700; letter-spacing: 3px; font-size: 13px; }
-  h1 { font-family: 'Noto Serif JP', serif; font-weight: 900; font-size: clamp(34px, 9vw, 56px); line-height: 1.25; margin: 12px 0 20px; }
-  h1 em { font-style: normal; color: var(--gold); }
-  .lead { color: var(--muted); font-size: 15px; margin: 0 0 28px; }
-  .price-badge { display: inline-flex; align-items: baseline; gap: 8px; background: var(--gold-soft); border: 1px solid rgba(212,175,55,0.4); border-radius: 14px; padding: 14px 20px; margin-bottom: 8px; }
-  .price-badge .yen { font-family: 'Space Mono', monospace; font-size: 40px; color: var(--gold); line-height: 1; }
-  .price-badge .unit { font-size: 14px; color: var(--muted); }
-  .time-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 28px; }
-  .chip { font-size: 13px; padding: 6px 12px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); }
-  .chip.warn { border-color: rgba(226,80,75,0.5); color: #FFB3B0; }
+  .cta:hover { filter: brightness(1.06); }
+  .cta:active { transform: scale(.985); }
+  .cta svg { width: 22px; height: 22px; flex: none; }
+  .cta-note { font-size: 12px; color: var(--sub); text-align: center; margin: 10px 0 0; letter-spacing: .04em; }
 
-  .btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; text-decoration: none; font-weight: 900; font-size: 17px; border-radius: 14px; padding: 18px 20px; transition: transform .15s ease, filter .15s ease; }
-  .btn:active { transform: scale(0.98); }
-  .btn-line { background: var(--line-green); color: #fff; box-shadow: 0 10px 30px rgba(6,199,85,0.25); }
-  .btn-line:hover { filter: brightness(1.05); }
-  .btn-sub { margin-top: 10px; background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; font-size: 14px; padding: 13px; }
-  .btn svg { width: 24px; height: 24px; flex: none; }
-  .note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; }
+  /* ---------- HERO ---------- */
+  .hero { position: relative; height: min(100svh, 860px); min-height: 600px; overflow: hidden; background: var(--black); color: #fff; }
+  .hero video, .hero .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.25) 0%, rgba(0,0,0,.05) 40%, rgba(0,0,0,.65) 100%); }
+  .giant {
+    position: absolute; z-index: 1; left: -4px; top: 0; bottom: 0;
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-family: var(--en); font-weight: 800; font-size: clamp(120px, 34vw, 220px); line-height: .8;
+    color: rgba(255,255,255,.09); letter-spacing: 0; pointer-events: none; white-space: nowrap;
+  }
+  .hero-in { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 0 32px 48px; max-width: 640px; margin: 0 auto; }
+  .brand { font-family: var(--en); font-weight: 800; font-size: 32px; letter-spacing: .08em; line-height: 1; }
+  .brand small { display: block; font-size: 13px; font-weight: 600; letter-spacing: .14em; margin: 6px 0 0 2px; opacity: .9; }
+  .hero h1 { font-weight: 900; font-size: clamp(38px, 10.5vw, 58px); line-height: 1.32; letter-spacing: .04em; margin: 22px 0 18px; text-shadow: 0 2px 20px rgba(0,0,0,.35); }
+  .hero p { margin: 0 0 28px; font-size: 15px; opacity: .92; }
 
-  section { padding: 56px 0; border-top: 1px solid var(--line); }
-  section.alt { background: var(--bg2); }
-  h2 { font-family: 'Noto Serif JP', serif; font-size: clamp(24px, 6vw, 32px); line-height: 1.4; margin: 0 0 8px; }
-  .sec-label { font-family: 'Space Mono', monospace; color: var(--gold); font-size: 12px; letter-spacing: 3px; }
-  .sec-lead { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+  /* ---------- STATS ---------- */
+  .stats { background: var(--black); padding: 0 0 56px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tile { position: relative; aspect-ratio: 1.45; overflow: hidden; color: #fff; display: grid; place-items: center; text-align: center; }
+  .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.45) blur(1px); }
+  .tile div { position: relative; line-height: 1.15; }
+  .tile .k { font-size: 14px; font-weight: 700; letter-spacing: .14em; }
+  .tile .v { font-family: var(--en); font-weight: 800; font-size: clamp(38px, 11vw, 54px); letter-spacing: 0; }
+  .tile .v small { font-family: 'Noto Sans JP'; font-size: 18px; font-weight: 900; margin-left: 2px; }
+  .tile.wide { grid-column: span 2; aspect-ratio: 3; }
+  .stats .note { color: #9097A3; font-size: 12px; text-align: right; margin: 10px 0 28px; }
 
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
-  .card h3 { margin: 0 0 6px; font-size: 16px; }
-  .card p { margin: 0; color: var(--muted); font-size: 14px; }
-  .icon { font-size: 26px; line-height: 1; margin-bottom: 10px; }
+  /* ---------- WORRY (label boxes on photo) ---------- */
+  .worry { padding: 72px 0 80px; background: linear-gradient(180deg, var(--paper) 0 18%, var(--pale) 18% 100%); }
+  .photo-label { position: relative; margin: 0 -32px 0 0; }
+  .photo-label img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+  .label { display: inline-block; background: var(--black); color: #fff; font-size: clamp(20px, 6vw, 28px); font-weight: 500; letter-spacing: .14em; padding: 6px 16px; line-height: 1.5; }
+  .label.gray { background: #6A6A6A; }
+  .labels-top { position: relative; z-index: 1; margin: 0 0 -26px -32px; display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+  .labels-bottom { position: relative; z-index: 1; margin: -26px -32px 0 0; display: flex; justify-content: flex-end; }
+  .worry .msg { font-size: clamp(18px, 5vw, 22px); font-weight: 500; letter-spacing: .14em; line-height: 2.1; text-align: center; margin: 64px 0 40px; }
+  .mark { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .mark .box { width: 84px; height: 84px; border: 3px solid var(--ink); display: grid; place-items: center; font-family: var(--en); font-weight: 800; font-size: 30px; letter-spacing: 0; }
+  .mark .name { font-family: var(--en); font-weight: 800; font-size: 26px; letter-spacing: .1em; line-height: 1; }
+  .mark .name small { display: block; font-size: 12px; font-weight: 600; letter-spacing: .12em; margin-top: 4px; text-align: center; }
 
-  .plan { position: relative; border-radius: 18px; padding: 24px; margin-bottom: 14px; }
-  .plan.main { background: linear-gradient(160deg, #22201A, #171717); border: 1.5px solid var(--gold); }
-  .plan.shoot { background: var(--card); border: 1px solid var(--line); }
-  .plan .badge { position: absolute; top: -12px; left: 20px; background: var(--gold); color: #111; font-size: 12px; font-weight: 900; padding: 3px 12px; border-radius: 99px; }
-  .plan h3 { margin: 4px 0 8px; font-size: 18px; }
-  .plan .p { font-family: 'Space Mono', monospace; font-size: 36px; color: var(--gold); line-height: 1.1; }
-  .plan.shoot .p { color: var(--text); }
-  .plan .p small { font-family: 'Noto Sans JP', sans-serif; font-size: 14px; color: var(--muted); margin-left: 4px; }
-  .plan ul { margin: 14px 0 0; padding: 0; list-style: none; font-size: 14px; }
-  .plan li { padding: 6px 0 6px 24px; position: relative; border-top: 1px dashed var(--line); }
-  .plan li::before { content: "✓"; position: absolute; left: 2px; color: var(--gold); font-weight: 700; }
-  .plan li.ng::before { content: "×"; color: var(--red); }
+  /* ---------- SECTION HEAD ---------- */
+  section { padding: 80px 0; }
+  .eyebrow { display: flex; align-items: center; justify-content: center; gap: 22px; font-family: var(--en); font-weight: 600; color: #6E7E97; letter-spacing: .5em; font-size: 15px; margin-bottom: 20px; }
+  .eyebrow::before, .eyebrow::after { content: ""; width: 64px; height: 1px; background: #8C99AE; }
+  h2 { font-size: clamp(22px, 6.2vw, 28px); font-weight: 500; letter-spacing: .12em; line-height: 1.8; text-align: center; margin: 0 0 48px; }
 
-  .nophoto { display: flex; gap: 16px; align-items: flex-start; background: rgba(226,80,75,0.08); border: 1px solid rgba(226,80,75,0.4); border-radius: 16px; padding: 20px; margin-top: 8px; }
-  .nophoto .mark { flex: none; width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--red); display: grid; place-items: center; position: relative; font-size: 22px; }
-  .nophoto .mark::after { content: ""; position: absolute; width: 3px; height: 56px; background: var(--red); transform: rotate(45deg); }
-  .nophoto h3 { margin: 0 0 4px; font-size: 16px; color: #FFB3B0; }
-  .nophoto p { margin: 0; font-size: 13px; color: var(--muted); }
+  /* ---------- VALUES ---------- */
+  .value { margin-bottom: 56px; }
+  .value .pic { position: relative; margin: 0 -32px; overflow: hidden; }
+  .value .pic img { width: 100%; aspect-ratio: 16/11; object-fit: cover; }
+  .value .kanji { position: absolute; right: -6px; top: -8px; font-weight: 900; font-size: clamp(90px, 28vw, 150px); line-height: 1; color: rgba(255,255,255,.82); letter-spacing: 0; }
+  .value .card { position: relative; background: linear-gradient(135deg, #F4F5F8, #FFFFFF); box-shadow: 0 10px 30px rgba(20,30,60,.08); margin: -36px 0 0 -32px; padding: 36px 32px 34px; }
+  .value h3 { color: var(--blue); font-size: clamp(19px, 5.6vw, 24px); font-weight: 900; letter-spacing: .08em; margin: 0 0 14px; line-height: 1.5; }
+  .value p { margin: 0; font-size: 15px; color: #444; }
 
+  /* ---------- PRICE ---------- */
+  .price { background: var(--gray); }
+  .plan { background: #fff; padding: 32px 28px; margin-bottom: 16px; position: relative; }
+  .plan.main { border-top: 4px solid var(--blue); box-shadow: 0 10px 30px rgba(74,124,240,.12); }
+  .plan .tag { position: absolute; top: -14px; right: 20px; background: var(--grad); color: #fff; font-size: 12px; font-weight: 900; letter-spacing: .1em; padding: 4px 14px; }
+  .plan h3 { margin: 0 0 4px; font-size: 17px; letter-spacing: .1em; }
+  .plan .yen { font-family: var(--en); font-weight: 800; font-size: 46px; letter-spacing: 0; line-height: 1.2; }
+  .plan.main .yen { color: var(--blue); }
+  .plan .yen small { font-family: 'Noto Sans JP'; font-size: 15px; font-weight: 500; color: var(--sub); margin-left: 4px; }
+  .plan ul { list-style: none; margin: 18px 0 0; padding: 0; font-size: 14px; }
+  .plan li { padding: 10px 0 10px 26px; border-top: 1px solid #EEF0F4; position: relative; }
+  .plan li::before { content: ""; position: absolute; left: 4px; top: 19px; width: 10px; height: 6px; border-left: 2px solid var(--blue); border-bottom: 2px solid var(--blue); transform: rotate(-45deg); }
+  .plan li.ng::before { border: 0; content: "×"; color: #D9534F; font-weight: 900; top: 9px; left: 3px; width: auto; height: auto; transform: none; }
+  .option { display: flex; align-items: center; gap: 18px; background: #fff; padding: 22px 24px; border: 1px dashed #B9C3D8; }
+  .option .ic { flex: none; width: 52px; height: 52px; border-radius: 50%; background: var(--pale); display: grid; place-items: center; font-size: 26px; }
+  .option > div:nth-child(2) { flex: 1; min-width: 0; line-height: 1.5; }
+  .option b { display: block; font-size: 15px; letter-spacing: .04em; white-space: nowrap; }
+  .option span { font-size: 13px; color: var(--sub); }
+  .option .yen { margin-left: auto; font-family: var(--en); font-weight: 800; font-size: 22px; letter-spacing: 0; white-space: nowrap; }
+  .option .yen small { font-family: 'Noto Sans JP'; font-size: 11px; color: var(--sub); font-weight: 500; }
+  .nophoto { margin-top: 24px; padding: 20px 22px; background: #fff; border-left: 4px solid #D9534F; font-size: 13px; color: #555; }
+  .nophoto b { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+
+  /* ---------- SPACE ---------- */
+  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 -32px 32px; }
+  .gallery figure { margin: 0; position: relative; }
+  .gallery img { width: 100%; aspect-ratio: 4/5; object-fit: cover; }
+  .gallery figcaption { position: absolute; left: 0; bottom: 12px; background: var(--black); color: #fff; font-size: 13px; letter-spacing: .12em; padding: 3px 12px; }
   .spec { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .spec th, .spec td { text-align: left; padding: 14px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .spec th { width: 34%; color: var(--muted); font-weight: 500; }
+  .spec th, .spec td { text-align: left; vertical-align: top; padding: 16px 4px; border-bottom: 1px solid var(--line); }
+  .spec th { width: 32%; color: var(--sub); font-weight: 500; }
 
-  .steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
-  .steps li { counter-increment: s; position: relative; padding: 0 0 26px 58px; }
-  .steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--gold); color: #111; font-family: 'Space Mono', monospace; font-weight: 700; display: grid; place-items: center; }
-  .steps li::after { content: ""; position: absolute; left: 19px; top: 44px; bottom: 4px; width: 2px; background: var(--line); }
-  .steps li:last-child::after { display: none; }
-  .steps h3 { margin: 6px 0 2px; font-size: 16px; }
-  .steps p { margin: 0; color: var(--muted); font-size: 14px; }
-  .msg { margin-top: 10px; background: #1F2A22; border: 1px solid #2E4535; border-radius: 12px; padding: 12px 14px; font-size: 13px; white-space: pre-line; color: #D9F2E1; }
+  /* ---------- FLOW ---------- */
+  .flow { background: var(--pale); }
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  .steps li { counter-increment: s; background: #fff; padding: 26px 24px 24px 86px; margin-bottom: 12px; position: relative; }
+  .steps li::before { content: "0" counter(s); position: absolute; left: 22px; top: 22px; font-family: var(--en); font-weight: 800; font-size: 34px; color: var(--blue); letter-spacing: 0; line-height: 1; }
+  .steps h3 { margin: 0 0 4px; font-size: 16px; letter-spacing: .08em; }
+  .steps p { margin: 0; font-size: 13px; color: var(--sub); }
+  .bubble { margin-top: 12px; background: #EAF7EE; border-radius: 14px 14px 14px 2px; padding: 12px 14px; font-size: 13px; white-space: pre-line; color: #1F4D2E; line-height: 1.8; }
 
-  .rules { list-style: none; padding: 0; margin: 0; }
-  .rules li { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; display: flex; gap: 12px; }
-  .rules li b { display: block; }
-  .rules li span { color: var(--muted); font-size: 13px; }
-  .rules .n { font-family: 'Space Mono', monospace; color: var(--gold); flex: none; width: 24px; }
+  /* ---------- RULES ---------- */
+  .rules { list-style: none; margin: 0; padding: 0; }
+  .rules li { display: flex; gap: 18px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .rules .n { flex: none; font-family: var(--en); font-weight: 800; color: var(--blue); font-size: 18px; letter-spacing: 0; padding-top: 1px; }
+  .rules b { display: block; font-size: 15px; letter-spacing: .06em; margin-bottom: 2px; }
+  .rules span { font-size: 13px; color: var(--sub); }
 
-  details { border-bottom: 1px solid var(--line); padding: 4px 0; }
-  summary { cursor: pointer; list-style: none; padding: 14px 28px 14px 0; font-weight: 700; font-size: 15px; position: relative; }
+  /* ---------- FAQ ---------- */
+  .faq { background: var(--gray); }
+  details { background: #fff; margin-bottom: 10px; }
+  summary { list-style: none; cursor: pointer; padding: 20px 52px 20px 56px; position: relative; font-weight: 700; font-size: 15px; line-height: 1.6; }
   summary::-webkit-details-marker { display: none; }
-  summary::after { content: "+"; position: absolute; right: 4px; top: 10px; color: var(--gold); font-size: 22px; font-weight: 400; }
-  details[open] summary::after { content: "−"; }
-  details p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  summary::before { content: "Q"; position: absolute; left: 22px; top: 17px; font-family: var(--en); font-weight: 800; font-size: 20px; color: var(--blue); }
+  summary::after { content: ""; position: absolute; right: 24px; top: 26px; width: 8px; height: 8px; border-right: 2px solid var(--sub); border-bottom: 2px solid var(--sub); transform: rotate(45deg); transition: transform .2s; }
+  details[open] summary::after { transform: rotate(-135deg); top: 30px; }
+  details p { margin: 0; padding: 0 24px 22px 56px; font-size: 14px; color: #555; }
 
-  .final { text-align: center; padding: 64px 0 40px; }
-  .final h2 { margin-bottom: 12px; }
-  .scarcity { display: inline-block; font-size: 13px; color: var(--gold); border: 1px solid rgba(212,175,55,0.4); border-radius: 99px; padding: 4px 14px; margin-bottom: 20px; }
+  /* ---------- FINAL ---------- */
+  .final { position: relative; color: #fff; text-align: center; padding: 96px 0 88px; overflow: hidden; background: var(--black); }
+  .final img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.35); }
+  .final .wrap { position: relative; }
+  .final h2 { font-weight: 900; letter-spacing: .08em; margin-bottom: 16px; }
+  .final p { margin: 0 0 32px; font-size: 14px; opacity: .9; }
+  .final .cta-note { color: rgba(255,255,255,.75); }
+  .friend { display: block; margin-top: 14px; color: #fff; font-size: 13px; opacity: .85; }
 
-  footer { text-align: center; color: #6E6A62; font-size: 12px; padding: 24px 20px 32px; border-top: 1px solid var(--line); }
+  footer { text-align: center; padding: 28px 20px; font-family: var(--en); font-size: 12px; color: #8C93A0; letter-spacing: .14em; }
 
-  .sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(13,13,13,0.92); backdrop-filter: blur(10px); border-top: 1px solid var(--line); transform: translateY(110%); transition: transform .25s ease; }
+  .sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 0 0 env(safe-area-inset-bottom); background: #fff; transform: translateY(110%); transition: transform .25s ease; }
   .sticky.show { transform: none; }
-  .sticky .inner { max-width: 720px; margin: 0 auto; display: flex; gap: 10px; align-items: center; }
-  .sticky .info { flex: none; font-size: 11px; color: var(--muted); line-height: 1.3; }
-  .sticky .info b { display: block; font-family: 'Space Mono', monospace; color: var(--gold); font-size: 16px; }
-  .sticky .btn { padding: 14px; font-size: 15px; }
+  .sticky .wrap { padding: 10px 32px; }
+  .sticky .cta { padding: 18px 12px; font-size: 17px; }
+
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
 </style>
 </head>
 <body>
@@ -150,177 +196,225 @@
   ===== ここだけ書き換えればOK =====
   data-line-id   : 公式LINEのベーシックID（@から始まるID）。LINE Official Account Manager → ホーム右上
   data-line-url  : 友だち追加URL（https://lin.ee/xxxx）。同じ画面の「友だちを増やす」→「URLを作成」
-  data-address   : 住所（番地まで出すかは任意。予約確定後にLINEで送る運用なら「〇〇駅 徒歩〇分」だけでもOK）
-  data-capacity  : 同時利用の最大人数
+  data-address   : 場所（「〇〇駅 徒歩〇分」だけでもOK。詳しい住所は予約確定後にLINEで送る運用）
 -->
 <div id="config" hidden
   data-line-id="@000aaaaa"
   data-line-url="https://lin.ee/XXXXXXX"
   data-address="〇〇駅 徒歩〇分（詳しい住所は予約確定後にLINEでお送りします）"
-  data-capacity="4"
 ></div>
 
-<header class="top">
-  <div class="logo">TTGYM</div>
-  <div class="tag">SPACE RENTAL</div>
-</header>
-
+<!-- HERO -->
 <div class="hero">
-  <div class="wrap">
-    <div class="eyebrow">昼の空き時間だけ／1日4枠限定</div>
-    <h1 class="serif">キックボクシング<br />エリア、<em>貸します。</em></h1>
-    <p class="lead">サンドバッグもマットも揃ったパーソナルジムの一角を、1時間単位で使い放題。自主練にも、出張パーソナルにも。</p>
-    <div class="price-badge"><span class="yen">¥3,000</span><span class="unit">／1時間（税込）</span></div>
-    <div class="time-row">
-      <span class="chip">⏰ 10:00〜14:00</span>
-      <span class="chip">👥 最大<span data-fill="capacity">4</span>名まで同料金</span>
-      <span class="chip warn">📵 撮影は禁止</span>
-    </div>
-    <a class="btn btn-line js-reserve" href="#">
+  <img class="poster" src="/space/img/hero.jpg" alt="" />
+  <video src="/space/img/hero.mp4" poster="/space/img/hero.jpg" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>
+  <div class="giant" aria-hidden="true">PRIVATE</div>
+  <div class="hero-in">
+    <div class="brand">TTGYM<small>Private Gym Rental</small></div>
+    <h1>このジム、<br />まるごと貸切。</h1>
+    <p>9:00〜14:00限定。<br />仲間と、ひとりで、思いきり。</p>
+    <a class="cta js-reserve" href="#">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.48 3 2 6.58 2 11c0 3.96 3.55 7.27 8.35 7.9.33.07.77.22.88.5.1.25.07.65.03.9l-.14.85c-.04.25-.2.98.86.53 1.06-.45 5.73-3.37 7.82-5.78C21.25 14.3 22 12.74 22 11c0-4.42-4.48-8-10-8z"/></svg>
-      LINEで空き状況を確認する
+      LINEで空きを確認する
     </a>
-    <p class="note">送信するだけで予約フォームが届きます／返信は営業時間内</p>
   </div>
 </div>
 
-<section class="alt">
+<!-- STATS -->
+<div class="stats">
   <div class="wrap">
-    <div class="sec-label">FOR YOU</div>
-    <h2>こんな人に使われています</h2>
-    <p class="sec-lead">大手ジムだと気をつかう「打撃系」や「ミット」も、ここなら気兼ねなく。</p>
-    <div class="grid2">
-      <div class="card"><div class="icon">🥊</div><h3>キック・ボクシングの自主練</h3><p>サンドバッグを好きなだけ叩ける。ジムの混雑時間を避けたい方に。</p></div>
-      <div class="card"><div class="icon">🤝</div><h3>ミット打ち・2人練習</h3><p>友人や練習仲間とミット持ち合い。同料金で複数人OK。</p></div>
-      <div class="card"><div class="icon">🏋️</div><h3>フリーのトレーナーさん</h3><p>お客様とのセッション会場に。レンタルジムより落ち着いた空間。</p></div>
-      <div class="card"><div class="icon">🧘</div><h3>ストレッチ・体幹・ダンス</h3><p>マットの広いスペースで、自分のペースで動きたい方に。</p></div>
+    <div class="tiles">
+      <div class="tile"><img src="/space/img/bag.jpg" alt="" /><div><div class="k">貸切 1時間</div><div class="v">5,000<small>円</small></div></div></div>
+      <div class="tile"><img src="/space/img/rope.jpg" alt="" /><div><div class="k">最大</div><div class="v">8<small>名</small></div></div></div>
+      <div class="tile wide"><img src="/space/img/space.jpg" alt="" /><div><div class="k">OPEN</div><div class="v">9:00–14:00</div></div></div>
+    </div>
+    <p class="note">※ 8名まで料金は変わりません／撮影は撮影プランのみ</p>
+    <a class="cta js-reserve" href="#">LINEで空きを確認する</a>
+  </div>
+</div>
+
+<!-- WORRY -->
+<div class="worry">
+  <div class="wrap">
+    <div class="labels-top reveal">
+      <span class="label gray">ジムは混んでいて</span>
+      <span class="label">人目が気になる</span>
+    </div>
+    <div class="photo-label reveal"><img src="/space/img/people.jpg" alt="TTGYMでトレーニング後に休憩する様子" loading="lazy" /></div>
+    <div class="labels-bottom reveal"><span class="label">でも、思いきり動きたい</span></div>
+
+    <p class="msg reveal">だからTTGYMは、<br />空いている時間のジムを<br />まるごと貸し出します。</p>
+
+    <div class="mark reveal">
+      <div class="box">TT</div>
+      <div class="name">TTGYM<small>Private Gym Rental</small></div>
     </div>
   </div>
-</section>
+</div>
 
+<!-- VALUES -->
 <section>
   <div class="wrap">
-    <div class="sec-label">PRICE</div>
-    <h2>料金プラン</h2>
-    <p class="sec-lead">追加料金なし。1時間単位でご予約いただけます。</p>
+    <div class="eyebrow">VALUES</div>
+    <h2>思いきり動ける、<br />3つの理由。</h2>
 
-    <div class="plan main">
-      <span class="badge">基本はこちら</span>
-      <h3>スタンダード</h3>
-      <div class="p">¥3,000<small>／1時間</small></div>
+    <div class="value reveal">
+      <div class="pic"><img src="/space/img/wide.jpg" alt="広いトレーニングフロア" loading="lazy" /><span class="kanji">貸切</span></div>
+      <div class="card">
+        <h3>広いフロアを、独り占め。</h3>
+        <p>ほかの利用者に気をつかう必要はありません。音も、動きも、時間も、ぜんぶ自分たちのもの。</p>
+      </div>
+    </div>
+
+    <div class="value reveal">
+      <div class="pic"><img src="/space/img/bag.jpg" alt="サンドバッグ" loading="lazy" /><span class="kanji">自由</span></div>
+      <div class="card">
+        <h3>サンドバッグも、<br />バトルロープも。</h3>
+        <p>打撃・HIIT・ストレッチ・サーキット。メニューは自由なフリートレーニングスペースです。グローブ・ミットのレンタルもあります。</p>
+      </div>
+    </div>
+
+    <div class="value reveal">
+      <div class="pic"><img src="/space/img/rope.jpg" alt="バトルロープ" loading="lazy" /><span class="kanji">仲間</span></div>
+      <div class="card">
+        <h3>8人まで、同じ料金。</h3>
+        <p>8人で使えば1人あたり625円。友人との練習、チームの合同トレーニング、トレーナーさんの少人数セッションにも。</p>
+      </div>
+    </div>
+  </div>
+  <div class="wrap"><a class="cta js-reserve" href="#">LINEで空きを確認する</a></div>
+</section>
+
+<!-- PRICE -->
+<section class="price">
+  <div class="wrap">
+    <div class="eyebrow">PRICE</div>
+    <h2>料金プラン</h2>
+
+    <div class="plan main reveal">
+      <span class="tag">基本はこちら</span>
+      <h3>貸切スタンダード</h3>
+      <div class="yen">¥5,000<small>／1時間</small></div>
       <ul>
-        <li>キックボクシングエリアを時間内使い放題</li>
-        <li>サンドバッグ・マット・備品の利用込み</li>
-        <li>最大<span data-fill="capacity">4</span>名まで同料金</li>
+        <li>ジムをまるごと貸切</li>
+        <li>サンドバッグ・バトルロープ使い放題</li>
+        <li>最大8名まで同料金</li>
         <li class="ng">写真・動画の撮影は不可（スマホ含む）</li>
       </ul>
     </div>
 
-    <div class="plan shoot">
-      <h3>撮影プラン</h3>
-      <div class="p">¥30,000<small>／1時間</small></div>
+    <div class="plan reveal">
+      <h3>貸切＋撮影プラン</h3>
+      <div class="yen">¥35,000<small>／1時間</small></div>
       <ul>
-        <li>写真・動画の撮影OK（SNS投稿・商用利用も可）</li>
+        <li>写真・動画の撮影OK（SNS・商用利用も可）</li>
+        <li>最大8名まで同料金</li>
         <li>撮影内容は事前にLINEでご相談ください</li>
-        <li>他のお客様が映り込まないよう時間を調整します</li>
       </ul>
     </div>
 
-    <div class="nophoto">
-      <div class="mark">📷</div>
-      <div>
-        <h3>撮影禁止にしている理由</h3>
-        <p>ジムを利用する会員さんのプライバシーと、トレーニング空間を守るためです。フォーム確認の動画も含め、撮影は撮影プランのみとさせてください。無断撮影が確認された場合は撮影プラン料金をご請求します。</p>
-      </div>
+    <div class="option reveal">
+      <div class="ic">🥊</div>
+      <div><b>グローブ・ミット</b><span>レンタル</span></div>
+      <div class="yen">¥2,000<small>／1回</small></div>
+    </div>
+
+    <div class="nophoto reveal">
+      <b>撮影は撮影プランのみです</b>
+      会員さんのプライバシーとジムの空間を守るため、スタンダードプランでの撮影（フォーム確認の動画も含む）はお断りしています。無断撮影が確認された場合は撮影プランとの差額をご請求します。
     </div>
   </div>
 </section>
 
-<section class="alt">
+<!-- SPACE -->
+<section>
   <div class="wrap">
-    <div class="sec-label">SPACE</div>
-    <h2>スペース・設備</h2>
-    <p class="sec-lead">ジム内の「大きいほうの1面」をそのままお使いいただけます。</p>
+    <div class="eyebrow">SPACE</div>
+    <h2>フリートレーニング<br />スペース</h2>
+    <div class="gallery reveal">
+      <figure><img src="/space/img/bag.jpg" alt="サンドバッグ" loading="lazy" /><figcaption>サンドバッグ</figcaption></figure>
+      <figure><img src="/space/img/rope.jpg" alt="バトルロープ" loading="lazy" /><figcaption>バトルロープ</figcaption></figure>
+    </div>
     <table class="spec">
-      <tr><th>利用時間</th><td>10:00〜14:00（最終スタート 13:00）</td></tr>
-      <tr><th>利用単位</th><td>1時間〜（準備・片付けを含む）</td></tr>
-      <tr><th>エリア</th><td>キックボクシングエリア（マット敷き）</td></tr>
-      <tr><th>設備</th><td>サンドバッグ／マット／更衣スペース</td></tr>
-      <tr><th>持ち物</th><td>室内シューズ or 裸足OK、グローブ・バンテージ、タオル、飲み物</td></tr>
-      <tr><th>人数</th><td>最大<span data-fill="capacity">4</span>名</td></tr>
+      <tr><th>利用時間</th><td>9:00〜14:00（1時間単位／最終スタート13:00）</td></tr>
+      <tr><th>利用形態</th><td>ジム貸切</td></tr>
+      <tr><th>人数</th><td>最大8名（料金は人数に関係なく同じ）</td></tr>
+      <tr><th>設備</th><td>サンドバッグ／バトルロープ</td></tr>
+      <tr><th>レンタル</th><td>グローブ・ミット 1回 ¥2,000</td></tr>
+      <tr><th>持ち物</th><td>室内シューズ（裸足OK）、タオル、飲み物</td></tr>
       <tr><th>場所</th><td data-fill="address">〇〇駅 徒歩〇分</td></tr>
     </table>
   </div>
 </section>
 
-<section>
+<!-- FLOW -->
+<section class="flow">
   <div class="wrap">
-    <div class="sec-label">FLOW</div>
+    <div class="eyebrow">FLOW</div>
     <h2>予約の流れ</h2>
-    <p class="sec-lead">会員登録・入会金は不要。LINEだけで完結します。</p>
     <ol class="steps">
-      <li><h3>LINEで「スペース予約」と送る</h3><p>下のボタンを押すと、メッセージが入力された状態でLINEが開きます。</p></li>
-      <li><h3>希望の日時を送る</h3><p>届いたフォームに日時・人数・プランを書いて返信。</p>
-        <div class="msg">希望日：10/20（月）
-時間：11:00〜13:00
-人数：2名
-プラン：スタンダード</div></li>
-      <li><h3>予約確定・事前決済</h3><p>空きを確認してスタッフからご連絡します。お支払いは事前にお願いしています。</p></li>
-      <li><h3>当日はそのまま来るだけ</h3><p>受付で名前を伝えて利用スタート。時間になったら片付けて終了です。</p></li>
+      <li class="reveal"><h3>LINEで「貸切予約」と送る</h3><p>ボタンを押すと、メッセージが入力された状態でLINEが開きます。</p></li>
+      <li class="reveal"><h3>希望の日時を送る</h3><p>日時・人数・プラン・レンタルの有無を書いて送信。</p>
+        <div class="bubble">希望日：10/20（月）
+時間：10:00〜12:00
+人数：4名
+プラン：スタンダード
+グローブ・ミット：あり</div></li>
+      <li class="reveal"><h3>予約確定・事前決済</h3><p>空きを確認してスタッフからご連絡します。</p></li>
+      <li class="reveal"><h3>当日はそのまま来るだけ</h3><p>受付でお名前を伝えたら、貸切スタートです。</p></li>
     </ol>
   </div>
 </section>
 
-<section class="alt">
+<!-- RULES -->
+<section>
   <div class="wrap">
-    <div class="sec-label">RULES</div>
+    <div class="eyebrow">RULES</div>
     <h2>ご利用ルール</h2>
-    <p class="sec-lead">気持ちよく使っていただくための約束です。予約時に同意いただきます。</p>
     <ul class="rules">
-      <li><span class="n">01</span><div><b>撮影は撮影プランのみ</b><span>写真・動画ともに不可（スマホ・三脚・フォーム確認含む）。無断撮影は撮影プラン料金をご請求します。</span></div></li>
-      <li><span class="n">02</span><div><b>時間厳守</b><span>準備・着替え・片付けも利用時間内でお願いします。延長は空きがある場合のみ。</span></div></li>
-      <li><span class="n">03</span><div><b>隣のエリアはパーソナル利用中のことがあります</b><span>大声・音楽の大音量はご遠慮ください。</span></div></li>
-      <li><span class="n">04</span><div><b>土足禁止・使用後は軽く清掃</b><span>汗はタオルで拭き取りをお願いします。</span></div></li>
-      <li><span class="n">05</span><div><b>ケガ・事故は自己責任</b><span>設備を壊した場合は実費をご負担いただく場合があります。</span></div></li>
-      <li><span class="n">06</span><div><b>キャンセル</b><span>前日まで無料／当日キャンセル・無断キャンセルは料金の100%を頂戴します。</span></div></li>
+      <li class="reveal"><span class="n">01</span><div><b>使った器具はアルコールで必ず清掃</b><span>次の利用者さんと入れ替わりで重なることがあります。フロアは広いのでご安心ください。そのぶん、使った場所と器具はアルコールで拭いてからお帰りください。</span></div></li>
+      <li class="reveal"><span class="n">02</span><div><b>器具は元の場所に戻す</b><span>サンドバッグ・バトルロープ・レンタル品は、最初にあった場所へ戻してください。</span></div></li>
+      <li class="reveal"><span class="n">03</span><div><b>撮影は撮影プランのみ</b><span>写真・動画ともに不可（スマホ・フォーム確認含む）。</span></div></li>
+      <li class="reveal"><span class="n">04</span><div><b>時間を守る</b><span>着替え・片付け・清掃も利用時間内でお願いします。</span></div></li>
+      <li class="reveal"><span class="n">05</span><div><b>土足禁止</b><span>室内シューズ、または裸足でご利用ください。</span></div></li>
+      <li class="reveal"><span class="n">06</span><div><b>ケガ・破損について</b><span>ケガや事故は自己責任でお願いします。設備を壊した場合は実費をご負担いただく場合があります。</span></div></li>
+      <li class="reveal"><span class="n">07</span><div><b>キャンセル</b><span>前日まで無料／当日・無断キャンセルは料金の100%を頂戴します。</span></div></li>
     </ul>
   </div>
 </section>
 
-<section>
+<!-- FAQ -->
+<section class="faq">
   <div class="wrap">
-    <div class="sec-label">FAQ</div>
+    <div class="eyebrow">FAQ</div>
     <h2>よくある質問</h2>
     <details><summary>ジムの会員じゃなくても使えますか？</summary><p>はい、どなたでもご利用いただけます。入会金・登録料もかかりません。</p></details>
-    <details><summary>1人でも予約できますか？</summary><p>もちろんです。1名でも最大<span data-fill="capacity">4</span>名でも料金は同じです。</p></details>
-    <details><summary>自分のお客様を連れてきてセッションしてもいいですか？</summary><p>はい、フリーのトレーナーさんのご利用も歓迎です。人数に応じて事前にお知らせください。</p></details>
-    <details><summary>フォームチェック用にスマホで少しだけ撮りたいのですが…</summary><p>申し訳ありませんが、短時間・自分用でも撮影はお受けしていません。撮影したい場合は撮影プランをご利用ください。</p></details>
-    <details><summary>ミットやグローブは借りられますか？</summary><p>備品の有無は予約時にLINEでお問い合わせください。基本的にはご自身でのお持ち込みをおすすめしています。</p></details>
+    <details><summary>1人でも貸切にできますか？</summary><p>できます。1名でも8名でも料金は1時間5,000円です。</p></details>
+    <details><summary>トレーナーとしてお客様を連れてきてもいいですか？</summary><p>もちろんです。合計8名までであれば、セッション会場としてご利用いただけます。</p></details>
+    <details><summary>フォーム確認のために少しだけ撮影したいのですが…</summary><p>申し訳ありませんが、短時間・自分用でも撮影はお受けしていません。撮影したい場合は撮影プランをご利用ください。</p></details>
+    <details><summary>グローブやミットは借りられますか？</summary><p>はい、1回2,000円でレンタルしています。予約時に「グローブ・ミット：あり」とお送りください。</p></details>
     <details><summary>支払い方法は？</summary><p>予約確定時にLINEでご案内します。事前決済をお願いしています。</p></details>
   </div>
 </section>
 
+<!-- FINAL -->
 <div class="final">
+  <img src="/space/img/space.jpg" alt="" loading="lazy" />
   <div class="wrap">
-    <div class="scarcity">1日4枠だけの限定スペース</div>
-    <h2 class="serif">空いている時間、<br />聞くだけでもOK。</h2>
-    <p class="sec-lead">LINEで「スペース予約」と送るだけ。</p>
-    <a class="btn btn-line js-reserve" href="#">
+    <div class="eyebrow" style="color:#C9D3E6">1日5枠限定</div>
+    <h2>空いている時間、<br />聞くだけでもOK。</h2>
+    <p>LINEで「貸切予約」と送るだけ。</p>
+    <a class="cta js-reserve" href="#">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.48 3 2 6.58 2 11c0 3.96 3.55 7.27 8.35 7.9.33.07.77.22.88.5.1.25.07.65.03.9l-.14.85c-.04.25-.2.98.86.53 1.06-.45 5.73-3.37 7.82-5.78C21.25 14.3 22 12.74 22 11c0-4.42-4.48-8-10-8z"/></svg>
-      LINEで空き状況を確認する
+      LINEで空きを確認する
     </a>
-    <a class="btn btn-sub js-friend" href="#">まずは友だち追加だけする</a>
+    <a class="friend js-friend" href="#">まずは友だち追加だけする →</a>
   </div>
 </div>
 
-<footer>© TTGYM — Personal Training Gym</footer>
+<footer>© TTGYM</footer>
 
-<div class="sticky" id="sticky">
-  <div class="inner">
-    <div class="info"><b>¥3,000</b>／1時間</div>
-    <a class="btn btn-line js-reserve" href="#">LINEで予約する</a>
-  </div>
-</div>
+<div class="sticky" id="sticky"><div class="wrap"><a class="cta js-reserve" href="#">LINEで空きを確認する</a></div></div>
 
 <script>
 (function () {
@@ -331,26 +425,29 @@
   var sources = { x: "X", threads: "Threads", tiktok: "TikTok", ig: "Instagram" };
   var from = sources[(params.get("from") || params.get("utm_source") || "").toLowerCase()] || "";
 
-  var text = "スペース予約\n希望日：\n時間：\n人数：\nプラン：スタンダード" + (from ? "\nきっかけ：" + from : "");
+  var text = "貸切予約\n希望日：\n時間：\n人数：\nプラン：スタンダード\nグローブ・ミット：なし" + (from ? "\nきっかけ：" + from : "");
   // oaMessage は公式LINEのトーク画面を、メッセージ入力済みの状態で開くLINE公式のURL形式
   var reserveUrl = "https://line.me/R/oaMessage/" + encodeURIComponent(cfg.lineId) + "/?" + encodeURIComponent(text);
 
   document.querySelectorAll(".js-reserve").forEach(function (a) { a.href = reserveUrl; });
   document.querySelectorAll(".js-friend").forEach(function (a) { a.href = cfg.lineUrl; });
-  document.querySelectorAll('[data-fill="capacity"]').forEach(function (el) { el.textContent = cfg.capacity; });
   document.querySelectorAll('[data-fill="address"]').forEach(function (el) { el.textContent = cfg.address; });
 
-  // ファーストビューのボタンが見えなくなったら下部固定ボタンを出す
+  // 画面内に他の予約ボタンが見えていない時だけ、下部固定ボタンを出す
   var sticky = document.getElementById("sticky");
-  var heroBtn = document.querySelector(".hero .js-reserve");
-  var finalBtn = document.querySelector(".final .js-reserve");
+  var inline = document.querySelectorAll(".js-reserve:not(#sticky .js-reserve)");
   var visible = new Set();
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) { e.isIntersecting ? visible.add(e.target) : visible.delete(e.target); });
     sticky.classList.toggle("show", visible.size === 0);
   });
-  io.observe(heroBtn);
-  io.observe(finalBtn);
+  inline.forEach(function (el) { io.observe(el); });
+
+  // スクロールでふわっと表示
+  var rv = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); rv.unobserve(e.target); } });
+  }, { rootMargin: "0px 0px -10% 0px" });
+  document.querySelectorAll(".reveal").forEach(function (el) { rv.observe(el); });
 })();
 </script>
 </body>
