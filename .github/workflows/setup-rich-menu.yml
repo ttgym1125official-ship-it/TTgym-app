@@ -1,0 +1,41 @@
+# Uploads public/liff/richmenu.png as the TTGYM LINE rich menu and sets it as
+# the default for every friend (scripts/setup-rich-menu.mjs). Run manually
+# ("Run workflow") after the LIFF app exists, and again whenever the menu
+# image or links change.
+#
+# Needs repository secret LINE_CHANNEL_ACCESS_TOKEN (same value as in Vercel).
+
+name: Set up LINE rich menu
+
+on:
+  workflow_dispatch:
+    inputs:
+      liff_id:
+        description: "LIFF ID of the 健康ダッシュボード (e.g. 2000000000-AbCdEfGh)"
+        required: true
+      event_url:
+        description: "イベント tile link (empty = sends 「イベント」 as a message)"
+        required: false
+      shop_url:
+        description: "ショップ tile link (empty = sends 「ショップ」 as a message)"
+        required: false
+      line_basic_id:
+        description: "LINE basic ID like @123abcde (empty = 友人を紹介 sends a message)"
+        required: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Create rich menu
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LIFF_ID: ${{ github.event.inputs.liff_id }}
+          EVENT_URL: ${{ github.event.inputs.event_url }}
+          SHOP_URL: ${{ github.event.inputs.shop_url }}
+          LINE_BASIC_ID: ${{ github.event.inputs.line_basic_id }}
+        run: node scripts/setup-rich-menu.mjs

@@ -1,0 +1,78 @@
+# TTGYM 健康ダッシュボード（公式LINE版）セットアップ
+
+公式LINEに食事の写真か「昼食 牛丼並と味噌汁」のような文章を送ると、AIが品目ごとに重さを見積もって栄養（カロリー・PFC・36項目）を計算し、LINEに返信します。記録はLINE内で開くダッシュボード（LIFF）で確認できます。
+
+| 場所 | 中身 |
+| --- | --- |
+| `api/line-webhook.js` | 食事・訂正・体重の受け取りと返信、友だち追加時のあいさつ（既存のアプリ連携・Q&Aはそのまま） |
+| `api/_lib/nutri.js` | AI解析（Claude）、データ保存、返信文の組み立て |
+| `api/nutrition.js` | ダッシュボード用のデータAPI（LINEのアクセストークンで本人確認） |
+| `src/liff/` | ダッシュボード画面（`/liff`）とプロフィール登録画面（`/liff/profile`） |
+| `src/liff/nutrients.js` | 36項目の栄養素の説明文・目標値の計算式・判定ルール |
+| `scripts/render-rich-menu.mjs` / `setup-rich-menu.mjs` | リッチメニューの画像作成と登録 |
+
+## デモ表示（設定前でも見られます）
+
+`https://t-tgym-app.vercel.app/liff?demo=1` を開くと、サンプルデータで画面を確認できます。
+
+## 本番の設定手順
+
+### 1. LIFFアプリを作る（LINE Developers）
+
+1. [LINE Developers](https://developers.line.biz/console/) で、公式LINE（Messaging APIチャネル）と**同じプロバイダー**を開く
+2. 「新規チャネル作成」→「LINEログイン」を作成（アプリタイプは「ウェブアプリ」）
+3. 作ったチャネルの「LIFF」タブ →「追加」
+   - サイズ: **Full**
+   - エンドポイントURL: `https://t-tgym-app.vercel.app/liff`
+   - Scope: `profile`
+   - 友だち追加オプション: On（Aggressive）
+4. 表示された **LIFF ID**（例 `2000000000-AbCdEfGh`）と、チャネル基本設定の **チャネルID** を控える
+5. チャネルを「公開済み」にする
+
+### 2. Vercel の環境変数を追加
+
+Project → Settings → Environment Variables に追加して、再デプロイ（Redeploy）します。
+
+| 名前 | 値 |
+| --- | --- |
+| `VITE_LIFF_ID` | LIFF ID |
+| `LIFF_ID` | LIFF ID（同じ値） |
+| `LINE_LOGIN_CHANNEL_ID` | LINEログインチャネルのチャネルID |
+
+`ANTHROPIC_API_KEY`・`LINE_CHANNEL_SECRET`・`LINE_CHANNEL_ACCESS_TOKEN` は既存のものをそのまま使います。
+
+### 3. リッチメニューを登録
+
+1. GitHub のリポジトリ → Settings → Secrets and variables → Actions に `LINE_CHANNEL_ACCESS_TOKEN`（Vercelと同じ値）を追加
+2. Actions → 「Set up LINE rich menu」→ Run workflow
+   - `liff_id`: LIFF ID
+   - イベント・ショップのリンク、LINEのベーシックID（友人紹介用）は任意。空欄ならその言葉がメッセージとして送られます
+
+画像を変えたいときは `scripts/render-rich-menu.mjs` を編集して `node scripts/render-rich-menu.mjs` で作り直し、もう一度ワークフローを実行します。
+
+### 4. LINE Official Account Manager の設定
+
+- 設定 → 応答設定: **Webhook オン**、応答メッセージ オフ（既存の設定のまま）
+- あいさつメッセージ: **オフ**（友だち追加時のあいさつはWebhookから送るため。二重になるのを防ぎます）
+
+## 動き
+
+- **食事の写真 / 文章** → 品目ごとに記録して、今日の累計・不足しそうな栄養素・次の食事の提案を返信
+- **「エビじゃなくてイカ」「ご飯は半分」** → 直前の食事を直して記録し直す
+- **「体重 64.5」「体脂肪 15%」、体重計・体組成計の写真** → 体組成として記録
+- それ以外の雑談・質問 → アプリ連携済みの人は既存のQ&A、未連携の人にはAIが短く返事（予約・料金などは「スタッフから改めて連絡」と返す）
+
+## 目標値の計算
+
+- 基礎代謝: Mifflin-St Jeor 式（入力があればその値）
+- 活動係数: 低い 1.2 / 普通 1.375 / 高い 1.55 / 非常に高い 1.9
+- 目標カロリー: 基礎代謝 × 活動係数 ± 300（減量 −300 / キープ ±0 / 筋肉をつける +300）
+- たんぱく質: 体重 × 2.0g（キープは1.6g）、脂質: カロリーの25%、炭水化物: 残り
+- ビタミン・ミネラル等: 日本人の食事摂取基準（2025年版）の性別・年齢別の値（`src/liff/nutrients.js` の `DRI`）
+
+## データの保存場所
+
+既存アプリと同じ Supabase の `kv_store` に保存します。
+
+- `nutri:<LINEユーザーID>` … プロフィール・食事・体重
+- `nutri_img:<LINEユーザーID>:<食事ID>` … 食事写真のサムネイル

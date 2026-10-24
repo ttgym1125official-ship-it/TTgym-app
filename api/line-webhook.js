@@ -1,5 +1,8 @@
 // Vercel Serverless Function (Node.js runtime) — receives events from the
-// TTGYM LINE Official Account (Messaging API) and either (a) links a LINE
+// TTGYM LINE Official Account (Messaging API). Food photos / "昼食 牛丼並と味噌汁"
+// style messages, corrections to the last meal, and weight / body-composition
+// readings are recorded for the 健康ダッシュボード (LIFF, src/liff) — see
+// handleNutrition below and api/_lib/nutri.js. Everything else either (a) links a LINE
 // user to an app profile via a one-time code the customer types into LINE
 // (shown to them in the app's 設定 screen — see LineLinkSection in App.jsx;
 // unlinked customers get no automatic reply unless they send a code or ask
@@ -12,6 +15,8 @@
 //   LINE_CHANNEL_ACCESS_TOKEN  — same tab, "チャネルアクセストークン(長期)" → 発行
 //   ANTHROPIC_API_KEY          — a server-side Anthropic API key (separate from
 //                                 any key a customer enters inside the app itself)
+//   LIFF_ID                    — LIFF app ID of the 健康ダッシュボード (same value as
+//                                 VITE_LIFF_ID); used for the "ダッシュボードを開く" links
 //
 // Then, in LINE Developers Console → Messaging API設定:
 //   - Webhook URL: https://<your-domain>/api/line-webhook, then 検証 to confirm
@@ -22,6 +27,10 @@
 
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import {
+  loadUser, saveUser, jstNow, newId, reply, showLoading, fetchLineImage, analyzeMessage,
+  normalizeItems, buildMealReply, dashboardButton, liffUrl, calcTargets, kvSet as nutriKvSet,
+} from "./_lib/nutri.js";
 
 // Same public project URL/publishable key already embedded in the client
 // bundle (src/supabaseClient.js) — this one is meant to be public, so
@@ -135,6 +144,130 @@ ${JSON.stringify(context)}
   return await callClaudeText(prompt);
 }
 
+// ── 健康ダッシュボード（食事・体重の記録）──
+
+function welcomeMessage() {
+  const dashboard = liffUrl("");
+  const profile = liffUrl("/profile");
+  const buttons = [
+    profile && { type: "button", style: "primary", color: "#111814", height: "md", action: { type: "uri", label: "プロフィールを登録する", uri: profile } },
+    dashboard && { type: "button", style: "secondary", color: "#E6E3DC", height: "md", margin: "sm", action: { type: "uri", label: "今日の栄養を見る", uri: dashboard } },
+  ].filter(Boolean);
+  return {
+    type: "flex",
+    altText: "TTGYMへようこそ。食事の写真を送るだけで、栄養を品目ごとに分析します。",
+    contents: {
+      type: "bubble",
+      header: {
+        type: "box", layout: "vertical", backgroundColor: "#111814", paddingAll: "20px",
+        contents: [
+          { type: "text", text: "TTGYM", color: "#C9A86A", size: "xs", weight: "bold" },
+          { type: "text", text: "強い身体は、\n毎日の食事から。", color: "#FFFFFF", size: "lg", weight: "bold", wrap: true, margin: "md" },
+        ],
+      },
+      body: {
+        type: "box", layout: "vertical", spacing: "sm", paddingAll: "20px",
+        contents: [
+          { type: "text", text: "TTGYMの公式LINEでは、トレーニングと合わせて毎日の食事と体をサポートします。", size: "sm", wrap: true, color: "#333333" },
+          { type: "text", text: "・食事の写真を送るだけで、栄養を品目ごとに分析\n・今日の栄養・週の推移・体重をこのLINEで確認\n・「体重 64.5」と送れば体重も記録", size: "sm", wrap: true, color: "#333333", margin: "md" },
+          { type: "text", text: "まずはプロフィールを登録して、あなた専用の目標を作りましょう。", size: "xs", wrap: true, color: "#888888", margin: "md" },
+        ],
+      },
+      footer: buttons.length ? { type: "box", layout: "vertical", paddingAll: "16px", contents: buttons } : undefined,
+    },
+  };
+}
+
+function parseBodyText(text) {
+  const t = text.normalize("NFKC");
+  const w = t.match(/体重\s*[:：]?\s*(\d{2,3}(?:\.\d+)?)/);
+  const f = t.match(/体脂肪(?:率)?\s*[:：]?\s*(\d{1,2}(?:\.\d+)?)/);
+  if (!w && !f) return null;
+  return { weight: w ? Number(w[1]) : 0, bodyFat: f ? Number(f[1]) : 0 };
+}
+
+async function recordBody(lineUserId, user, replyToken, weight, bodyFat) {
+  const now = jstNow();
+  const entry = { id: newId(), date: now.date, weight: weight || null, bodyFat: bodyFat || null };
+  if (!entry.weight) {
+    const last = [...user.weights].sort((a, b) => (a.date < b.date ? 1 : -1)).find(x => x.weight);
+    entry.weight = last?.weight || user.profile?.weight || null;
+  }
+  user.weights = [...user.weights.filter(x => x.date !== now.date), entry];
+  if (entry.weight && user.profile) user.profile = { ...user.profile, weight: entry.weight };
+  await saveUser(lineUserId, user);
+  const parts = [entry.weight && `体重 ${entry.weight}kg`, entry.bodyFat && `体脂肪率 ${entry.bodyFat}%`].filter(Boolean);
+  const msgs = [`${parts.join("、")}を記録しました。推移はダッシュボードの「履歴 → 体重」で確認できます。`];
+  const btn = dashboardButton("体重の推移を見る");
+  if (btn) msgs.push(btn);
+  await reply(replyToken, msgs, lineUserId);
+}
+
+// 戻り値 true = このメッセージは食事/体重の記録として処理した
+async function handleNutrition(event, lineUserId, replyToken, linkedProfileId) {
+  const isImage = event.message.type === "image";
+  const text = isImage ? "" : (event.message.text || "").trim();
+  const user = await loadUser(lineUserId);
+
+  if (!isImage) {
+    const body = parseBodyText(text);
+    if (body && text.length <= 30) {
+      await recordBody(lineUserId, user, replyToken, body.weight, body.bodyFat);
+      return true;
+    }
+  }
+
+  await showLoading(lineUserId);
+  const now = jstNow();
+  let images = [];
+  let thumb = null;
+  if (isImage) {
+    const img = await fetchLineImage(event.message.id);
+    images = [img.full];
+    thumb = img.thumb;
+  }
+  const todayMeals = user.meals.filter(m => m.date === now.date);
+  const lastMeal = [...user.meals].sort((a, b) => (`${a.date} ${a.time}` < `${b.date} ${b.time}` ? 1 : -1))[0] || null;
+  const result = await analyzeMessage({ images, text, todayMeals, lastMeal, targets: calcTargets(user.profile), now });
+
+  if (result.intent === "body") {
+    await recordBody(lineUserId, user, replyToken, result.weight, result.bodyFat);
+    return true;
+  }
+
+  if ((result.intent === "meal" || result.intent === "correction") && result.items?.length) {
+    const isCorrection = result.intent === "correction" && lastMeal;
+    let meal;
+    if (isCorrection) {
+      meal = { ...lastMeal, title: result.title || lastMeal.title, items: normalizeItems(result.items) };
+      user.meals = user.meals.map(m => (m.id === lastMeal.id ? meal : m));
+    } else {
+      meal = {
+        id: newId(), date: now.date, time: now.time, label: result.mealLabel || "食事",
+        title: result.title || "食事", hasImage: !!thumb, note: text, items: normalizeItems(result.items),
+      };
+      user.meals = [...user.meals, meal];
+      if (thumb) await nutriKvSet(`nutri_img:${lineUserId}:${meal.id}`, `data:${thumb.mediaType};base64,${thumb.data}`);
+    }
+    await saveUser(lineUserId, user);
+    const msgs = [buildMealReply({ result, meal, user, isCorrection: !!isCorrection })];
+    const btn = dashboardButton();
+    if (btn) msgs.push(btn);
+    await reply(replyToken, msgs, lineUserId);
+    return true;
+  }
+
+  if (isImage) {
+    await reply(replyToken, "写真から食事を読み取れませんでした。料理がはっきり写るように撮るか、「昼食 牛丼並と味噌汁」のように文章で送ってください。", lineUserId);
+    return true;
+  }
+
+  // 雑談・質問: アプリ連携済みなら下の既存の Q&A に任せる。未連携なら AI の短い返事を返す
+  if (linkedProfileId) return false;
+  if (result.replyText) await reply(replyToken, result.replyText, lineUserId);
+  return true;
+}
+
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
@@ -161,21 +294,30 @@ export default async function handler(req, res) {
   const events = body.events || [];
   for (const event of events) {
     try {
-      if (event.type !== "message" || event.message?.type !== "text") continue;
+      if (event.type === "follow") {
+        if (event.replyToken) await reply(event.replyToken, [welcomeMessage()]);
+        continue;
+      }
+      const msgType = event.message?.type;
+      if (event.type !== "message" || (msgType !== "text" && msgType !== "image")) continue;
       const lineUserId = event.source?.userId;
       const replyToken = event.replyToken;
-      const text = (event.message.text || "").trim();
+      const text = msgType === "text" ? (event.message.text || "").trim() : "";
       if (!lineUserId || !replyToken) continue;
 
       const linkedProfileId = await kvGet(`line_user:${lineUserId}`);
+      const normalized = text.normalize("NFKC").toUpperCase().replace(/\s/g, "");
+      const isLinkCode = !linkedProfileId && /^[A-Z0-9]{6}$/.test(normalized);
+      const asksLink = !linkedProfileId && /連携/.test(text);
+
+      if (!isLinkCode && !asksLink) {
+        if (await handleNutrition(event, lineUserId, replyToken, linkedProfileId)) continue;
+      }
+
       if (!linkedProfileId) {
-        // Not linked yet. Stay silent on ordinary messages so staff can
-        // reply to them by hand from LINE Official Account Manager's chat —
-        // only answer when the customer sends what looks like their
-        // 6-character linking code (from the app's 設定 screen) or asks
-        // about 連携 in words.
-        const normalized = text.normalize("NFKC").toUpperCase().replace(/\s/g, "");
-        if (/^[A-Z0-9]{6}$/.test(normalized)) {
+        // Not linked yet: only the 6-character linking code (from the app's
+        // 設定 screen) or a question about 連携 reach here.
+        if (isLinkCode) {
           const profileId = await kvGet(`line_link_code:${normalized}`);
           if (profileId) {
             await kvSet(`line_user:${lineUserId}`, profileId);
@@ -186,7 +328,7 @@ export default async function handler(req, res) {
           } else {
             await replyToLine(replyToken, "連携コードが見つかりませんでした。TTGYMアプリの「設定」画面に表示されている6文字のコードを、もう一度そのまま送ってください。");
           }
-        } else if (/連携/.test(text)) {
+        } else if (asksLink) {
           await replyToLine(replyToken, "TTGYMアプリの「設定」画面(右上の歯車)に表示されている連携コード(6文字)を、このトークにそのまま送ってください。送るだけで連携が完了します。");
         }
         continue;

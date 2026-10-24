@@ -1,4 +1,7 @@
 {
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
-  "crons": [{ "path": "/api/weekly-recipe", "schedule": "0 23 * * *" }]
+  "crons": [{ "path": "/api/weekly-recipe", "schedule": "0 23 * * *" }],
+  "functions": {
+    "api/line-webhook.js": { "maxDuration": 120 }
+  }
 }
