@@ -1,0 +1,45 @@
+# Uploads the two-page TTGYM LINE rich menu (public/liff/richmenu-main.png /
+# richmenu-sub.png) and sets the main page as the default for every friend
+# (scripts/setup-rich-menu.mjs). Run manually ("Run workflow") after the LIFF
+# app exists, and again whenever the menu images or links change.
+#
+# Needs repository secret LINE_CHANNEL_ACCESS_TOKEN (same value as in Vercel).
+
+name: Set up LINE rich menu
+
+on:
+  workflow_dispatch:
+    inputs:
+      liff_id:
+        description: "LIFF ID of the 健康ダッシュボード (e.g. 2000000000-AbCdEfGh)"
+        required: true
+      reserve_url:
+        description: "予約 link (empty = sends 「予約」 as a message)"
+        required: false
+      online_support_url:
+        description: "オンライントレーニングサポート link (empty = opens the app's 配信 tab)"
+        required: false
+      shop_url:
+        description: "オススメ健康ショップ link (empty = sends its name as a message)"
+        required: false
+      teamtop_url:
+        description: "TEAM TOPメンバー参加申込み link (empty = sends its name as a message)"
+        required: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Create rich menus
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LIFF_ID: ${{ github.event.inputs.liff_id }}
+          RESERVE_URL: ${{ github.event.inputs.reserve_url }}
+          ONLINE_SUPPORT_URL: ${{ github.event.inputs.online_support_url }}
+          SHOP_URL: ${{ github.event.inputs.shop_url }}
+          TEAMTOP_URL: ${{ github.event.inputs.teamtop_url }}
+        run: node scripts/setup-rich-menu.mjs
