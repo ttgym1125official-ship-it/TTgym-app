@@ -161,6 +161,10 @@ async function logIncoming(lineUserId, text, linkedProfileId) {
 
 // ── 健康ダッシュボード（食事・体重の記録）──
 
+// LIFF_ID（健康ダッシュボード）を Vercel に設定するまでは、食事記録・AI返信・あいさつを動かさず、
+// 今までどおりの動き（未連携の人には返信しない）のままにする。設定して再デプロイすると有効になる
+const nutritionEnabled = () => !!(process.env.LIFF_ID || process.env.VITE_LIFF_ID);
+
 function welcomeMessage() {
   const dashboard = liffUrl("");
   const profile = liffUrl("/profile");
@@ -348,11 +352,12 @@ export default async function handler(req, res) {
         }
         await saveUser(uid, user);
         await appendLog(uid, [{ from: "system", text: event.type === "follow" ? "友だち追加" : "ブロック（友だち解除）" }]);
-        if (event.type === "follow" && event.replyToken) await reply(event.replyToken, [welcomeMessage()], uid);
+        if (event.type === "follow" && event.replyToken && nutritionEnabled()) await reply(event.replyToken, [welcomeMessage()], uid);
         continue;
       }
       const msgType = event.message?.type;
       if (event.type !== "message" || (msgType !== "text" && msgType !== "image")) continue;
+      if (msgType === "image" && !nutritionEnabled()) continue;
       const lineUserId = event.source?.userId;
       const replyToken = event.replyToken;
       const text = msgType === "text" ? (event.message.text || "").trim() : "";
@@ -364,7 +369,7 @@ export default async function handler(req, res) {
       const isLinkCode = !linkedProfileId && /^[A-Z0-9]{6}$/.test(normalized);
       const asksLink = !linkedProfileId && /連携/.test(text);
 
-      if (!isLinkCode && !asksLink) {
+      if (!isLinkCode && !asksLink && nutritionEnabled()) {
         if (await handleNutrition(event, lineUserId, replyToken, linkedProfileId)) continue;
       }
 

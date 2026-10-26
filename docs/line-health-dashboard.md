@@ -33,6 +33,8 @@
 
 ### 2. Vercel の環境変数を追加
 
+`LIFF_ID` を設定して再デプロイするまでは、公式LINEは今までどおりの動きのままです（食事の記録・AIの返信・あいさつは動きません）。
+
 Project → Settings → Environment Variables に追加して、再デプロイ（Redeploy）します。
 
 | 名前 | 値 |
