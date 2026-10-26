@@ -4,6 +4,7 @@ import { AlertTriangle, ChevronDown, ChevronRight, Trash2, Lock } from "lucide-r
 import { Logo } from "./logo.jsx";
 import { supabase, supabaseConfigured } from "./supabaseClient.js";
 import { fileToCompressedDataUrl } from "./imageUtils.js";
+import { LinePanel, MemberLineBox, RecipeBroadcastStatus, notifyLine } from "./admin/LinePanel.jsx";
 
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');`;
 
@@ -164,10 +165,12 @@ const COMMENT_TYPES = [
   { key: "condition", label: "体調管理" },
 ];
 
-function TrainerCommentEditor({ memberId, comments, onAdded }) {
+function TrainerCommentEditor({ memberId, comments, onAdded, lineUserId }) {
   const [activeType, setActiveType] = useState("weekly");
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sendLine, setSendLine] = useState(true);
+  const [lineResult, setLineResult] = useState(null);
   const list = [...(comments || [])].filter(c => c.type === activeType).sort((a, b) => b.date.localeCompare(a.date));
 
   async function handleAdd() {
@@ -177,6 +180,16 @@ function TrainerCommentEditor({ memberId, comments, onAdded }) {
     const next = [...(comments || []), entry];
     await window.storage.set(`data:${memberId}:comments`, JSON.stringify(next), true).catch(() => {});
     onAdded(entry);
+    // 公式LINEと連携済みなら、コメントが届いたことをLINEでもお知らせする
+    if (lineUserId && sendLine) {
+      const label = COMMENT_TYPES.find(t => t.key === activeType)?.label || "";
+      try {
+        await notifyLine(lineUserId, `トレーナーから${label}のコメントが届きました。\n\n${entry.text}\n\nアプリの「コメント」タブでも確認できます。`);
+        setLineResult("LINEにも送りました");
+      } catch (e) {
+        setLineResult(`LINE送信できませんでした: ${e.message}`);
+      }
+    }
     setText("");
     setSaving(false);
   }
@@ -205,6 +218,12 @@ function TrainerCommentEditor({ memberId, comments, onAdded }) {
           width: "100%", background: C.gold, color: "#0D0D0D", border: "none", borderRadius: 4,
           padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: (saving || !text.trim()) ? 0.6 : 1,
         }}>{saving ? "投稿中…" : "投稿する"}</button>
+        {lineUserId && (
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.dim, marginTop: 8 }}>
+            <input type="checkbox" checked={sendLine} onChange={e => setSendLine(e.target.checked)} />公式LINEにも送る
+          </label>
+        )}
+        {lineResult && <div style={{ fontSize: 10.5, color: C.dim, marginTop: 4 }}>{lineResult}</div>}
       </div>
       {list.length === 0 ? <div style={{ fontSize: 11.5, color: C.dim }}>まだコメントはありません</div> : list.slice(0, 10).map(c => (
         <div key={c.id} style={{ padding: "6px 0", borderBottom: `1px solid ${C.cardBorder}` }}>
@@ -852,7 +871,7 @@ function MemberDetail({ member, onMemberUpdated }) {
           return (
             <div key={m.id} style={{ padding: "6px 0", borderBottom: `1px solid ${C.cardBorder}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5 }}>
-                <span>{m.name}</span>
+                <span>{m.source === "line" && <span style={{ fontSize: 9, color: "#fff", background: "#06C755", borderRadius: 3, padding: "1px 4px", marginRight: 6 }}>LINE</span>}{m.name}</span>
                 <span style={{ fontFamily: "'Space Mono', monospace", color: C.dim }}>
                   {m.calories}kcal ・P{m.protein} F{m.fat} C{m.carb}
                 </span>
@@ -889,8 +908,11 @@ function MemberDetail({ member, onMemberUpdated }) {
         onAdded={entry => setData(d => ({ ...d, personalLogs: [...d.personalLogs, entry] }))}
       />
 
+      <Section title="公式LINE">
+        <MemberLineBox member={profile} />
+      </Section>
       <TrainerCommentEditor
-        memberId={member.id} comments={data.comments}
+        memberId={member.id} comments={data.comments} lineUserId={profile.lineUserId}
         onAdded={entry => setData(d => ({ ...d, comments: [...d.comments, entry] }))}
       />
 
@@ -1104,6 +1126,14 @@ function Dashboard() {
         }}>{refreshing ? "更新中…" : "更新"}</button>
       </div>
 
+      <Section title="公式LINE">
+        <LinePanel members={members} />
+      </Section>
+
+      <Section title="週刊レシピのLINE配信">
+        <RecipeBroadcastStatus />
+      </Section>
+
       <SupplementLinksEditor />
 
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: "12px 14px", marginBottom: 20 }}>
@@ -1161,6 +1191,9 @@ function Dashboard() {
                   </div>
                   <div style={{ fontSize: 10.5, color: C.dim }}>{m.phone || "—"}</div>
                 </div>
+                {m.lineUserId && (
+                  <span style={{ fontSize: 9.5, color: "#fff", background: "#06C755", borderRadius: 4, padding: "2px 6px", fontWeight: 700, flexShrink: 0 }}>LINE</span>
+                )}
                 {pending && (
                   <span style={{ fontSize: 10, color: C.gold, border: `1px solid ${C.gold}`, borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>承認待ち</span>
                 )}

@@ -30,6 +30,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   loadUser, saveUser, jstNow, newId, reply, showLoading, fetchLineImage, analyzeMessage,
   normalizeItems, buildMealReply, dashboardButton, liffUrl, calcTargets, kvSet as nutriKvSet,
+  appendLog, refreshLineProfile, fetchLineProfile,
 } from "./_lib/nutri.js";
 
 // Same public project URL/publishable key already embedded in the client
@@ -68,7 +69,8 @@ function verifySignature(rawBody, signatureHeader, channelSecret) {
   }
 }
 
-async function replyToLine(replyToken, text) {
+async function replyToLine(replyToken, text, lineUserId) {
+  if (lineUserId) await appendLog(lineUserId, [{ from: "bot", text }]);
   await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
     headers: {
@@ -142,6 +144,19 @@ ${JSON.stringify(context)}
 
 このデータだけを根拠に、日本語で簡潔に(LINEのトーク吹き出しに収まる程度、目安200文字以内)答えてください。データに答えがない場合は、正直に「記録が見つかりませんでした」のように伝えてください。数値は分かりやすく整理して答えてください。絵文字は使わなくて構いません。`;
   return await callClaudeText(prompt);
+}
+
+// 管理画面の「公式LINE」に出すため、お客様のメッセージを記録し、LINEの表示名を取っておく。
+// アプリ連携済みなら会員一覧の並び順（最終利用日時）も更新する
+async function logIncoming(lineUserId, text, linkedProfileId) {
+  await appendLog(lineUserId, [{ from: "user", text }]);
+  try {
+    await refreshLineProfile(lineUserId, await loadUser(lineUserId));
+    if (linkedProfileId) {
+      const p = safeJson(await kvGet(`profile:${linkedProfileId}`), null);
+      if (p) await kvSet(`profile:${linkedProfileId}`, JSON.stringify({ ...p, lastActivityAt: new Date().toISOString() }));
+    }
+  } catch (e) { /* 返信の処理は止めない */ }
 }
 
 // ── 健康ダッシュボード（食事・体重の記録）──
@@ -320,8 +335,20 @@ export default async function handler(req, res) {
   const events = body.events || [];
   for (const event of events) {
     try {
-      if (event.type === "follow") {
-        if (event.replyToken) await reply(event.replyToken, [welcomeMessage()]);
+      if (event.type === "follow" || event.type === "unfollow") {
+        const uid = event.source?.userId;
+        if (!uid) continue;
+        const user = await loadUser(uid);
+        if (event.type === "follow") {
+          user.followedAt = new Date().toISOString();
+          user.unfollowedAt = null;
+          user.line = (await fetchLineProfile(uid)) || user.line;
+        } else {
+          user.unfollowedAt = new Date().toISOString();
+        }
+        await saveUser(uid, user);
+        await appendLog(uid, [{ from: "system", text: event.type === "follow" ? "友だち追加" : "ブロック（友だち解除）" }]);
+        if (event.type === "follow" && event.replyToken) await reply(event.replyToken, [welcomeMessage()], uid);
         continue;
       }
       const msgType = event.message?.type;
@@ -332,6 +359,7 @@ export default async function handler(req, res) {
       if (!lineUserId || !replyToken) continue;
 
       const linkedProfileId = await kvGet(`line_user:${lineUserId}`);
+      await logIncoming(lineUserId, msgType === "image" ? "［写真］" : text, linkedProfileId);
       const normalized = text.normalize("NFKC").toUpperCase().replace(/\s/g, "");
       const isLinkCode = !linkedProfileId && /^[A-Z0-9]{6}$/.test(normalized);
       const asksLink = !linkedProfileId && /連携/.test(text);
@@ -350,18 +378,18 @@ export default async function handler(req, res) {
             const profileRaw = await kvGet(`profile:${profileId}`);
             const profile = safeJson(profileRaw, {});
             await kvSet(`profile:${profileId}`, JSON.stringify({ ...profile, lineUserId }));
-            await replyToLine(replyToken, "連携が完了しました!これからLINEでお気軽に「今週の食事の合計カロリーは?」のように話しかけてください。");
+            await replyToLine(replyToken, "連携が完了しました!これからLINEでお気軽に「今週の食事の合計カロリーは?」のように話しかけてください。", lineUserId);
           } else {
-            await replyToLine(replyToken, "連携コードが見つかりませんでした。TTGYMアプリの「設定」画面に表示されている6文字のコードを、もう一度そのまま送ってください。");
+            await replyToLine(replyToken, "連携コードが見つかりませんでした。TTGYMアプリの「設定」画面に表示されている6文字のコードを、もう一度そのまま送ってください。", lineUserId);
           }
         } else if (asksLink) {
-          await replyToLine(replyToken, "TTGYMアプリの「設定」画面(右上の歯車)に表示されている連携コード(6文字)を、このトークにそのまま送ってください。送るだけで連携が完了します。");
+          await replyToLine(replyToken, "TTGYMアプリの「設定」画面(右上の歯車)に表示されている連携コード(6文字)を、このトークにそのまま送ってください。送るだけで連携が完了します。", lineUserId);
         }
         continue;
       }
 
       const answer = await answerFromData(linkedProfileId, text);
-      await replyToLine(replyToken, answer || "うまく答えられませんでした。もう一度お試しください。");
+      await replyToLine(replyToken, answer || "うまく答えられませんでした。もう一度お試しください。", lineUserId);
     } catch (e) {
       try {
         if (event.replyToken) await replyToLine(event.replyToken, "エラーが発生しました。しばらくしてからもう一度お試しください。");

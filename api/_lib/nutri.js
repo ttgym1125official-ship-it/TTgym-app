@@ -74,6 +74,7 @@ export async function loadUser(lineUserId) {
   const user = {
     profile: data.profile || null, meals: data.meals || [], weights: data.weights || [],
     water: data.water || {}, goal: data.goal || {}, pid: pid || null, syncedTo: data.syncedTo || null,
+    line: data.line || null, followedAt: data.followedAt || null, unfollowedAt: data.unfollowedAt || null,
   };
   if (!pid) return user;
 
@@ -104,6 +105,7 @@ export async function saveUser(lineUserId, data) {
   await kvSet(`nutri:${lineUserId}`, JSON.stringify({
     profile: data.profile, meals: data.meals.filter(m => m.source !== "app"), weights: data.pid ? [] : data.weights,
     water: data.pid ? {} : data.water || {}, goal: data.goal || {}, syncedTo: data.pid || null,
+    line: data.line || null, followedAt: data.followedAt || null, unfollowedAt: data.unfollowedAt || null,
   }));
   if (data.pid) await syncToApp(data);
 }
@@ -282,6 +284,44 @@ export async function reply(replyToken, messages, fallbackUserId) {
   const ok = await lineFetch("/message/reply", { replyToken, messages: msgs });
   // 解析に時間がかかって reply token が失効した場合だけ push で送り直す
   if (!ok && fallbackUserId) await lineFetch("/message/push", { to: fallbackUserId, messages: msgs });
+  if (fallbackUserId) await appendLog(fallbackUserId, msgs.map(m => ({ from: "bot", text: m.type === "text" ? m.text : `［${m.altText || m.type}］` })));
+}
+
+export async function push(lineUserId, text) {
+  return lineFetch("/message/push", { to: lineUserId, messages: [{ type: "text", text: String(text).slice(0, 4900) }] });
+}
+
+// ── 管理画面向け: LINEのプロフィールとやりとりの記録 ──
+// line_log:<LINE userId> に直近100件（{ at, from: "user"|"bot"|"staff"|"system", text }）を残す
+export async function appendLog(lineUserId, entries) {
+  try {
+    const at = new Date().toISOString();
+    const log = parseJson(await kvGet(`line_log:${lineUserId}`), []);
+    const next = [...log, ...entries.map(e => ({ at, ...e, text: String(e.text || "").slice(0, 1500) }))].slice(-100);
+    await kvSet(`line_log:${lineUserId}`, JSON.stringify(next));
+  } catch (e) { /* 記録に失敗しても返信は続ける */ }
+}
+
+export async function fetchLineProfile(lineUserId) {
+  try {
+    const res = await fetch(`${LINE_API}/profile/${lineUserId}`, { headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` } });
+    if (!res.ok) return null;
+    const p = await res.json();
+    return { displayName: p.displayName || "", pictureUrl: p.pictureUrl || null, fetchedAt: new Date().toISOString() };
+  } catch (e) {
+    return null;
+  }
+}
+
+// LINEの表示名・アイコンを7日に1回取り直して保存する（管理画面の一覧に使う）
+export async function refreshLineProfile(lineUserId, user) {
+  const stale = !user.line?.fetchedAt || Date.now() - Date.parse(user.line.fetchedAt) > 7 * 86400000;
+  if (!stale) return;
+  const line = await fetchLineProfile(lineUserId);
+  if (line) {
+    user.line = line;
+    await saveUser(lineUserId, user);
+  }
 }
 
 export async function showLoading(lineUserId, seconds = 60) {
