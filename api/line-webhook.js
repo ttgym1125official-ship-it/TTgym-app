@@ -186,6 +186,19 @@ function parseBodyText(text) {
   return { weight: w ? Number(w[1]) : 0, bodyFat: f ? Number(f[1]) : 0 };
 }
 
+// 「水 500ml」「お水500」「水分 1.5L」「水 コップ1杯」など
+function parseWaterText(text) {
+  const t = text.normalize("NFKC").replace(/\s/g, "");
+  const m = t.match(/^(?:水|お水|水分|飲んだ水)[:：]?(\d+(?:\.\d+)?)(ml|mL|ミリ|cc|l|L|リットル)?$/);
+  if (m) {
+    const v = Number(m[1]);
+    const ml = /^(l|L|リットル)$/.test(m[2] || "") || (!m[2] && v < 10) ? v * 1000 : v;
+    return ml > 0 && ml <= 5000 ? Math.round(ml) : null;
+  }
+  const cup = t.match(/^(?:水|お水|水分)(?:コップ)?(\d+)杯$/);
+  return cup ? Number(cup[1]) * 200 : null;
+}
+
 async function recordBody(lineUserId, user, replyToken, weight, bodyFat) {
   const now = jstNow();
   const entry = { id: newId(), date: now.date, weight: weight || null, bodyFat: bodyFat || null };
@@ -203,13 +216,26 @@ async function recordBody(lineUserId, user, replyToken, weight, bodyFat) {
   await reply(replyToken, msgs, lineUserId);
 }
 
-// 戻り値 true = このメッセージは食事/体重の記録として処理した
+// リッチメニューのリンク未設定のタイルは、この言葉をメッセージとして送る。
+// スタッフがチャットで手動対応できるよう、AIは返事をしない
+const MENU_WORDS = new Set(["予約", "オンライントレーニングサポート", "オススメ健康ショップ", "TEAM TOPメンバー参加申込み"]);
+
+// 戻り値 true = このメッセージは食事/体重の記録として処理した（または意図的に何もしない）
 async function handleNutrition(event, lineUserId, replyToken, linkedProfileId) {
   const isImage = event.message.type === "image";
   const text = isImage ? "" : (event.message.text || "").trim();
+  if (MENU_WORDS.has(text)) return true;
   const user = await loadUser(lineUserId);
 
   if (!isImage) {
+    const waterMl = parseWaterText(text);
+    if (waterMl) {
+      const now = jstNow();
+      user.water = { ...user.water, [now.date]: (user.water[now.date] || 0) + waterMl };
+      await saveUser(lineUserId, user);
+      await reply(replyToken, `お水 ${waterMl}ml を記録しました（今日の合計 ${user.water[now.date].toLocaleString("ja-JP")}ml）。`, lineUserId);
+      return true;
+    }
     const body = parseBodyText(text);
     if (body && text.length <= 30) {
       await recordBody(lineUserId, user, replyToken, body.weight, body.bodyFat);

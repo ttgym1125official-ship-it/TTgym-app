@@ -7,9 +7,11 @@
 | `api/line-webhook.js` | 食事・訂正・体重の受け取りと返信、友だち追加時のあいさつ（既存のアプリ連携・Q&Aはそのまま） |
 | `api/_lib/nutri.js` | AI解析（Claude）、データ保存、返信文の組み立て |
 | `api/nutrition.js` | ダッシュボード用のデータAPI（LINEのアクセストークンで本人確認） |
-| `src/liff/` | ダッシュボード画面（`/liff`）とプロフィール登録画面（`/liff/profile`） |
+| `src/liff/` | ダッシュボード（`/liff`：今日・履歴・目標）、目標設定（`/liff/goal`）、プロフィール登録（`/liff/profile`） |
+| `src/storeMenu.js` | チェーン店メニューのPFC（アプリの食事タブと共通） |
+| `src/membership.js` | メンバーシップのランクとポイント計算（アプリと共通） |
 | `src/liff/nutrients.js` | 36項目の栄養素の説明文・目標値の計算式・判定ルール |
-| `scripts/render-rich-menu.mjs` / `setup-rich-menu.mjs` | リッチメニューの画像作成と登録 |
+| `scripts/render-rich-menu.mjs` / `setup-rich-menu.mjs` | リッチメニュー（2ページ・タブ切り替え）の画像作成と登録 |
 
 ## デモ表示（設定前でも見られます）
 
@@ -43,10 +45,25 @@ Project → Settings → Environment Variables に追加して、再デプロイ
 
 ### 3. リッチメニューを登録
 
+リッチメニューは上のタブで「メインメニュー」と「サポートメニュー」を切り替える2ページ構成です。
+
+| ページ | タイル | 開く先 |
+| --- | --- | --- |
+| メイン | 今日の栄養 | ダッシュボード |
+| メイン | 目標設定 | 目標設定ページ（目標・ビフォーアフター・メンバーシップ） |
+| メイン | 予約 | `reserve_url`（空欄なら「予約」とメッセージ送信） |
+| メイン | 体調・トレーニング管理 | TTGYMアプリの体調管理タブ |
+| メイン | オンライントレーニングサポート | `online_support_url` |
+| サポート | レシピ・おすすめ店 | TTGYMアプリのレシピタブ |
+| サポート | My成長・測定結果 | TTGYMアプリの成長タブ |
+| サポート | ビフォーアフター | 目標設定ページ |
+| サポート | オススメ健康ショップ | `shop_url` |
+| サポート | TEAM TOPメンバー参加申込み | `teamtop_url` |
+
+リンクが空欄のタイルは、その名前がメッセージとして送られます。AIは返事をしないので、スタッフがチャットで対応してください。TTGYMアプリのタブは、ログイン状態を保つためLINEの外のブラウザで開きます。
+
 1. GitHub のリポジトリ → Settings → Secrets and variables → Actions に `LINE_CHANNEL_ACCESS_TOKEN`（Vercelと同じ値）を追加
-2. Actions → 「Set up LINE rich menu」→ Run workflow
-   - `liff_id`: LIFF ID
-   - イベント・ショップのリンク、LINEのベーシックID（友人紹介用）は任意。空欄ならその言葉がメッセージとして送られます
+2. Actions → 「Set up LINE rich menu」→ Run workflow で `liff_id` と各リンクを入力
 
 画像を変えたいときは `scripts/render-rich-menu.mjs` を編集して `node scripts/render-rich-menu.mjs` で作り直し、もう一度ワークフローを実行します。
 
@@ -60,7 +77,16 @@ Project → Settings → Environment Variables に追加して、再デプロイ
 - **食事の写真 / 文章** → 品目ごとに記録して、今日の累計・不足しそうな栄養素・次の食事の提案を返信
 - **「エビじゃなくてイカ」「ご飯は半分」** → 直前の食事を直して記録し直す
 - **「体重 64.5」「体脂肪 15%」、体重計・体組成計の写真** → 体組成として記録
+- **「水 500ml」「お水 1.5L」「水 コップ2杯」** → 水分として記録
 - それ以外の雑談・質問 → アプリ連携済みの人は既存のQ&A、未連携の人にはAIが短く返事（予約・料金などは「スタッフから改めて連絡」と返す）
+
+## ダッシュボードでできること
+
+- 食事の追加：「お店から選ぶ」（チェーン店メニュー）か「自分で入力」（メニュー名とPFC）。ビタミン・ミネラルはAIが名前とPFCから見積もります
+- 水分：+200 / +350 / +500ml（目安は体重×35ml）
+- 目標タブ：目標のコメント、目標体重・体脂肪率、ビフォーアフター写真、メンバーシップ（ランク・ポイント）
+  - TTGYMアプリと連携済みの人は、目標と写真をアプリと共有し、ポイントもアプリと同じ記録から計算します
+  - LINEだけの人は、体組成を記録した月を「月次測定」として数えます
 
 ## 目標値の計算
 
@@ -74,5 +100,6 @@ Project → Settings → Environment Variables に追加して、再デプロイ
 
 既存アプリと同じ Supabase の `kv_store` に保存します。
 
-- `nutri:<LINEユーザーID>` … プロフィール・食事・体重
+- `nutri:<LINEユーザーID>` … プロフィール・食事・体重・水分・目標
+- `nutri_photo:<LINEユーザーID>:before|after` … ビフォーアフター写真（アプリ未連携の人）
 - `nutri_img:<LINEユーザーID>:<食事ID>` … 食事写真のサムネイル

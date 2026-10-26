@@ -85,10 +85,32 @@ export async function post(action, payload) {
       d.weights = [...d.weights.filter(w => w.date !== payload.date), { id: String(Date.now()), date: payload.date, weight: Number(payload.weight), bodyFat: payload.bodyFat ? Number(payload.bodyFat) : null }];
     } else if (action === "deleteWeight") {
       d.weights = d.weights.filter(w => w.id !== payload.id);
+    } else if (action === "addMeal") {
+      await new Promise(r => setTimeout(r, 600));
+      const items = payload.items.map((it, i) => ({ id: `${Date.now()}-${i}`, n: {}, ...it }));
+      const title = items.length > 2 ? `${items[0].name}・${items[1].name} ほか${items.length - 2}品` : items.map(i => i.name).join("・");
+      d.meals = [...d.meals, { id: String(Date.now()), date: payload.date, time: payload.time, label: payload.label, title, hasImage: false, manual: true, items }];
+    } else if (action === "water") {
+      const next = Math.max(0, (d.water[payload.date] || 0) + payload.ml);
+      d.water = { ...d.water, [payload.date]: next };
+    } else if (action === "goal") {
+      d.goal = { ...d.goal, ...payload.goal };
+      return { ok: true };
+    } else if (action === "photo") {
+      d.photos = { ...d.photos, [payload.which]: payload.dataUrl };
+      return { ok: true };
     }
     return demoResult();
   }
   return (await call("POST", { action, ...payload })).json();
+}
+
+export async function fetchGoal() {
+  if (isDemo) {
+    const d = demo();
+    return { linked: false, goal: d.goal, photos: d.photos, points: 12 };
+  }
+  return (await call("GET", { action: "goal" })).json();
 }
 
 const imageCache = new Map();
@@ -108,6 +130,10 @@ export function closeOrBack() {
   else window.history.back();
 }
 
+export function openPage(path = "") {
+  window.location.href = `/liff${path}${isDemo ? "?demo=1" : ""}`;
+}
+
 export function openDashboard() {
-  window.location.href = `/liff${isDemo && LIFF_ID ? "?demo=1" : ""}`;
+  openPage("");
 }

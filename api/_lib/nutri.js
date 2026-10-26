@@ -2,12 +2,16 @@
 // api/line-webhook.js と api/nutrition.js から読み込む（_lib 配下は Vercel の関数にはならない）。
 //
 // データは既存アプリと同じ Supabase kv_store に、LINEユーザーごとに保存する:
-//   nutri:<LINE userId>                 → { profile, meals, weights }
+//   nutri:<LINE userId>                 → { profile, meals, weights, water, goal }
 //   nutri_img:<LINE userId>:<meal id>   → 食事写真のサムネイル(dataURL)
+//   nutri_photo:<LINE userId>:before|after → ビフォーアフター写真(dataURL)
+// 公式アプリと連携済み（line_user:<LINE userId> がある）の人は、目標・ビフォーアフター写真を
+// アプリのプロフィール（profile:<id>）に読み書きして、アプリ側と同じものを表示する。
 
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NUTRIENTS, NUTRIENT_KEYS, calcTargets, sumMeals, buildAdvice, fmt } from "../../src/liff/nutrients.js";
+import { computePoints } from "../../src/membership.js";
 
 const SUPABASE_URL = "https://udfbnjatqjdswokuoqoo.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable__rOCDCsWxALHCdQbYfGcBg_7TPateU2";
@@ -34,11 +38,98 @@ export async function loadUser(lineUserId) {
   const raw = await kvGet(`nutri:${lineUserId}`);
   let data = {};
   try { data = raw ? JSON.parse(raw) : {}; } catch (e) { data = {}; }
-  return { profile: data.profile || null, meals: data.meals || [], weights: data.weights || [] };
+  return {
+    profile: data.profile || null, meals: data.meals || [], weights: data.weights || [],
+    water: data.water || {}, goal: data.goal || {},
+  };
 }
 
 export async function saveUser(lineUserId, data) {
-  await kvSet(`nutri:${lineUserId}`, JSON.stringify({ profile: data.profile, meals: data.meals, weights: data.weights }));
+  await kvSet(`nutri:${lineUserId}`, JSON.stringify({
+    profile: data.profile, meals: data.meals, weights: data.weights, water: data.water || {}, goal: data.goal || {},
+  }));
+}
+
+function parseJson(raw, fallback) {
+  try { return raw ? JSON.parse(raw) : fallback; } catch (e) { return fallback; }
+}
+
+// ── 目標・ビフォーアフター・メンバーシップ ──
+const GOAL_FIELDS = ["goal", "targetWeight", "targetBodyFat", "afterMonths"];
+
+export async function linkedProfileId(lineUserId) {
+  return kvGet(`line_user:${lineUserId}`);
+}
+
+export async function loadGoal(lineUserId, user) {
+  const pid = await linkedProfileId(lineUserId);
+  if (pid) {
+    const p = parseJson(await kvGet(`profile:${pid}`), {});
+    return {
+      linked: true,
+      goal: { goal: p.goal || "", targetWeight: p.targetWeight ?? null, targetBodyFat: p.targetBodyFat ?? null, afterMonths: p.afterMonths || "" },
+      photos: { before: p.beforePhoto || null, after: p.afterPhoto || null },
+    };
+  }
+  const [before, after] = await Promise.all([kvGet(`nutri_photo:${lineUserId}:before`), kvGet(`nutri_photo:${lineUserId}:after`)]);
+  const g = user.goal || {};
+  return {
+    linked: false,
+    goal: { goal: g.goal || "", targetWeight: g.targetWeight ?? user.profile?.targetWeight ?? null, targetBodyFat: g.targetBodyFat ?? null, afterMonths: g.afterMonths || "" },
+    photos: { before: before || null, after: after || null },
+  };
+}
+
+export async function saveGoal(lineUserId, user, patch) {
+  const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => GOAL_FIELDS.includes(k)));
+  const pid = await linkedProfileId(lineUserId);
+  if (pid) {
+    const p = parseJson(await kvGet(`profile:${pid}`), { id: pid });
+    await kvSet(`profile:${pid}`, JSON.stringify({ ...p, ...clean }));
+  } else {
+    user.goal = { ...(user.goal || {}), ...clean };
+    await saveUser(lineUserId, user);
+  }
+  if ("targetWeight" in clean && user.profile) {
+    user.profile = { ...user.profile, targetWeight: clean.targetWeight };
+    await saveUser(lineUserId, user);
+  }
+}
+
+export async function savePhoto(lineUserId, which, dataUrl) {
+  const pid = await linkedProfileId(lineUserId);
+  if (pid) {
+    const p = parseJson(await kvGet(`profile:${pid}`), { id: pid });
+    await kvSet(`profile:${pid}`, JSON.stringify({ ...p, [which === "before" ? "beforePhoto" : "afterPhoto"]: dataUrl }));
+  } else if (dataUrl) {
+    await kvSet(`nutri_photo:${lineUserId}:${which}`, dataUrl);
+  } else {
+    await kvDelete(`nutri_photo:${lineUserId}:${which}`);
+  }
+}
+
+// アプリ連携済みならアプリの記録（パーソナル・自宅トレーニング・月次測定・スタッフ調整）も含めて、
+// アプリと同じ式で計算する。LINEだけの人は、体組成を記録した月を「月次測定」として数える。
+export async function computeMembership(lineUserId, user) {
+  const now = jstNow();
+  const yesterday = new Date(Date.parse(`${now.date}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+  const recentDates = [now.date, yesterday];
+  const lineDates = [...user.meals.map(m => m.date), ...user.weights.map(w => w.date), ...Object.keys(user.water || {})];
+  const pid = await linkedProfileId(lineUserId);
+  if (pid) {
+    const keys = ["meals", "conditions", "workouts", "growth", "sessions", "monthly"];
+    const [profileRaw, ...raws] = await Promise.all([kvGet(`profile:${pid}`), ...keys.map(k => kvGet(`data:${pid}:${k}`))]);
+    const d = Object.fromEntries(keys.map((k, i) => [k, parseJson(raws[i], [])]));
+    const activeDates = new Set([...d.meals, ...d.conditions, ...d.workouts, ...d.growth].map(x => x.date).concat(lineDates));
+    const points = computePoints({
+      sessions: d.sessions, workouts: d.workouts, monthlyCount: d.monthly.length, activeDates, recentDates,
+      adjustment: parseJson(profileRaw, {}).pointAdjustment || 0,
+    });
+    return { points, linked: true };
+  }
+  const months = new Set(user.weights.map(w => w.date.slice(0, 7)));
+  const points = computePoints({ monthlyCount: months.size, activeDates: new Set(lineDates), recentDates });
+  return { points, linked: false };
 }
 
 // ── 日付（日本時間）──
@@ -210,6 +301,36 @@ export async function analyzeMessage({ images = [], text = "", todayMeals = [], 
   if (message.stop_reason === "refusal") throw new Error("refusal");
   const textBlock = message.content.find(b => b.type === "text");
   return JSON.parse(textBlock.text);
+}
+
+// 手入力・お店メニューの品目（名前とPFCは確定）に、36項目の栄養素だけをAIで見積もる。
+// 失敗したら 0 のまま（カロリー・PFCは入力どおり記録される）
+const ESTIMATE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["items"],
+  properties: { items: { type: "array", items: { type: "object", additionalProperties: false, required: ["n"], properties: { n: ITEM_SCHEMA.properties.n } } } },
+};
+
+export async function estimateNutrients(items) {
+  try {
+    const list = items.map((it, i) => `${i + 1}. ${it.name}${it.amount ? `（${it.amount}）` : ""}: ${Math.round(it.kcal)}kcal, P${it.p}g, F${it.f}g, C${it.c}g`).join("\n");
+    const stream = anthropic.beta.messages.stream({
+      model: "claude-opus-5-5",
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low", format: { type: "json_schema", schema: ESTIMATE_SCHEMA } },
+      system: `あなたは管理栄養士です。食品名とカロリー・PFCから、日本食品標準成分表（八訂 増補2023年）をもとに各品目の栄養素量を見積もり、同じ順番で items に入れてください。\n${NUTRIENT_GUIDE}\nsugar は糖質、salt は食塩相当量です。`,
+      messages: [{ role: "user", content: list }],
+    });
+    const message = await stream.finalMessage();
+    if (message.stop_reason === "refusal") return items;
+    const out = JSON.parse(message.content.find(b => b.type === "text").text).items || [];
+    return items.map((it, i) => ({ ...it, n: out[i]?.n || it.n }));
+  } catch (e) {
+    return items;
+  }
 }
 
 export function normalizeItems(items) {

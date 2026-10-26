@@ -36,5 +36,8 @@ export function makeDemoData() {
     profile: { sex: "male", age: 27, height: 180, weight: 82, bodyFat: 14, bmr: null, activity: "veryHigh", goal: "gain", targetWeight: 78 },
     meals: [{ id: "demo-meal", date: jstDate(0), time: "08:25", label: "食事", title: "赤飯・ジャークチキン ほか6品", hasImage: false, items }],
     weights: [{ id: "demo-w", date: jstDate(0), weight: 82, bodyFat: 14 }],
+    water: { [jstDate(0)]: 1200 },
+    goal: { goal: "『HYROXアジア一位』\n\n① ベンチプレス 150kg\n② デッドリフト 200kg\n③ マラソン 1km 3分代\n④ 体脂肪率10%以下", targetWeight: 79, targetBodyFat: 10, afterMonths: "" },
+    photos: { before: null, after: null },
   };
 }

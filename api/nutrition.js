@@ -7,15 +7,23 @@
 //   LINE_LOGIN_CHANNEL_ID (推奨) — LIFFアプリを作った「LINEログイン」チャネルのチャネルID。
 //                                  設定すると、他のチャネルで発行されたトークンを拒否する。
 //
-// GET  /api/nutrition?action=data             → { profile, meals, weights, targets }
+// GET  /api/nutrition?action=data             → { profile, meals, weights, water, targets }
 // GET  /api/nutrition?action=image&meal=<id>  → 食事写真
+// GET  /api/nutrition?action=goal             → { goal, photos, linked, points }（目標設定ページ）
 // POST /api/nutrition { action: "profile", profile }
 // POST /api/nutrition { action: "deleteItem", mealId, itemId }
 // POST /api/nutrition { action: "deleteMeal", mealId }
 // POST /api/nutrition { action: "addWeight", date, weight, bodyFat }
 // POST /api/nutrition { action: "deleteWeight", id }
+// POST /api/nutrition { action: "addMeal", date, time, label, items: [{ name, amount, kcal, p, f, c }] }
+// POST /api/nutrition { action: "water", date, ml }        ml は加算量（マイナスで取り消し）
+// POST /api/nutrition { action: "goal", goal: { goal, targetWeight, targetBodyFat, afterMonths } }
+// POST /api/nutrition { action: "photo", which: "before"|"after", dataUrl }
 
-import { loadUser, saveUser, kvGet, kvDelete, newId, calcTargets } from "./_lib/nutri.js";
+import {
+  loadUser, saveUser, kvGet, kvDelete, newId, calcTargets, normalizeItems, estimateNutrients,
+  loadGoal, saveGoal, savePhoto, computeMembership,
+} from "./_lib/nutri.js";
 
 async function verifyLineUser(req) {
   const auth = req.headers.authorization || "";
@@ -85,6 +93,11 @@ export default async function handler(req, res) {
       return;
     }
     const user = await loadUser(userId);
+    if (action === "goal") {
+      const [goal, membership] = await Promise.all([loadGoal(userId, user), computeMembership(userId, user)]);
+      res.status(200).json({ ...goal, points: membership.points });
+      return;
+    }
     res.status(200).json({ ...user, targets: calcTargets(user.profile) });
     return;
   }
@@ -135,6 +148,55 @@ export default async function handler(req, res) {
     case "deleteWeight":
       user.weights = user.weights.filter(w => w.id !== body.id);
       break;
+    case "addMeal": {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || "") ? body.date : null;
+      const raw = (Array.isArray(body.items) ? body.items : []).slice(0, 20).filter(i => String(i.name || "").trim());
+      if (!date || !raw.length) {
+        res.status(400).json({ error: "メニュー名を入力してください" });
+        return;
+      }
+      const items = await estimateNutrients(normalizeItems(raw));
+      const time = /^\d{2}:\d{2}$/.test(body.time || "") ? body.time : "12:00";
+      const title = items.length > 2 ? `${items[0].name}・${items[1].name} ほか${items.length - 2}品` : items.map(i => i.name).join("・");
+      user.meals.push({
+        id: newId(), date, time, label: ["朝食", "昼食", "夕食", "間食", "食事"].includes(body.label) ? body.label : "食事",
+        title, hasImage: false, manual: true, items,
+      });
+      break;
+    }
+    case "water": {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || "") ? body.date : null;
+      const ml = num(body.ml, -5000, 5000);
+      if (!date || ml == null) {
+        res.status(400).json({ error: "量を指定してください" });
+        return;
+      }
+      const next = Math.max(0, (user.water[date] || 0) + ml);
+      if (next) user.water[date] = next; else delete user.water[date];
+      break;
+    }
+    case "goal": {
+      const g = body.goal || {};
+      const patch = {};
+      if ("goal" in g) patch.goal = String(g.goal || "").slice(0, 2000);
+      if ("targetWeight" in g) patch.targetWeight = num(g.targetWeight, 25, 250);
+      if ("targetBodyFat" in g) patch.targetBodyFat = num(g.targetBodyFat, 2, 70);
+      if ("afterMonths" in g) patch.afterMonths = String(g.afterMonths ?? "").replace(/[^\d]/g, "").slice(0, 3);
+      await saveGoal(userId, user, patch);
+      res.status(200).json({ ok: true });
+      return;
+    }
+    case "photo": {
+      const which = body.which === "after" ? "after" : "before";
+      const dataUrl = body.dataUrl ? String(body.dataUrl) : null;
+      if (dataUrl && (!/^data:image\/(jpeg|png|webp);base64,/.test(dataUrl) || dataUrl.length > 3_000_000)) {
+        res.status(400).json({ error: "画像を読み込めませんでした" });
+        return;
+      }
+      await savePhoto(userId, which, dataUrl);
+      res.status(200).json({ ok: true });
+      return;
+    }
     default:
       res.status(400).json({ error: "unknown action" });
       return;

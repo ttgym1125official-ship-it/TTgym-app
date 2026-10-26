@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Camera, Flame, Utensils, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Camera, Flame, Plus, Utensils, X } from "lucide-react";
 import { sumMeals, sumItems, pfcRatio, pfcBalanceLabel, buildAdvice, PFC_RANGE, fmt } from "./nutrients.js";
 import { mealImageUrl } from "./api.js";
 import { COLORS, Ring, NutrientSection, addDays, dayInfo, jpDate, comma } from "./ui.jsx";
+import { AddMealSheet, WaterCard, waterGoal } from "./MealEntry.jsx";
 
 function WeekStrip({ today, selected, onSelect, kcalByDate, targetKcal }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
@@ -189,7 +190,7 @@ function Advice({ totals, targets }) {
   );
 }
 
-function Empty() {
+function Empty({ onAdd }) {
   return (
     <div className="lf-card lf-empty">
       <div className="icon"><Camera size={34} strokeWidth={1.8} /></div>
@@ -198,11 +199,13 @@ function Empty() {
       <div className="lf-step"><i>1</i>LINEで食事の写真を送る</div>
       <div className="lf-step"><i>2</i>または「昼食 牛丼並と味噌汁」と送る</div>
       <div className="lf-step"><i>3</i>品目ごとに重さを見積もって記録します</div>
+      <button className="lf-btn-o" style={{ marginTop: 18 }} onClick={onAdd}><Plus size={17} />お店から選ぶ・自分で入力</button>
     </div>
   );
 }
 
-export default function Today({ data, today, selected, onSelect, onDeleteItem, onDeleteMeal }) {
+export default function Today({ data, today, selected, onSelect, onDeleteItem, onDeleteMeal, onAddMeal, onWater }) {
+  const [adding, setAdding] = useState(false);
   const { targets } = data;
   const kcalByDate = {};
   for (const m of data.meals) kcalByDate[m.date] = (kcalByDate[m.date] || 0) + sumItems(m.items).kcal;
@@ -212,12 +215,20 @@ export default function Today({ data, today, selected, onSelect, onDeleteItem, o
   return (
     <>
       <WeekStrip today={today} selected={selected} onSelect={onSelect} kcalByDate={kcalByDate} targetKcal={targets.kcal} />
-      {meals.length === 0 ? <Empty /> : (
+      {meals.length === 0 ? <Empty onAdd={() => setAdding(true)} /> : (
         <>
           <Hero date={selected} totals={totals} targets={targets} mealCount={meals.length} />
           <PfcBalance totals={totals} />
-          <div className="lf-sec"><h2>食事</h2><span className="meta">{meals.length}件</span></div>
+          <div className="lf-sec">
+            <h2>食事</h2>
+            <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span className="meta">{meals.length}件</span>
+              <button className="lf-btn-d" onClick={() => setAdding(true)}><Plus size={17} />追加</button>
+            </span>
+          </div>
           {meals.map(m => <MealCard key={m.id} meal={m} onDeleteItem={onDeleteItem} onDeleteMeal={onDeleteMeal} />)}
+          <div className="lf-sec"><h2>水分</h2></div>
+          <WaterCard ml={data.water?.[selected] || 0} goal={waterGoal(data.profile)} onAdd={ml => onWater(selected, ml)} />
           <div className="lf-sec"><h2>栄養素</h2><span className="meta">36項目</span></div>
           <NutrientSection totals={totals} targets={targets} />
           <Advice totals={totals} targets={targets} />
@@ -226,6 +237,13 @@ export default function Today({ data, today, selected, onSelect, onDeleteItem, o
           </p>
         </>
       )}
+      {meals.length === 0 && (
+        <>
+          <div className="lf-sec"><h2>水分</h2></div>
+          <WaterCard ml={data.water?.[selected] || 0} goal={waterGoal(data.profile)} onAdd={ml => onWater(selected, ml)} />
+        </>
+      )}
+      {adding && <AddMealSheet date={selected} onClose={() => setAdding(false)} onSubmit={onAddMeal} />}
     </>
   );
 }

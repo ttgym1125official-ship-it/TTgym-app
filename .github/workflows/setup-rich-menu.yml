@@ -1,7 +1,7 @@
-# Uploads public/liff/richmenu.png as the TTGYM LINE rich menu and sets it as
-# the default for every friend (scripts/setup-rich-menu.mjs). Run manually
-# ("Run workflow") after the LIFF app exists, and again whenever the menu
-# image or links change.
+# Uploads the two-page TTGYM LINE rich menu (public/liff/richmenu-main.png /
+# richmenu-sub.png) and sets the main page as the default for every friend
+# (scripts/setup-rich-menu.mjs). Run manually ("Run workflow") after the LIFF
+# app exists, and again whenever the menu images or links change.
 #
 # Needs repository secret LINE_CHANNEL_ACCESS_TOKEN (same value as in Vercel).
 
@@ -13,14 +13,20 @@ on:
       liff_id:
         description: "LIFF ID of the 健康ダッシュボード (e.g. 2000000000-AbCdEfGh)"
         required: true
-      event_url:
-        description: "イベント tile link (empty = sends 「イベント」 as a message)"
+      reserve_url:
+        description: "予約 link (empty = sends 「予約」 as a message)"
+        required: false
+      online_support_url:
+        description: "オンライントレーニングサポート link (empty = sends its name as a message)"
         required: false
       shop_url:
-        description: "ショップ tile link (empty = sends 「ショップ」 as a message)"
+        description: "オススメ健康ショップ link (empty = sends its name as a message)"
         required: false
-      line_basic_id:
-        description: "LINE basic ID like @123abcde (empty = 友人を紹介 sends a message)"
+      teamtop_url:
+        description: "TEAM TOPメンバー参加申込み link (empty = sends its name as a message)"
+        required: false
+      app_url:
+        description: "TTGYM app URL (empty = https://t-tgym-app.vercel.app)"
         required: false
 
 jobs:
@@ -31,11 +37,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Create rich menu
+      - name: Create rich menus
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LIFF_ID: ${{ github.event.inputs.liff_id }}
-          EVENT_URL: ${{ github.event.inputs.event_url }}
+          RESERVE_URL: ${{ github.event.inputs.reserve_url }}
+          ONLINE_SUPPORT_URL: ${{ github.event.inputs.online_support_url }}
           SHOP_URL: ${{ github.event.inputs.shop_url }}
-          LINE_BASIC_ID: ${{ github.event.inputs.line_basic_id }}
+          TEAMTOP_URL: ${{ github.event.inputs.teamtop_url }}
+          APP_URL: ${{ github.event.inputs.app_url }}
         run: node scripts/setup-rich-menu.mjs

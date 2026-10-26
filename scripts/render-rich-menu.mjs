@@ -1,6 +1,9 @@
-// Renders the LINE rich menu image to public/liff/richmenu.png (2500×1686).
+// Renders the two pages of the LINE rich menu (2500×1686 each, switched by the
+// tabs at the top):
+//   public/liff/richmenu-main.png … メインメニュー
+//   public/liff/richmenu-sub.png  … サポートメニュー
 // The tap areas that match this layout live in scripts/setup-rich-menu.mjs —
-// keep the two in sync (see AREAS there).
+// keep the two in sync (TAB_H / ROW_H there).
 //
 // Usage (needs Playwright + Chromium, not a project dependency):
 //   node scripts/render-rich-menu.mjs
@@ -14,6 +17,8 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logo = readFileSync(path.join(root, "scripts", "ttgym-logo-source.png")).toString("base64");
 
+export const TABS = ["メインメニュー", "サポートメニュー"];
+
 async function loadChromium() {
   try {
     return (await import("playwright")).chromium;
@@ -23,42 +28,56 @@ async function loadChromium() {
   }
 }
 
-const icon = d => `<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="#111814" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const icon = (d, color = "#111814") => `<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const ICONS = {
-  goal: icon('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>'),
-  event: icon('<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h2M12 14h2M8 17h2"/>'),
-  invite: icon('<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M16 11h6"/>'),
-  shop: icon('<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>'),
+  goal: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+  reserve: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M9 15l2 2 4-4"/>',
+  condition: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+  online: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>',
+  recipe: '<path d="M6 13a6 6 0 1 1 12 0v6H6z"/><path d="M6 16h12M9 4.5A3 3 0 0 1 15 4.5"/>',
+  growth: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  beforeafter: '<rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/><path d="M7 9v6M17 9v6"/>',
+  shop: '<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  team: '<circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M15.5 14.5c3 0 6 1.6 6 5"/>',
 };
 
-const small = (key, eyebrow, label, sub = "") => `
-  <div class="tile small">
-    <div class="ic">${ICONS[key]}</div>
+const tile = ({ key, eyebrow, label, sub = "", span = 2, dark = false, size = 84 }) => `
+  <div class="tile${dark ? " dark" : ""}" style="grid-column: span ${span}">
+    <div class="ic">${icon(ICONS[key], dark ? "#E2BB66" : "#111814")}</div>
     <div class="eb">${eyebrow}</div>
-    <div class="lb">${label}</div>
+    <div class="lb" style="font-size:${size}px">${label}</div>
     ${sub ? `<div class="sub">${sub}</div>` : ""}
   </div>`;
 
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+const tabs = active => `<div class="tabs">${TABS.map((t, i) => `<div class="tab${i === active ? " on" : ""}">${t}</div>`).join("")}</div>`;
+
+const STYLE = `
   * { box-sizing: border-box; margin: 0; }
   body { width: 2500px; height: 1686px; background: #E4E1DA; font-family: "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", sans-serif; color: #111814; }
-  .grid { display: grid; gap: 14px; padding: 14px; width: 2500px; height: 1686px;
-    grid-template-columns: repeat(6, 1fr); grid-template-rows: 1fr 0.92fr; }
-  .tile { background: #fff; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .hero { grid-column: span 4; flex-direction: row; justify-content: space-between; padding: 0 110px 0 120px; }
-  .goal { grid-column: span 2; }
-  .small { grid-column: span 2; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 14px 0; height: 150px; }
+  .tab { border-radius: 26px 26px 0 0; display: grid; place-items: center; font-size: 50px; font-weight: 800; letter-spacing: 0.18em; color: #8E8A82; background: #D6D2CA; }
+  .tab.on { background: #111814; color: #fff; box-shadow: inset 0 -8px 0 #C9A86A; }
+  .grid { display: grid; gap: 14px; padding: 14px; height: 1536px; grid-template-columns: repeat(6, 1fr); grid-template-rows: 1fr 0.92fr; }
+  .tile { background: #fff; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .tile.dark { background: linear-gradient(135deg, #1D2420, #0F1411); color: #fff; }
+  .tile.dark .ic { background: rgba(226, 187, 102, 0.14); }
+  .tile.dark .eb { color: #E2BB66; }
+  .hero { grid-column: span 4; flex-direction: row; justify-content: space-between; padding: 0 90px 0 120px; text-align: left; }
   .eyebrow { font-size: 38px; letter-spacing: 0.22em; font-weight: 700; }
   .title { font-size: 150px; font-weight: 800; margin-top: 18px; letter-spacing: 0.02em; }
   .desc { font-size: 40px; margin-top: 18px; color: #333; }
   .cta { display: inline-flex; align-items: center; gap: 22px; margin-top: 46px; background: #111814; color: #fff; border-radius: 999px; padding: 26px 54px; font-size: 44px; font-weight: 700; }
-  .logo { display: flex; flex-direction: column; align-items: center; }
-  .logo img { width: 560px; height: 560px; }
+  .logo img { width: 520px; height: 520px; }
   .ic { width: 150px; height: 150px; border-radius: 50%; background: #F3F1EC; display: grid; place-items: center; }
   .eb { font-size: 30px; letter-spacing: 0.28em; margin-top: 30px; color: #555; font-weight: 600; }
-  .lb { font-size: 84px; font-weight: 800; margin-top: 10px; }
+  .lb { font-weight: 800; margin-top: 10px; line-height: 1.25; }
   .sub { font-size: 34px; color: #777; margin-top: 12px; }
-</style></head><body><div class="grid">
+  .tile.dark .sub { color: #B9B4A8; }
+`;
+
+const page = (active, body) => `<!doctype html><html><head><meta charset="utf-8"><style>${STYLE}</style></head><body>${tabs(active)}<div class="grid">${body}</div></body></html>`;
+
+const MAIN = page(0, `
   <div class="tile hero">
     <div>
       <div class="eyebrow">TODAY'S NUTRITION</div>
@@ -68,23 +87,28 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
     </div>
     <div class="logo"><img src="data:image/png;base64,${logo}"></div>
   </div>
-  <div class="tile goal">
-    <div class="ic">${ICONS.goal}</div>
-    <div class="eb">GOAL</div>
-    <div class="lb">目標設定</div>
-    <div class="sub">プロフィール・体の情報</div>
-  </div>
-  ${small("event", "EVENT", "イベント")}
-  ${small("invite", "INVITE", "友人を紹介")}
-  ${small("shop", "ONLINE SHOP", "ショップ")}
-</div></body></html>`;
+  ${tile({ key: "goal", eyebrow: "GOAL", label: "目標設定", sub: "目標・ビフォーアフター・会員ランク" })}
+  ${tile({ key: "reserve", eyebrow: "RESERVATION", label: "予約" })}
+  ${tile({ key: "condition", eyebrow: "CONDITION & TRAINING", label: "体調・<br>トレーニング管理", size: 72 })}
+  ${tile({ key: "online", eyebrow: "ONLINE SUPPORT", label: "オンライン<br>トレーニングサポート", size: 64 })}
+`);
+
+const SUB = page(1, `
+  ${tile({ key: "recipe", eyebrow: "RECIPE & RESTAURANT", label: "レシピ・おすすめ店", span: 3 })}
+  ${tile({ key: "growth", eyebrow: "MY GROWTH", label: "My成長・測定結果", span: 3 })}
+  ${tile({ key: "beforeafter", eyebrow: "BEFORE / AFTER", label: "ビフォーアフター", size: 76 })}
+  ${tile({ key: "shop", eyebrow: "HEALTH SHOP", label: "オススメ<br>健康ショップ", size: 72 })}
+  ${tile({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", size: 64, dark: true })}
+`);
 
 const chromium = await loadChromium();
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 2500, height: 1686 } });
-await page.setContent(html);
-await page.waitForTimeout(300);
-const out = path.join(root, "public", "liff", "richmenu.png");
-await page.screenshot({ path: out });
+const pg = await browser.newPage({ viewport: { width: 2500, height: 1686 } });
+for (const [name, html] of [["richmenu-main", MAIN], ["richmenu-sub", SUB]]) {
+  await pg.setContent(html);
+  await pg.waitForTimeout(300);
+  const out = path.join(root, "public", "liff", `${name}.png`);
+  await pg.screenshot({ path: out });
+  console.log(`wrote ${out}`);
+}
 await browser.close();
-console.log(`wrote ${out}`);

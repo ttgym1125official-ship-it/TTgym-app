@@ -293,3 +293,70 @@
 @keyframes lfspin { to { transform: rotate(360deg); } }
 .lf-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 110px; z-index: 60; background: var(--dark); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 14px; font-weight: 700; }
 .lf-demo { text-align: center; font-size: 11.5px; color: var(--gold-text); background: var(--gold-soft); border-radius: 999px; padding: 6px 12px; margin: 0 0 12px; }
+
+/* 食事の追加シート */
+.lf-sheet { background: var(--bg); }
+.lf-labels { display: flex; gap: 8px; margin: 14px 0 12px; }
+.lf-labels button { flex: 1; height: 40px; border-radius: 999px; background: #fff; border: 1.5px solid var(--line); font-weight: 800; font-size: 14px; color: var(--sub); }
+.lf-labels button.on { background: var(--dark); border-color: var(--dark); color: #fff; }
+.lf-search { display: flex; align-items: center; gap: 8px; background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 0 14px; color: var(--sub); }
+.lf-search input { flex: 1; border: none; outline: none; height: 46px; font-family: inherit; font-size: 16px; background: transparent; color: var(--ink); }
+.lf-store { padding: 4px 16px; max-height: 38vh; overflow-y: auto; }
+.lf-store .row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 0; border-top: 1px solid var(--line); color: var(--green); }
+.lf-store .row:first-child { border-top: none; }
+.lf-store .row > div { flex: 1; color: var(--ink); }
+.lf-store .nm { font-weight: 700; font-size: 14.5px; line-height: 1.5; }
+.lf-store .nm span { font-weight: 500; font-size: 11.5px; color: var(--sub); margin-left: 8px; }
+.lf-store .pfc { font-size: 12.5px; color: var(--sub); margin-top: 2px; }
+.lf-mini { position: relative; background: var(--bg); border-radius: 14px; padding: 8px 12px; }
+.lf-mini span { font-size: 12px; font-weight: 700; color: var(--sub); display: block; }
+.lf-mini input { width: 100%; border: none; outline: none; background: transparent; font-family: inherit; font-size: 18px; font-weight: 800; color: var(--ink); padding: 2px 30px 2px 0; }
+.lf-mini em { position: absolute; right: 12px; bottom: 11px; font-style: normal; font-size: 12px; color: var(--sub); }
+.lf-mini4 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.lf-cart { margin-top: 14px; padding: 6px 16px 14px; }
+.lf-cart .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.lf-cart .row .nm { flex: 1; }
+.lf-cart .row .kc { color: var(--sub); font-size: 13px; }
+.lf-cart .sum { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--sub); }
+.lf-cart .sum b { font-size: 20px; color: var(--ink); font-weight: 800; }
+.lf-sheet-foot { position: sticky; bottom: calc(-26px - env(safe-area-inset-bottom)); padding: 14px 0 4px; background: linear-gradient(rgba(243, 241, 236, 0), var(--bg) 35%); }
+.lf-btn-o:disabled { opacity: 0.4; }
+
+/* 水分 */
+.lf-water .top { display: flex; align-items: center; gap: 14px; }
+.lf-water .ic { width: 44px; height: 44px; border-radius: 14px; background: #E6F0F7; color: #3E86B8; display: grid; place-items: center; }
+.lf-water .t { font-size: 13px; font-weight: 700; color: var(--sub); }
+.lf-water .v { font-size: 14px; color: var(--sub); }
+.lf-water .v b { font-size: 24px; font-weight: 800; color: var(--ink); }
+.lf-water .bar { height: 8px; border-radius: 8px; background: var(--track); margin-top: 14px; overflow: hidden; }
+.lf-water .bar div { height: 100%; border-radius: 8px; background: #5A9BC8; }
+.lf-water .btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.lf-water .btns button { height: 42px; border-radius: 999px; background: #E6F0F7; color: #2F6E99; font-weight: 800; font-size: 14px; }
+.lf-x:disabled { opacity: 0.35; }
+
+/* 目標設定 */
+.lf-textarea { width: 100%; border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; font-family: inherit; font-size: 15px; line-height: 1.7; outline: none; resize: vertical; background: var(--bg); color: var(--ink); }
+.lf-goaltext { white-space: pre-wrap; font-size: 16px; line-height: 1.8; }
+.lf-photo .lab { text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 8px; }
+.lf-photo .slot { width: 100%; aspect-ratio: 3 / 4; border-radius: 18px; border: 2px dashed #D9D4CA; background: var(--bg); display: grid; place-items: center; color: var(--dim); font-size: 13px; line-height: 1.8; overflow: hidden; }
+.lf-photo .slot.has { border-style: solid; border-color: var(--line); }
+.lf-photo .slot img { width: 100%; height: 100%; object-fit: cover; }
+.lf-member { position: relative; border-radius: 22px; padding: 26px 26px 24px; color: #CFCAC0; background: linear-gradient(135deg, #24221E 0%, #141311 60%, #1E1C18 100%); box-shadow: 0 16px 34px rgba(17, 24, 20, 0.2); overflow: hidden; }
+.lf-member .eb { font-family: "SF Mono", Menlo, monospace; font-size: 12.5px; letter-spacing: 0.3em; color: #B7B1A6; }
+.lf-member .tier { font-family: "Times New Roman", "Hiragino Mincho ProN", serif; font-size: 42px; font-weight: 700; letter-spacing: 0.04em; margin: 14px 0 22px; }
+.lf-member .pts { font-family: "SF Mono", Menlo, monospace; font-size: 14px; letter-spacing: 0.12em; color: #B7B1A6; }
+.lf-member .pts b { margin-left: 18px; color: #E9E4DA; font-weight: 500; }
+.lf-member .crown { position: absolute; right: 24px; top: 22px; color: #6E6A63; }
+.lf-next { display: flex; justify-content: space-between; font-size: 14px; color: var(--sub); }
+.lf-rules div { font-size: 15px; padding: 7px 0; }
+.lf-rules p { font-size: 12.5px; color: var(--dim); line-height: 1.7; margin: 10px 0 0; }
+.lf-rank { display: flex; align-items: center; gap: 14px; padding: 16px 20px; margin-bottom: 10px; border-radius: 20px; }
+.lf-rank .nm { font-size: 17px; font-weight: 700; }
+.lf-rank .min { margin-left: auto; font-family: "SF Mono", Menlo, monospace; font-size: 13.5px; color: var(--sub); }
+.lf-rank.on { background: #FBF3E2; border-color: #E2C88E; }
+.lf-body-sum div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.lf-body-sum div:first-child { border-top: none; padding-top: 0; }
+.lf-body-sum span { color: var(--sub); }
+.lf-nav.three { grid-template-columns: 1fr 1fr 1fr; }
+.lf-nav.three button { font-size: 15px; gap: 7px; }
+.lf-grid2 > *, .lf-mini4 > * { min-width: 0; }
