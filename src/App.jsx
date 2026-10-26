@@ -355,7 +355,7 @@ function LineLinkSection({ profileId }) {
     <div>
       <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 8 }}>公式LINEとの連携</div>
       {linked ? (
-        <div style={{ fontSize: 12.5, color: C.gold }}>✓ 連携済みです。LINEで話しかけると、記録データについて答えます。</div>
+        <div style={{ fontSize: 12.5, color: C.gold }}>✓ 連携済みです。公式LINEで記録した食事・体重・水分もこのアプリに反映されます。LINEで話しかけると、記録データについて答えます。</div>
       ) : (
         <>
           <div style={{
@@ -631,6 +631,49 @@ export default function App() {
   );
 }
 
+// 公式LINEのリッチメニュー/健康ダッシュボードから ?login=<token> 付きで開かれたときの処理。
+// api/nutrition.js が作った使い捨てトークン(app_login:<token>)を読み、
+//  - LINEと連携済み → そのプロフィールIDでアプリを開く（LINE内ブラウザでも同じ会員として表示）
+//  - 未連携 → LINEユーザーIDを覚えておき、会員登録（または登録済みの復元）が済んだら自動で連携する
+const PENDING_LINE_KEY = "ttgym_pending_line_user";
+
+async function adoptLineLogin() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("login");
+  if (!token) return;
+  params.delete("login");
+  const qs = params.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  try {
+    const r = await window.storage.get(`app_login:${token}`, true);
+    const t = r ? JSON.parse(r.value) : null;
+    if (!t || !(t.exp > Date.now())) return;
+    if (t.pid) {
+      window.localStorage.setItem("ttgym_member_id", t.pid);
+      await window.storage.set("myProfileId", t.pid).catch(() => {});
+    } else if (t.lineUserId) {
+      window.localStorage.setItem(PENDING_LINE_KEY, t.lineUserId);
+    }
+  } catch (e) {}
+}
+
+async function linkPendingLineUser(profileId) {
+  let lineUserId = null;
+  try { lineUserId = window.localStorage.getItem(PENDING_LINE_KEY); } catch (e) {}
+  if (!lineUserId || !profileId) return false;
+  try {
+    const existing = await window.storage.get(`line_user:${lineUserId}`, true);
+    if (!existing) {
+      await window.storage.set(`line_user:${lineUserId}`, profileId, true);
+      await patchProfile(profileId, { lineUserId });
+    }
+    window.localStorage.removeItem(PENDING_LINE_KEY);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function AppInner() {
   const C = useTheme();
   // ?tab=condition のように開くと、そのタブから表示する（LINEのリッチメニューから直接開く用）
@@ -673,6 +716,7 @@ function AppInner() {
 
   useEffect(() => {
     (async () => {
+      await adoptLineLogin();
       let id = null;
       if (supabaseConfigured) {
         try { id = await getMemberId(); } catch (e) { id = null; }
@@ -826,6 +870,12 @@ function AppInner() {
     } catch (e) {}
     window.location.reload();
   }
+
+  // LINEから開いて未連携だった人は、会員登録が済んだ時点（承認待ちを含む）で公式LINEと自動連携する
+  useEffect(() => {
+    if (!profileId || !["pending", "ready"].includes(authPhase)) return;
+    linkPendingLineUser(profileId).then(linked => { if (linked) showToast("公式LINEと連携しました"); });
+  }, [authPhase, profileId]);
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 1800); }
 

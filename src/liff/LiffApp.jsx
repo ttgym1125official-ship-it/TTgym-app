@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ChartNoAxesColumn, Download, Flag, House, LoaderCircle } from "lucide-react";
 import "./liff.css";
 import { NUTRIENTS } from "./nutrients.js";
-import { fetchData, post, isDemo, openDashboard } from "./api.js";
+import { fetchData, post, isDemo, openDashboard, openApp } from "./api.js";
 import { Header, Toast, jstToday, jpDate } from "./ui.jsx";
 import Today from "./Today.jsx";
 import History, { dailyTotals } from "./History.jsx";
@@ -33,8 +33,27 @@ function exportCsv(data) {
   a.click();
 }
 
+// /liff/open?tab=condition … リッチメニューから TTGYMアプリの各タブを開く中継ページ
+function OpenApp() {
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab") || "status";
+    openApp(tab).catch(e => setError(e.message || "開けませんでした"));
+  }, []);
+  return (
+    <div className="lf"><div className="lf-center">
+      {error ? <>{error}<br />LINEアプリから開き直してください。</> : <div><LoaderCircle className="lf-spin" size={28} /><p>TTGYMアプリを開いています…</p></div>}
+    </div></div>
+  );
+}
+
 export default function LiffApp() {
   const path = window.location.pathname.replace(/\/+$/, "");
+  if (path.endsWith("/open")) return <OpenApp />;
+  return <Dashboard path={path} />;
+}
+
+function Dashboard({ path }) {
   const isProfilePage = path.endsWith("/profile");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -67,7 +86,7 @@ export default function LiffApp() {
   if (isProfilePage || !data.profile) {
     return (
       <Onboarding
-        initial={data.profile}
+        initial={data.profile || data.hints}
         onSave={async profile => setData(await post("profile", { profile }))}
         onDone={() => (isProfilePage ? openDashboard() : setView("today"))}
       />

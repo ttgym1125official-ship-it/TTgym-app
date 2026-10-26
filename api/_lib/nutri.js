@@ -8,6 +8,7 @@
 // 公式アプリと連携済み（line_user:<LINE userId> がある）の人は、目標・ビフォーアフター写真を
 // アプリのプロフィール（profile:<id>）に読み書きして、アプリ側と同じものを表示する。
 
+import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NUTRIENTS, NUTRIENT_KEYS, calcTargets, sumMeals, buildAdvice, fmt } from "../../src/liff/nutrients.js";
@@ -34,20 +35,139 @@ export async function kvDelete(key) {
   await supabase.from("kv_store").delete().eq("key", key);
 }
 
-export async function loadUser(lineUserId) {
-  const raw = await kvGet(`nutri:${lineUserId}`);
-  let data = {};
-  try { data = raw ? JSON.parse(raw) : {}; } catch (e) { data = {}; }
+// ── アプリ連携（line_user:<LINE userId> → アプリのプロフィールID）──
+// 連携済みの人は、体重（成長タブの growth）と水分（water）はアプリのデータを正として読み書きし、
+// 食事は LINE で記録したものをアプリの meals にも "line-" 付きのIDで書き写す。
+// アプリで記録した食事は "app-" 付きのIDでダッシュボードにも表示する。
+const SALT_PER_MG_SODIUM = 1 / 393.4; // ナトリウム(mg) → 食塩相当量(g)
+
+function appMealToLine(m) {
+  const n = Object.fromEntries(NUTRIENT_KEYS.map(k => [k, 0]));
+  Object.assign(n, {
+    fiber: Number(m.fiber) || 0, sugar: Number(m.sugar) || 0, salt: (Number(m.sodium) || 0) * SALT_PER_MG_SODIUM,
+    potassium: Number(m.potassium) || 0, vitA: Number(m.vitaminA) || 0, vitC: Number(m.vitaminC) || 0,
+    calcium: Number(m.calcium) || 0, iron: Number(m.iron) || 0,
+  });
   return {
-    profile: data.profile || null, meals: data.meals || [], weights: data.weights || [],
-    water: data.water || {}, goal: data.goal || {},
+    id: `app-${m.id}`, source: "app", date: m.date, time: m.time || "12:00", label: "食事", title: m.name || "食事", hasImage: false,
+    items: [{ id: `app-${m.id}-0`, name: m.name || "食事", amount: "アプリで記録", kcal: Number(m.calories) || 0, p: Number(m.protein) || 0, f: Number(m.fat) || 0, c: Number(m.carb) || 0, n }],
   };
+}
+
+function lineMealToApp(m) {
+  const t = sumMeals([m]);
+  return {
+    id: `line-${m.id}`, source: "line", date: m.date, time: m.time, name: m.title,
+    calories: Math.round(t.kcal), protein: round1(t.p), fat: round1(t.f), carb: round1(t.c),
+    fiber: round1(t.n.fiber), sugar: round1(t.n.sugar), sodium: Math.round(t.n.salt / SALT_PER_MG_SODIUM),
+    potassium: Math.round(t.n.potassium), vitaminA: Math.round(t.n.vitA), vitaminC: Math.round(t.n.vitC),
+    calcium: Math.round(t.n.calcium), iron: round1(t.n.iron), warning: false,
+  };
+}
+
+const round1 = v => Math.round((Number(v) || 0) * 10) / 10;
+const appKey = (pid, k) => `data:${pid}:${k}`;
+
+export async function loadUser(lineUserId) {
+  const [raw, pid] = await Promise.all([kvGet(`nutri:${lineUserId}`), kvGet(`line_user:${lineUserId}`)]);
+  const data = parseJson(raw, {});
+  const user = {
+    profile: data.profile || null, meals: data.meals || [], weights: data.weights || [],
+    water: data.water || {}, goal: data.goal || {}, pid: pid || null, syncedTo: data.syncedTo || null,
+  };
+  if (!pid) return user;
+
+  const [mealsRaw, growthRaw, waterRaw] = await Promise.all(["meals", "growth", "water"].map(k => kvGet(appKey(pid, k))));
+  const appMeals = parseJson(mealsRaw, []).filter(m => !String(m.id).startsWith("line-")).map(appMealToLine);
+  const growth = parseJson(growthRaw, []);
+  const appWater = parseJson(waterRaw, {});
+  const firstSync = user.syncedTo !== pid;
+  user.meals = [...user.meals.filter(m => m.source !== "app"), ...appMeals];
+  user._appMealIds = appMeals.map(m => m.id);
+  // 初めての同期では、LINEだけで付けていた体重・水分もアプリ側へ移す
+  const growthWeights = growth.filter(g => g.weight || g.bodyFat).map(g => ({ id: g.id, date: g.date, weight: g.weight ?? null, bodyFat: g.bodyFat ?? null }));
+  const growthDates = new Set(growthWeights.map(w => w.date));
+  user.weights = [...growthWeights, ...(firstSync ? user.weights.filter(w => !growthDates.has(w.date)) : [])];
+  user._growthIds = growth.map(g => g.id);
+  if (firstSync) {
+    const merged = { ...appWater };
+    for (const [d, ml] of Object.entries(user.water)) merged[d] = (merged[d] || 0) + ml;
+    user.water = merged;
+  } else {
+    user.water = appWater;
+  }
+  user._waterDates = Object.keys(appWater);
+  return user;
 }
 
 export async function saveUser(lineUserId, data) {
   await kvSet(`nutri:${lineUserId}`, JSON.stringify({
-    profile: data.profile, meals: data.meals, weights: data.weights, water: data.water || {}, goal: data.goal || {},
+    profile: data.profile, meals: data.meals.filter(m => m.source !== "app"), weights: data.pid ? [] : data.weights,
+    water: data.pid ? {} : data.water || {}, goal: data.goal || {}, syncedTo: data.pid || null,
   }));
+  if (data.pid) await syncToApp(data);
+}
+
+// アプリ側の配列は、アプリを開いている間に追加された分を消さないよう、最新を読み直してから差分だけ反映する
+async function syncToApp(user) {
+  const pid = user.pid;
+  const [mealsRaw, growthRaw, waterRaw] = await Promise.all(["meals", "growth", "water"].map(k => kvGet(appKey(pid, k))));
+
+  const keptAppIds = new Set(user.meals.filter(m => m.source === "app").map(m => m.id));
+  const removedAppIds = new Set((user._appMealIds || []).filter(id => !keptAppIds.has(id)));
+  const appMeals = parseJson(mealsRaw, [])
+    .filter(m => !String(m.id).startsWith("line-") && !removedAppIds.has(`app-${m.id}`));
+  const lineMeals = user.meals.filter(m => m.source !== "app").map(lineMealToApp);
+
+  const keptWeightIds = new Set(user.weights.map(w => w.id));
+  const removedGrowthIds = new Set((user._growthIds || []).filter(id => !keptWeightIds.has(id)));
+  const allGrowth = parseJson(growthRaw, []);
+  // 同じ日の記録を体重だけ上書きしたときに、アプリで入れた筋量・体脂肪率が消えないよう引き継ぐ
+  const replaced = Object.fromEntries(allGrowth.filter(g => removedGrowthIds.has(g.id)).map(g => [g.date, g]));
+  const growth = allGrowth.filter(g => !removedGrowthIds.has(g.id));
+  const growthIds = new Set(growth.map(g => g.id));
+  for (const w of user.weights) {
+    if (!growthIds.has(w.id)) {
+      const prev = replaced[w.date] || {};
+      growth.push({ id: w.id, date: w.date, weight: w.weight ?? null, bodyFat: w.bodyFat ?? prev.bodyFat ?? null, muscleMass: prev.muscleMass ?? null });
+    }
+  }
+
+  const water = { ...parseJson(waterRaw, {}), ...user.water };
+  for (const d of user._waterDates || []) if (!(d in user.water)) delete water[d];
+
+  await Promise.all([
+    kvSet(appKey(pid, "meals"), JSON.stringify([...appMeals, ...lineMeals].sort((a, b) => (`${b.date} ${b.time}` > `${a.date} ${a.time}` ? 1 : -1)))),
+    kvSet(appKey(pid, "growth"), JSON.stringify(growth)),
+    kvSet(appKey(pid, "water"), JSON.stringify(water)),
+  ]);
+}
+
+// アプリのプロフィールから、プロフィール登録画面の初期値（年齢・体重・体脂肪率）を作る
+export async function appProfileHints(pid) {
+  if (!pid) return null;
+  const [pRaw, gRaw] = await Promise.all([kvGet(`profile:${pid}`), kvGet(appKey(pid, "growth"))]);
+  const p = parseJson(pRaw, {});
+  const latest = [...parseJson(gRaw, [])].sort((a, b) => (a.date < b.date ? 1 : -1));
+  let age = null;
+  if (p.birthdate) {
+    const b = new Date(`${p.birthdate}T00:00:00Z`), now = new Date();
+    age = now.getUTCFullYear() - b.getUTCFullYear() - (now < new Date(Date.UTC(now.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate())) ? 1 : 0);
+  }
+  return {
+    name: p.name || null, age,
+    weight: latest.find(g => g.weight)?.weight ?? null,
+    bodyFat: latest.find(g => g.bodyFat)?.bodyFat ?? null,
+    targetWeight: p.targetWeight ?? null,
+  };
+}
+
+// アプリを「このLINEの人」として開くための使い捨てトークン（10分有効）。
+// 連携済みならプロフィールIDを、未連携ならLINEユーザーIDを渡し、アプリ側で登録後に自動で連携する
+export async function createAppLoginToken(lineUserId, pid) {
+  const token = crypto.randomBytes(18).toString("base64url");
+  await kvSet(`app_login:${token}`, JSON.stringify({ lineUserId, pid: pid || null, exp: Date.now() + 10 * 60 * 1000 }));
+  return token;
 }
 
 function parseJson(raw, fallback) {

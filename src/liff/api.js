@@ -105,6 +105,16 @@ export async function post(action, payload) {
   return (await call("POST", { action, ...payload })).json();
 }
 
+// TTGYMアプリの指定タブを「このLINEの人」として開く
+export async function openApp(tab) {
+  if (isDemo) {
+    window.location.href = `/?tab=${encodeURIComponent(tab)}`;
+    return;
+  }
+  const { url } = await post("appLink", { tab });
+  window.location.replace(url);
+}
+
 export async function fetchGoal() {
   if (isDemo) {
     const d = demo();

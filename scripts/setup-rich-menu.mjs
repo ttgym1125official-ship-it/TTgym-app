@@ -10,9 +10,9 @@
 //
 // Optional links (if unset, tapping sends the tile's name as a message so staff
 // can answer it from the chat):
-//   RESERVE_URL, ONLINE_SUPPORT_URL, SHOP_URL, TEAMTOP_URL
-//   APP_URL (default https://t-tgym-app.vercel.app) — TTGYMアプリ。体調・トレーニング管理 /
-//           レシピ・おすすめ店 / My成長・測定結果 はアプリの該当タブを開く
+//   RESERVE_URL, SHOP_URL, TEAMTOP_URL, ONLINE_SUPPORT_URL
+//   (体調・トレーニング管理 / レシピ・おすすめ店 / My成長・測定結果、ONLINE_SUPPORT_URL が無いときの
+//    オンライントレーニングサポート(配信タブ) は、TTGYMアプリの該当タブを LINE の人としてログインした状態で開く)
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -27,11 +27,10 @@ if (!token || !liffId) {
 }
 
 const env = k => process.env[k]?.trim() || "";
-const appUrl = (env("APP_URL") || "https://t-tgym-app.vercel.app").replace(/\/+$/, "");
 const liff = p => ({ type: "uri", uri: `https://liff.line.me/${liffId}${p}` });
 const linkOr = (url, text) => (url ? { type: "uri", uri: url } : { type: "message", text });
-// openExternalBrowser=1: アプリはログイン状態を保つため、LINE内ブラウザではなく普段のブラウザで開く
-const app = tab => ({ type: "uri", uri: `${appUrl}/?tab=${tab}&openExternalBrowser=1` });
+// TTGYMアプリのタブは LIFF の中継ページ(/liff/open)経由で開き、このLINEの人としてログインした状態にする
+const app = tab => liff(`/open?tab=${tab}`);
 
 const ALIAS = { main: "ttgym-main", sub: "ttgym-sub" };
 const MENU_NAMES = { main: "TTGYM main", sub: "TTGYM sub" };
@@ -55,7 +54,7 @@ const MENUS = {
     ...tabAreas,
     box(0, TAB_H, 1664, ROW1_END - TAB_H, liff("")),
     box(1664, TAB_H, 836, ROW1_END - TAB_H, liff("/goal")),
-    ...lower(linkOr(env("RESERVE_URL"), "予約"), app("condition"), linkOr(env("ONLINE_SUPPORT_URL"), "オンライントレーニングサポート")),
+    ...lower(linkOr(env("RESERVE_URL"), "予約"), app("condition"), env("ONLINE_SUPPORT_URL") ? linkOr(env("ONLINE_SUPPORT_URL")) : app("live")),
   ],
   sub: [
     ...tabAreas,

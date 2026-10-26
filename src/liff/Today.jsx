@@ -145,7 +145,7 @@ function MealCard({ meal, onDeleteItem, onDeleteMeal }) {
         <MealImage meal={meal} />
         <div style={{ minWidth: 0, paddingTop: 4 }}>
           <div className="lf-meal-title">{meal.title}</div>
-          <div className="lf-meal-time">{meal.time}・{meal.label || "食事"}</div>
+          <div className="lf-meal-time">{meal.time}・{meal.label || "食事"}{meal.source === "app" && <span className="lf-badge almost" style={{ marginLeft: 8, fontSize: 11, padding: "3px 9px" }}>アプリで記録</span>}</div>
           <div className="lf-meal-kcal"><Flame size={22} fill="#D8B26A" color="#D8B26A" /><b>{comma(t.kcal)}</b><span>kcal</span></div>
           <div className="lf-chips">
             <span className="lf-chip"><i style={{ background: COLORS.p }}>P</i>{fmt(t.p)}g</span>
@@ -165,7 +165,7 @@ function MealCard({ meal, onDeleteItem, onDeleteMeal }) {
         <div className="lf-salt">塩分 {fmt(t.n.salt)}g</div>
       </div>
       <div className="lf-meal-foot">
-        <p>違うときは、LINEで「エビじゃなくてイカ」のように送ると直せます</p>
+        <p>{meal.source === "app" ? "アプリで記録した食事です（ビタミン・ミネラルは一部のみ）" : "違うときは、LINEで「エビじゃなくてイカ」のように送ると直せます"}</p>
         <button className="lf-meal-del" onClick={() => onDeleteMeal(meal)}>この食事を削除</button>
       </div>
     </div>

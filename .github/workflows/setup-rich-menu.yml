@@ -17,16 +17,13 @@ on:
         description: "予約 link (empty = sends 「予約」 as a message)"
         required: false
       online_support_url:
-        description: "オンライントレーニングサポート link (empty = sends its name as a message)"
+        description: "オンライントレーニングサポート link (empty = opens the app's 配信 tab)"
         required: false
       shop_url:
         description: "オススメ健康ショップ link (empty = sends its name as a message)"
         required: false
       teamtop_url:
         description: "TEAM TOPメンバー参加申込み link (empty = sends its name as a message)"
-        required: false
-      app_url:
-        description: "TTGYM app URL (empty = https://t-tgym-app.vercel.app)"
         required: false
 
 jobs:
@@ -45,5 +42,4 @@ jobs:
           ONLINE_SUPPORT_URL: ${{ github.event.inputs.online_support_url }}
           SHOP_URL: ${{ github.event.inputs.shop_url }}
           TEAMTOP_URL: ${{ github.event.inputs.teamtop_url }}
-          APP_URL: ${{ github.event.inputs.app_url }}
         run: node scripts/setup-rich-menu.mjs

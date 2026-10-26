@@ -360,3 +360,6 @@
 .lf-nav.three { grid-template-columns: 1fr 1fr 1fr; }
 .lf-nav.three button { font-size: 15px; gap: 7px; }
 .lf-grid2 > *, .lf-mini4 > * { min-width: 0; }
+.lf-applinks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 6px; }
+.lf-applinks button { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; white-space: pre-line; text-align: center; line-height: 1.35; }
+.lf-applinks .ic { width: 52px; height: 52px; border-radius: 16px; background: var(--bg); display: grid; place-items: center; color: var(--ink); }

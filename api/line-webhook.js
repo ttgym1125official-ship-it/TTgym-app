@@ -218,7 +218,7 @@ async function recordBody(lineUserId, user, replyToken, weight, bodyFat) {
 
 // リッチメニューのリンク未設定のタイルは、この言葉をメッセージとして送る。
 // スタッフがチャットで手動対応できるよう、AIは返事をしない
-const MENU_WORDS = new Set(["予約", "オンライントレーニングサポート", "オススメ健康ショップ", "TEAM TOPメンバー参加申込み"]);
+const MENU_WORDS = new Set(["予約", "オススメ健康ショップ", "TEAM TOPメンバー参加申込み"]);
 
 // 戻り値 true = このメッセージは食事/体重の記録として処理した（または意図的に何もしない）
 async function handleNutrition(event, lineUserId, replyToken, linkedProfileId) {

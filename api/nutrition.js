@@ -19,11 +19,20 @@
 // POST /api/nutrition { action: "water", date, ml }        ml は加算量（マイナスで取り消し）
 // POST /api/nutrition { action: "goal", goal: { goal, targetWeight, targetBodyFat, afterMonths } }
 // POST /api/nutrition { action: "photo", which: "before"|"after", dataUrl }
+// POST /api/nutrition { action: "appLink", tab }          → { url }（TTGYMアプリをこのLINEの人として開くURL）
 
 import {
   loadUser, saveUser, kvGet, kvDelete, newId, calcTargets, normalizeItems, estimateNutrients,
-  loadGoal, saveGoal, savePhoto, computeMembership,
+  loadGoal, saveGoal, savePhoto, computeMembership, appProfileHints, createAppLoginToken,
 } from "./_lib/nutri.js";
+
+const APP_TABS = ["status", "condition", "meal", "training", "growth", "report", "comments", "recipe", "live"];
+
+// レスポンスには内部用の項目（_appMealIds など）を含めない
+function view(user) {
+  const { profile, meals, weights, water, goal, pid } = user;
+  return { profile, meals, weights, water, goal, linked: !!pid, targets: calcTargets(profile) };
+}
 
 async function verifyLineUser(req) {
   const auth = req.headers.authorization || "";
@@ -93,12 +102,14 @@ export default async function handler(req, res) {
       return;
     }
     const user = await loadUser(userId);
+    // アプリと連携した直後の初回は、LINEだけで記録していた分をアプリ側へ移しておく
+    if (user.pid && user.syncedTo !== user.pid) await saveUser(userId, user);
     if (action === "goal") {
       const [goal, membership] = await Promise.all([loadGoal(userId, user), computeMembership(userId, user)]);
       res.status(200).json({ ...goal, points: membership.points });
       return;
     }
-    res.status(200).json({ ...user, targets: calcTargets(user.profile) });
+    res.status(200).json({ ...view(user), hints: user.profile ? null : await appProfileHints(user.pid) });
     return;
   }
 
@@ -111,6 +122,12 @@ export default async function handler(req, res) {
   const user = await loadUser(userId);
 
   switch (body.action) {
+    case "appLink": {
+      const tab = APP_TABS.includes(body.tab) ? body.tab : "status";
+      const token = await createAppLoginToken(userId, user.pid);
+      res.status(200).json({ url: `/?tab=${tab}&login=${token}` });
+      return;
+    }
     case "profile": {
       const profile = cleanProfile(body.profile);
       if (!profile) {
@@ -203,5 +220,5 @@ export default async function handler(req, res) {
   }
 
   await saveUser(userId, user);
-  res.status(200).json({ ...user, targets: calcTargets(user.profile) });
+  res.status(200).json(view(user));
 }

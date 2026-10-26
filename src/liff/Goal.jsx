@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Crown, ImagePlus, LoaderCircle, Pencil, Sparkles } from "lucide-react";
+import { BarChart3, Brain, ChefHat, Crown, Dumbbell, ImagePlus, LoaderCircle, MessageSquare, Pencil, Play, Sparkles, TrendingUp, Utensils } from "lucide-react";
 import { TIERS, POINT_RULES, tierFor } from "../membership.js";
 import { fileToCompressedDataUrl } from "../imageUtils.js";
-import { fetchGoal, post, openPage } from "./api.js";
+import { fetchGoal, post, openPage, openApp } from "./api.js";
 import { ACTIVITY, GOALS } from "./nutrients.js";
 import { comma } from "./ui.jsx";
 
@@ -54,6 +54,41 @@ function MemberCard({ points }) {
           {i === tierIdx && <Sparkles size={20} color="var(--gold)" />}
         </div>
       ))}
+    </>
+  );
+}
+
+// TTGYMアプリの各タブ（LINEの人としてそのまま開く）
+const APP_LINKS = [
+  { tab: "condition", label: "体調管理", Icon: Brain },
+  { tab: "training", label: "トレーニング", Icon: Dumbbell },
+  { tab: "growth", label: "成長・測定", Icon: TrendingUp },
+  { tab: "meal", label: "食事記録", Icon: Utensils },
+  { tab: "report", label: "レポート", Icon: BarChart3 },
+  { tab: "comments", label: "トレーナー\nコメント", Icon: MessageSquare },
+  { tab: "recipe", label: "レシピ", Icon: ChefHat },
+  { tab: "live", label: "配信", Icon: Play },
+];
+
+function AppLinks({ linked, toast }) {
+  return (
+    <>
+      <div className="lf-sec"><h2>TTGYMアプリ</h2><span className={`lf-badge ${linked ? "ok" : "almost"}`}>{linked ? "連携済み" : "未連携"}</span></div>
+      <div className="lf-card">
+        <div className="lf-applinks">
+          {APP_LINKS.map(({ tab, label, Icon }) => (
+            <button key={tab} onClick={() => openApp(tab).catch(e => toast(e.message))}>
+              <span className="ic"><Icon size={22} /></span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="lf-hint" style={{ margin: "14px 0 0", lineHeight: 1.8 }}>
+          {linked
+            ? "LINEの食事・体重・水分はアプリにも反映され、アプリの記録もこのダッシュボードに表示されます。"
+            : "ここからアプリを開いて会員登録（登録済みの方はログイン）すると、公式LINEと自動で連携します。連携後はLINEの食事・体重・水分がアプリにも反映されます。"}
+        </p>
+      </div>
     </>
   );
 }
@@ -135,6 +170,8 @@ export default function Goal({ data, toast }) {
       <div className="lf-sec"><h2>メンバーシップ</h2></div>
       <MemberCard points={g.points} />
       {!g.linked && <p className="lf-hint" style={{ lineHeight: 1.8 }}>TTGYMアプリと連携すると、パーソナル・自宅トレーニングの記録もポイントに反映されます。</p>}
+
+      <AppLinks linked={data.linked} toast={toast} />
 
       <div className="lf-sec"><h2>体の情報・栄養目標</h2><button className="lf-btn-o" onClick={() => openPage("/profile")}><Pencil size={15} />変更する</button></div>
       <div className="lf-card lf-body-sum">
