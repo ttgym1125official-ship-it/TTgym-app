@@ -3,9 +3,8 @@
 // LIFFで取得したアクセストークンを "Authorization: Bearer <token>" で受け取り、
 // LINEのAPIで検証してから、そのLINEユーザーのデータだけを読み書きする。
 //
-// Vercel environment variables:
-//   LINE_LOGIN_CHANNEL_ID (推奨) — LIFFアプリを作った「LINEログイン」チャネルのチャネルID。
-//                                  設定すると、他のチャネルで発行されたトークンを拒否する。
+// LIFFアプリを作った「LINEログイン」チャネルのチャネルID（src/lineConfig.js、環境変数
+// LINE_LOGIN_CHANNEL_ID で上書き可）と一致しないトークンは拒否する。
 //
 // GET  /api/nutrition?action=data             → { profile, meals, weights, water, targets }
 // GET  /api/nutrition?action=image&meal=<id>  → 食事写真
@@ -25,6 +24,7 @@ import {
   loadUser, saveUser, kvGet, kvDelete, newId, calcTargets, normalizeItems, estimateNutrients,
   loadGoal, saveGoal, savePhoto, computeMembership, appProfileHints, createAppLoginToken,
 } from "./_lib/nutri.js";
+import { LINE_LOGIN_CHANNEL_ID } from "../src/lineConfig.js";
 
 const APP_TABS = ["status", "condition", "meal", "training", "growth", "report", "comments", "recipe", "live"];
 
@@ -41,7 +41,7 @@ async function verifyLineUser(req) {
   const v = await fetch(`https://api.line.me/oauth2/v2.1/verify?access_token=${encodeURIComponent(token)}`);
   if (!v.ok) return null;
   const info = await v.json();
-  const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
+  const channelId = process.env.LINE_LOGIN_CHANNEL_ID || LINE_LOGIN_CHANNEL_ID;
   if (channelId && String(info.client_id) !== String(channelId)) return null;
   if (!(info.expires_in > 0)) return null;
   const p = await fetch("https://api.line.me/v2/profile", { headers: { Authorization: `Bearer ${token}` } });

@@ -13,6 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NUTRIENTS, NUTRIENT_KEYS, calcTargets, sumMeals, buildAdvice, fmt } from "../../src/liff/nutrients.js";
 import { computePoints } from "../../src/membership.js";
+import { LIFF_ID } from "../../src/lineConfig.js";
 
 const SUPABASE_URL = "https://udfbnjatqjdswokuoqoo.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable__rOCDCsWxALHCdQbYfGcBg_7TPateU2";
@@ -345,8 +346,8 @@ export async function fetchLineImage(messageId) {
 }
 
 export function liffUrl(path = "") {
-  const id = process.env.LIFF_ID || process.env.VITE_LIFF_ID;
-  return id ? `https://liff.line.me/${id}${path}` : null;
+  const id = process.env.LIFF_ID || process.env.VITE_LIFF_ID || LIFF_ID;
+  return `https://liff.line.me/${id}${path}`;
 }
 
 // ── Claude による食事・体組成の解析 ──

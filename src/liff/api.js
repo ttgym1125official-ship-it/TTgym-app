@@ -1,11 +1,12 @@
 // LIFF の初期化とデータAPI(api/nutrition.js)の呼び出し。
-// VITE_LIFF_ID が未設定、または URL に ?demo=1 があるときはデモモードで動き、
+// URL に ?demo=1 があるときはデモモードで動き、
 // サーバーには何も送らずサンプルデータを表示する（デザイン確認用）。
 
 import { calcTargets } from "./nutrients.js";
 import { makeDemoData } from "./demoData.js";
+import { LIFF_ID as DEFAULT_LIFF_ID } from "../lineConfig.js";
 
-const LIFF_ID = import.meta.env.VITE_LIFF_ID;
+const LIFF_ID = import.meta.env.VITE_LIFF_ID || DEFAULT_LIFF_ID;
 const LIFF_SDK = "https://static.line-scdn.net/liff/edge/2/sdk.js";
 
 export const isDemo = !LIFF_ID || new URLSearchParams(window.location.search).has("demo");

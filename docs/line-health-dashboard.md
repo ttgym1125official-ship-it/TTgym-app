@@ -33,19 +33,22 @@
 
 ### 2. Vercel の環境変数を追加
 
-`LIFF_ID` を設定して再デプロイするまでは、公式LINEは今までどおりの動きのままです（食事の記録・AIの返信・あいさつは動きません）。
+LIFF ID（`2012240533-jEmcXBvp`）とチャネルID（`2012240533`）は `src/lineConfig.js` に書いてあるので、設定は不要です（環境変数 `VITE_LIFF_ID` / `LIFF_ID` / `LINE_LOGIN_CHANNEL_ID` があればそちらが優先）。
 
-Project → Settings → Environment Variables に追加して、再デプロイ（Redeploy）します。
+追加が必要なのは次の1つだけです。設定したら再デプロイ（Redeploy）してください。
 
 | 名前 | 値 |
 | --- | --- |
-| `VITE_LIFF_ID` | LIFF ID |
-| `LIFF_ID` | LIFF ID（同じ値） |
-| `LINE_LOGIN_CHANNEL_ID` | LINEログインチャネルのチャネルID |
+| `ADMIN_API_KEY` | 自分で決めた長めの文字列（管理画面からLINEを送る・リッチメニューを登録するためのキー） |
 
-`ANTHROPIC_API_KEY`・`LINE_CHANNEL_SECRET`・`LINE_CHANNEL_ACCESS_TOKEN` は既存のものをそのまま使います。
+`ANTHROPIC_API_KEY`・`LINE_CHANNEL_SECRET`・`LINE_CHANNEL_ACCESS_TOKEN` は既存のものを使います。
+
+食事記録・AI返信・あいさつを一時的に止めたいときは、`LINE_NUTRITION_OFF=1` を設定して再デプロイすると、今までどおりの動きに戻ります。
 
 ### 3. リッチメニューを登録
+
+管理画面（`/admin`）→「公式LINE」→「LINE操作キー」に `ADMIN_API_KEY` と同じ文字列を入れて保存 →「リッチメニュー」を開いてリンクを入れ（空欄でもOK）、「LINEに登録する」を押します。
+（GitHub Actions の「Set up LINE rich menu」でも同じことができます。その場合はリポジトリの Secrets に `LINE_CHANNEL_ACCESS_TOKEN` が必要です）
 
 リッチメニューは上のタブで「メインメニュー」と「サポートメニュー」を切り替える2ページ構成です。
 
@@ -53,21 +56,16 @@ Project → Settings → Environment Variables に追加して、再デプロイ
 | --- | --- | --- |
 | メイン | 今日の栄養 | ダッシュボード |
 | メイン | 目標設定 | 目標設定ページ（目標・ビフォーアフター・メンバーシップ） |
-| メイン | 予約 | `reserve_url`（空欄なら「予約」とメッセージ送信） |
+| メイン | 予約 | 予約リンク（空欄なら「予約」とメッセージ送信） |
 | メイン | 体調・トレーニング管理 | TTGYMアプリの体調管理タブ（その人としてログイン済みで開く） |
-| メイン | オンライントレーニングサポート | `online_support_url`（空欄ならアプリの配信タブ） |
+| メイン | オンライントレーニングサポート | リンク（空欄ならアプリの配信タブ） |
 | サポート | レシピ・おすすめ店 | TTGYMアプリのレシピタブ |
 | サポート | My成長・測定結果 | TTGYMアプリの成長タブ |
 | サポート | ビフォーアフター | 目標設定ページ |
-| サポート | オススメ健康ショップ | `shop_url` |
-| サポート | TEAM TOPメンバー参加申込み | `teamtop_url` |
+| サポート | オススメ健康ショップ | リンク |
+| サポート | TEAM TOPメンバー参加申込み | リンク |
 
-リンクが空欄のタイル（予約・健康ショップ・TEAM TOP申込み）は、その名前がメッセージとして送られます。AIは返事をしないので、スタッフがチャットで対応してください。
-
-1. GitHub のリポジトリ → Settings → Secrets and variables → Actions に `LINE_CHANNEL_ACCESS_TOKEN`（Vercelと同じ値）を追加
-2. Actions → 「Set up LINE rich menu」→ Run workflow で `liff_id` と各リンクを入力
-
-画像を変えたいときは `scripts/render-rich-menu.mjs` を編集して `node scripts/render-rich-menu.mjs` で作り直し、もう一度ワークフローを実行します。
+画像を変えたいときは `scripts/render-rich-menu.mjs` を編集して `node scripts/render-rich-menu.mjs` で作り直し、もう一度登録します。
 
 ### 4. LINE Official Account Manager の設定
 

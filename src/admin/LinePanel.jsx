@@ -224,6 +224,52 @@ function LineUserDetail({ u, members, onChanged, hasKey }) {
   );
 }
 
+// リッチメニュー（2ページ）をLINEに登録・作り直す。リンク未定のタイルは空欄でOK
+const MENU_LINKS = [
+  ["reserve", "予約"],
+  ["onlineSupport", "オンライントレーニングサポート（空欄ならアプリの配信タブ）"],
+  ["shop", "オススメ健康ショップ"],
+  ["teamtop", "TEAM TOPメンバー参加申込み"],
+];
+
+function RichMenuBox({ hasKey }) {
+  const [links, setLinks] = useState({});
+  const [state, setState] = useState("");
+  useEffect(() => {
+    window.storage.get("line_richmenu:links", true).then(r => setLinks(parse(r?.value, {}))).catch(() => {});
+  }, []);
+  const run = async () => {
+    setState("sending");
+    try {
+      await adminCall("richmenu", { links });
+      setState("done");
+    } catch (e) {
+      setState(e.message);
+    }
+  };
+  return (
+    <details style={{ background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: "8px 10px", marginBottom: 12 }}>
+      <summary style={{ fontSize: 12, cursor: "pointer" }}>リッチメニュー（LINEのトーク画面下のメニュー）</summary>
+      <div style={{ ...small, lineHeight: 1.7, margin: "8px 0" }}>
+        リンク先が決まっていないタイルは空欄のままでOKです（押すとタイル名がメッセージで届き、スタッフが対応できます）。
+        {links.updatedAt && <><br />前回の登録: {jstTime(links.updatedAt)}</>}
+      </div>
+      {MENU_LINKS.map(([k, label]) => (
+        <div key={k} style={{ marginBottom: 6 }}>
+          <div style={small}>{label}</div>
+          <input value={links[k] || ""} onChange={e => setLinks({ ...links, [k]: e.target.value })} placeholder="https://..." style={input} />
+        </div>
+      ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+        <button onClick={run} disabled={!hasKey || state === "sending"} style={{ ...btn(true), opacity: hasKey ? 1 : 0.5 }}>
+          {state === "sending" ? "登録中…" : links.updatedAt ? "この内容で作り直す" : "LINEに登録する"}
+        </button>
+        <span style={{ fontSize: 10.5, color: state === "done" ? C.line : C.danger }}>{state === "done" ? "✓ 登録しました。LINEのトーク画面を開き直すと反映されます" : state === "sending" ? "" : state}</span>
+      </div>
+    </details>
+  );
+}
+
 export function LinePanel({ members }) {
   const [users, setUsers] = useState(null);
   const [open, setOpen] = useState(null);
@@ -275,6 +321,7 @@ export function LinePanel({ members }) {
         <button onClick={load} style={{ ...btn(false), padding: "4px 10px", fontSize: 10.5 }}>更新</button>
       </div>
       <KeyBox />
+      <RichMenuBox hasKey={hasKey} />
       {stats && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 12 }}>
           {[["利用者", stats.total, "人"], ["アプリ未連携", stats.unlinked, "人"], ["今日の利用", stats.activeToday, "人"], ["今日の食事記録", stats.mealsToday, "件"]].map(([l, v, u]) => (
