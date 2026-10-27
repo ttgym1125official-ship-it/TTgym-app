@@ -15,8 +15,6 @@
 //   LINE_CHANNEL_ACCESS_TOKEN  — same tab, "チャネルアクセストークン(長期)" → 発行
 //   ANTHROPIC_API_KEY          — a server-side Anthropic API key (separate from
 //                                 any key a customer enters inside the app itself)
-//   LIFF_ID                    — LIFF app ID of the 健康ダッシュボード (same value as
-//                                 VITE_LIFF_ID); used for the "ダッシュボードを開く" links
 //
 // Then, in LINE Developers Console → Messaging API設定:
 //   - Webhook URL: https://<your-domain>/api/line-webhook, then 検証 to confirm
@@ -161,9 +159,9 @@ async function logIncoming(lineUserId, text, linkedProfileId) {
 
 // ── 健康ダッシュボード（食事・体重の記録）──
 
-// LIFF_ID（健康ダッシュボード）を Vercel に設定するまでは、食事記録・AI返信・あいさつを動かさず、
-// 今までどおりの動き（未連携の人には返信しない）のままにする。設定して再デプロイすると有効になる
-const nutritionEnabled = () => !!(process.env.LIFF_ID || process.env.VITE_LIFF_ID);
+// 食事記録・AI返信・あいさつを一時的に止めたいときは、Vercel に LINE_NUTRITION_OFF=1 を
+// 設定して再デプロイする（今までどおりの動き＝未連携の人には返信しない、に戻る）
+const nutritionEnabled = () => !process.env.LINE_NUTRITION_OFF;
 
 function welcomeMessage() {
   const dashboard = liffUrl("");

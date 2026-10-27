@@ -1,3 +1,6 @@
+# The 管理画面 (/admin → 公式LINE → リッチメニュー) has a button that does the same thing
+# without any GitHub secret; this workflow is the alternative.
+#
 # Uploads the two-page TTGYM LINE rich menu (public/liff/richmenu-main.png /
 # richmenu-sub.png) and sets the main page as the default for every friend
 # (scripts/setup-rich-menu.mjs). Run manually ("Run workflow") after the LIFF
@@ -11,8 +14,8 @@ on:
   workflow_dispatch:
     inputs:
       liff_id:
-        description: "LIFF ID of the 健康ダッシュボード (e.g. 2000000000-AbCdEfGh)"
-        required: true
+        description: "LIFF ID (empty = src/lineConfig.js)"
+        required: false
       reserve_url:
         description: "予約 link (empty = sends 「予約」 as a message)"
         required: false
