@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ChartNoAxesColumn, Download, Flag, House, LoaderCircle } from "lucide-react";
 import "./liff.css";
 import { NUTRIENTS } from "./nutrients.js";
-import { fetchData, post, isDemo, openDashboard, openApp } from "./api.js";
+import { fetchData, post, isDemo, openDashboard } from "./api.js";
 import { Header, Toast, jstToday, jpDate } from "./ui.jsx";
 import Today from "./Today.jsx";
 import History, { dailyTotals } from "./History.jsx";
@@ -37,23 +37,25 @@ function exportCsv(data) {
   a.click();
 }
 
-// /liff/open?tab=condition … リッチメニューから TTGYMアプリの各タブを開く中継ページ
-function OpenApp() {
-  const [error, setError] = useState("");
+// /liff/open?tab=… は以前のリッチメニューのリンク。アプリではなく、LINEの中のページへ案内する
+const OLD_TABS = {
+  condition: "/condition", training: "/condition?tab=training", growth: "/growth", report: "/growth?tab=report",
+  comments: "/growth?tab=comments", recipe: "/recipe", live: "/online", meal: "", status: "/goal",
+};
+
+function OpenOld() {
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab") || "status";
-    openApp(tab).catch(e => setError(e.message || "開けませんでした"));
+    const params = new URLSearchParams(window.location.search);
+    const target = OLD_TABS[params.get("tab")] ?? "";
+    const demo = params.has("demo") ? `${target.includes("?") ? "&" : "?"}demo=1` : "";
+    window.location.replace(`/liff${target}${demo}`);
   }, []);
-  return (
-    <div className="lf"><div className="lf-center">
-      {error ? <>{error}<br />LINEアプリから開き直してください。</> : <div><LoaderCircle className="lf-spin" size={28} /><p>TTGYMアプリを開いています…</p></div>}
-    </div></div>
-  );
+  return <div className="lf"><div className="lf-center"><LoaderCircle className="lf-spin" size={28} /></div></div>;
 }
 
 export default function LiffApp() {
   const path = window.location.pathname.replace(/\/+$/, "");
-  if (path.endsWith("/open")) return <OpenApp />;
+  if (path.endsWith("/open")) return <OpenOld />;
   const page = PAGE_NAMES.find(n => path.endsWith(`/${n}`));
   if (page) {
     return (

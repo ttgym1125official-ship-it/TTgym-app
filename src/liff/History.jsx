@@ -358,4 +358,4 @@ export default function History({ data, onOpenDay, onAddWeight, onDeleteWeight }
   );
 }
 
-export { dailyTotals };
+export { dailyTotals, WeightChart };

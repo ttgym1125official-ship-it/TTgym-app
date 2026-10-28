@@ -4,7 +4,7 @@
 //   /liff/online      オンライントレーニングサポート（配信・食事プログラム・トレーニングプログラム）
 //   /liff/recipe      レシピ・おすすめ店
 //   /liff/beforeafter ビフォーアフター
-// 体調・成長のページは、アプリと同じ記録（data:<会員ID>:<key>）を読み書きするので、
+// 体調・成長のページ（Care.jsx）は、アプリと同じ記録（data:<会員ID>:<key>）を読み書きするので、
 // アプリ・管理画面・LINEのダッシュボードと同じ内容が見える（未連携の人は line_<LINE userId> に保存）。
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import {
@@ -20,8 +20,8 @@ import trainingProgram from "./content/trainingProgram.json";
 import { BA_CASES, caseImage } from "./content/beforeAfter.js";
 import { BeforeAfterPhotos } from "./BeforeAfterPhotos.jsx";
 
-// アプリ本体（App.jsx）の各タブは大きいので、体調・成長のページを開いたときだけ読み込む
-const AppTabs = lazy(() => import("./AppTabs.jsx"));
+// 体調・成長のページの中身（入力フォームなど）は開いたときだけ読み込む
+const Care = lazy(() => import("./Care.jsx"));
 
 export const PAGES = {
   condition: { eb: "CONDITION & TRAINING", title: "体調・トレーニング管理", sub: "毎日の体調と、トレーニングの記録をここで。トレーナーも同じ記録を見てサポートします。", Icon: Activity, tabs: [["condition", "体調管理"], ["training", "トレーニング"]] },
@@ -71,7 +71,7 @@ export default function AppPage({ page }) {
 
   let body;
   if (page === "condition" || page === "growth") {
-    body = <Suspense fallback={<Spinner />}><AppTabs page={page} tab={tab} toast={flash} /></Suspense>;
+    body = <Suspense fallback={<Spinner />}><Care page={page} tab={tab} toast={flash} /></Suspense>;
   } else if (page === "online") {
     body = tab === "live" ? <Live /> : tab === "food" ? <FoodProgram /> : <TrainingProgram />;
   } else if (page === "recipe") {
@@ -280,4 +280,3 @@ function BeforeAfter({ toast }) {
   );
 }
 
-export { Spinner };
