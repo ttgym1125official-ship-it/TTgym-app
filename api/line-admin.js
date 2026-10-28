@@ -9,19 +9,28 @@
 //   { action: "push", lineUserId, text }                 → お客様のLINEにメッセージを送る
 //   { action: "link", lineUserId, profileId }            → LINEの人とアプリ会員を連携（記録も同期）
 //   { action: "unlink", lineUserId }                     → 連携を外す（体重・水分はLINE側にも残す）
-//   { action: "richmenu", links: { reserve, shop, teamtop } } → リッチメニューを作り直す
+//   { action: "richmenu", links?: { reserve, shop, teamtop } } → リッチメニューを作り直す
+//     （"Authorization: Bearer <CRON_SECRET>" でも可。links を省略すると前回登録したリンクを使う）
 
 import { loadUser, saveUser, kvGet, kvSet, kvDelete, push, appendLog, liffUrl } from "./_lib/nutri.js";
 import { setupRichMenu } from "./_lib/richmenu.js";
 import { LIFF_ID } from "../src/lineConfig.js";
 import crypto from "node:crypto";
 
-function authorized(req) {
-  const key = process.env.ADMIN_API_KEY;
-  const given = String(req.headers["x-admin-key"] || "");
+const same = (key, given) => {
   if (!key || !given) return false;
   const a = Buffer.from(key), b = Buffer.from(given);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+};
+
+function authorized(req) {
+  return same(process.env.ADMIN_API_KEY, String(req.headers["x-admin-key"] || ""));
+}
+
+// GitHub Actions（.github/workflows/setup-rich-menu.yml）からのリッチメニュー登録だけは CRON_SECRET でも認める
+function cronAuthorized(req) {
+  const auth = String(req.headers.authorization || "");
+  return auth.startsWith("Bearer ") && same(process.env.CRON_SECRET, auth.slice(7));
 }
 
 const parse = raw => { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
@@ -32,15 +41,17 @@ export default async function handler(req, res) {
     res.status(405).end();
     return;
   }
-  if (!authorized(req)) {
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  if (!authorized(req) && !(body.action === "richmenu" && cronAuthorized(req))) {
     res.status(401).json({ error: process.env.ADMIN_API_KEY ? "LINE操作キーが違います" : "Vercelに ADMIN_API_KEY が設定されていません" });
     return;
   }
-  const body = req.body && typeof req.body === "object" ? req.body : {};
   const lineUserId = String(body.lineUserId || "");
   if (body.action === "richmenu") {
     const clean = v => (/^https?:\/\/\S+$/.test(String(v || "").trim()) ? String(v).trim() : "");
-    const links = Object.fromEntries(["reserve", "shop", "teamtop"].map(k => [k, clean(body.links?.[k])]));
+    // links を省略したとき（GitHub Actions から）は、管理画面で前回登録したリンクを使う
+    const src = body.links || parse(await kvGet("line_richmenu:links")) || {};
+    const links = Object.fromEntries(["reserve", "shop", "teamtop"].map(k => [k, clean(src[k])]));
     // 画像は同じサイトの public/liff から取る
     const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
     try {

@@ -48,7 +48,7 @@ LIFF ID（`2012240533-jEmcXBvp`）とチャネルID（`2012240533`）は `src/li
 ### 3. リッチメニューを登録
 
 管理画面（`/admin`）→「公式LINE」→「LINE操作キー」に `ADMIN_API_KEY` と同じ文字列を入れて保存 →「リッチメニュー」を開いてリンクを入れ（空欄でもOK）、「LINEに登録する」を押します。
-（GitHub Actions の「Set up LINE rich menu」でも同じことができます。その場合はリポジトリの Secrets に `LINE_CHANNEL_ACCESS_TOKEN` が必要です）
+（GitHub Actions の「Set up LINE rich menu」を実行しても同じことができます。リポジトリの Secrets の `CRON_SECRET` を使い、リンクは管理画面で前回登録したものを使います）
 
 リッチメニューは上のタブで「メインメニュー」と「サポートメニュー」を切り替える2ページ構成です。
 

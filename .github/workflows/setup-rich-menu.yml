@@ -1,44 +1,32 @@
-# The 管理画面 (/admin → 公式LINE → リッチメニュー) has a button that does the same thing
-# without any GitHub secret; this workflow is the alternative.
+# LINEのリッチメニュー（2ページ）を、本番サイトの画像（public/liff/richmenu-main.png /
+# richmenu-sub.png）で登録し直す。管理画面（/admin → 公式LINE → リッチメニュー）の
+# 「この内容で作り直す」と同じ処理を、/api/line-admin に CRON_SECRET で頼む。
+# 予約・オススメ健康ショップ・TEAM TOP のリンクは、管理画面で前回登録したものを使う。
 #
-# Uploads the two-page TTGYM LINE rich menu (public/liff/richmenu-main.png /
-# richmenu-sub.png) and sets the main page as the default for every friend
-# (scripts/setup-rich-menu.mjs). Run manually ("Run workflow") after the LIFF
-# app exists, and again whenever the menu images or links change.
-#
-# Needs repository secret LINE_CHANNEL_ACCESS_TOKEN (same value as in Vercel).
+# 画像やリンク先を変えて本番に反映されたあと、「Run workflow」で実行する。
+# リポジトリの Secrets の CRON_SECRET（週刊レシピの予備送信と同じもの）を使う。
 
 name: Set up LINE rich menu
 
 on:
   workflow_dispatch:
-    inputs:
-      liff_id:
-        description: "LIFF ID (empty = src/lineConfig.js)"
-        required: false
-      reserve_url:
-        description: "予約 link (empty = sends 「予約」 as a message)"
-        required: false
-      shop_url:
-        description: "オススメ健康ショップ link (empty = sends its name as a message)"
-        required: false
-      teamtop_url:
-        description: "TEAM TOPメンバー参加申込み link (empty = sends its name as a message)"
-        required: false
 
 jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Create rich menus
+      - name: Register rich menus
         env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          LIFF_ID: ${{ github.event.inputs.liff_id }}
-          RESERVE_URL: ${{ github.event.inputs.reserve_url }}
-          SHOP_URL: ${{ github.event.inputs.shop_url }}
-          TEAMTOP_URL: ${{ github.event.inputs.teamtop_url }}
-        run: node scripts/setup-rich-menu.mjs
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          status=$(curl -sS --max-time 90 -o body.json -w '%{http_code}' \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" -H "Content-Type: application/json" \
+            -d '{"action":"richmenu"}' "https://t-tgym-app.vercel.app/api/line-admin" || true)
+          echo "HTTP $status"
+          cat body.json; echo
+          if [ "$status" = "200" ]; then
+            echo "::notice title=rich-menu::HTTP $status $(head -c 900 body.json | tr '\n' ' ')"
+          else
+            echo "::error title=rich-menu::HTTP $status $(head -c 900 body.json | tr '\n' ' ')"
+            exit 1
+          fi
