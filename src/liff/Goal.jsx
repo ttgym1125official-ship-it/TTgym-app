@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Activity, ChefHat, Crown, ExternalLink, LoaderCircle, Pencil, Play, Sparkles, TrendingUp } from "lucide-react";
+import { Activity, ChefHat, Crown, LoaderCircle, Pencil, Play, Sparkles, TrendingUp } from "lucide-react";
 import { TIERS, POINT_RULES, tierFor } from "../membership.js";
-import { fetchGoal, post, openPage, openApp } from "./api.js";
+import { fetchGoal, post, openPage } from "./api.js";
 import { BeforeAfterPhotos } from "./BeforeAfterPhotos.jsx";
 import { ACTIVITY, GOALS } from "./nutrients.js";
 import { comma } from "./ui.jsx";
@@ -50,7 +50,7 @@ const PAGE_LINKS = [
   { path: "/recipe", label: "レシピ・\nおすすめ店", Icon: ChefHat },
 ];
 
-function PageLinks({ linked, toast }) {
+function PageLinks({ linked }) {
   return (
     <>
       <div className="lf-sec"><h2>メニュー</h2><span className={`lf-badge ${linked ? "ok" : "almost"}`}>{linked ? "アプリ連携済み" : "アプリ未連携"}</span></div>
@@ -65,12 +65,9 @@ function PageLinks({ linked, toast }) {
         </div>
         <p className="lf-hint" style={{ margin: "14px 0 0", lineHeight: 1.8 }}>
           {linked
-            ? "記録はTTGYMアプリと共有されています。LINEで付けた食事・体重・水分・体調もアプリに反映されます。"
-            : "LINEだけで全部の記録ができます。TTGYMアプリに会員登録すると、ここでの記録もアプリに引き継がれます。"}
+            ? "記録はTTGYMアプリと共有されています。どちらで記録しても同じ内容が見られます。"
+            : "LINEだけで全部の記録ができます。"}
         </p>
-        <button className="lf-sublink" style={{ marginTop: 12 }} onClick={() => openApp("status").catch(e => toast(e.message))}>
-          <ExternalLink size={15} />TTGYMアプリを開く
-        </button>
       </div>
     </>
   );
@@ -147,7 +144,7 @@ export default function Goal({ data, toast }) {
       <MemberCard points={g.points} />
       {!g.linked && <p className="lf-hint" style={{ lineHeight: 1.8 }}>TTGYMアプリと連携すると、パーソナル・自宅トレーニングの記録もポイントに反映されます。</p>}
 
-      <PageLinks linked={data.linked} toast={toast} />
+      <PageLinks linked={data.linked} />
 
     </>
   );

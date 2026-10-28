@@ -384,10 +384,89 @@
 .lf-page-foot { margin: 30px 0 0; text-align: center; }
 .lf-sublink { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--sub); padding: 10px 16px; border-radius: 999px; border: 1.5px solid var(--line) !important; background: #fff !important; }
 
-/* アプリのタブをそのまま埋め込むところ */
-.lf-appbox { font-size: 14px; }
-.lf-appbox input, .lf-appbox select, .lf-appbox textarea { font-size: 16px !important; min-width: 0; max-width: 100%; }
-.lf-appbox { overflow-x: hidden; }
+/* 体調・トレーニング・成長（Care.jsx） */
+.lf-q { padding: 14px 0; border-top: 1px solid var(--line); }
+.lf-q:first-child { border-top: none; padding-top: 0; }
+.lf-q:last-child { padding-bottom: 0; }
+.lf-q .lab { font-size: 14px; font-weight: 800; margin-bottom: 10px; }
+.lf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.lf-chips button { padding: 10px 14px; border-radius: 999px; border: 1.5px solid var(--line) !important; background: #fff !important; font-weight: 700; font-size: 14px; color: var(--ink); }
+.lf-chips.eq button { flex: 1; }
+.lf-chips button.on { background: var(--dark) !important; border-color: var(--dark) !important; color: #fff; }
+.lf-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.lf-scale button { height: 46px; border-radius: 14px; background: var(--bg) !important; font-weight: 800; font-size: 17px; color: var(--sub); }
+.lf-scale button.on { background: var(--dark) !important; color: var(--gold-hero); box-shadow: inset 0 -3px 0 #C9A86A; }
+.lf-scale-cap { text-align: center; font-size: 13px; font-weight: 700; color: var(--gold-text); margin-top: 8px; }
+.lf-mini-inline { display: inline-block; width: 150px; }
+.lf-mini-inline input { font-size: 22px; }
+.lf-check { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 13px 14px; border-radius: 16px; background: var(--bg) !important; margin-bottom: 8px; font-size: 14px; font-weight: 600; line-height: 1.55; }
+.lf-check:last-child { margin-bottom: 0; }
+.lf-check i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #D5D1C8; display: grid; place-items: center; flex-shrink: 0; color: #fff; }
+.lf-check.on { background: var(--green-soft) !important; }
+.lf-check.on i { background: var(--green); border-color: var(--green); }
+.lf-check-note { font-size: 12px; color: var(--sub); margin: -2px 4px 10px; line-height: 1.6; }
+.lf-status { margin-top: 24px; background: linear-gradient(135deg, #1D2420, #0F1411); color: #fff; border-radius: 26px; padding: 22px 20px; }
+.lf-status .eb { color: var(--gold-hero); font-size: 11.5px; font-weight: 800; letter-spacing: 0.22em; }
+.lf-status .t { font-size: 22px; font-weight: 800; margin-top: 6px; }
+.lf-status p { margin: 10px 0 0; font-size: 14px; line-height: 1.85; color: #D8D3C8; }
+.lf-status .next { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 14px; line-height: 1.8; }
+.lf-status .next b { display: block; color: var(--gold-hero); font-size: 12px; letter-spacing: 0.1em; margin-bottom: 2px; }
+.lf-fold summary { list-style: none; display: flex; align-items: center; justify-content: space-between; font-weight: 800; cursor: pointer; }
+.lf-fold summary::-webkit-details-marker { display: none; }
+.lf-fold[open] summary { margin-bottom: 12px; }
+.lf-fold[open] summary svg { transform: rotate(180deg); }
+.lf-cat { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: var(--gold-text); margin: 6px 2px 8px; }
+.lf-input { width: 100%; border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; font-family: inherit; font-size: 16px; outline: none; background: var(--bg); color: var(--ink); }
+.lf-dashed { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; padding: 14px; border-radius: 16px; border: 2px dashed #D9D4CA !important; font-weight: 800; font-size: 14px; color: var(--gold-text); }
+.lf-preview { width: 100%; max-height: 240px; object-fit: cover; border-radius: 16px; margin-top: 10px; display: block; }
+.lf-date { font-size: 12.5px; font-weight: 800; color: var(--gold-text); letter-spacing: 0.06em; margin-bottom: 6px; }
+.lf-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.lf-row:first-of-type { border-top: none; }
+.lf-row .n { font-weight: 700; flex-shrink: 0; }
+.lf-row .v { margin-left: auto; color: var(--sub); text-align: right; font-size: 13px; }
+.lf-row button { color: var(--dim); flex-shrink: 0; padding: 4px; }
+.lf-text { font-size: 14px; line-height: 1.85; white-space: pre-wrap; }
+.lf-goalbar { display: flex; align-items: baseline; gap: 16px; background: var(--dark); color: #fff; border-radius: 20px; padding: 14px 20px; }
+.lf-goalbar span { font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: var(--gold-hero); }
+.lf-goalbar b { font-size: 24px; font-weight: 800; }
+.lf-goalbar small { font-size: 12px; color: #B9B4A8; margin-left: 2px; }
+.lf-mini3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.lf-mini3 > * { min-width: 0; }
+.lf-mini3 .lf-mini span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lf-change { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.lf-change .l { font-size: 12px; font-weight: 700; color: var(--sub); }
+.lf-change .v { font-size: 24px; font-weight: 800; margin-top: 4px; }
+.lf-change .v small { font-size: 11px; color: var(--sub); margin-left: 2px; }
+.lf-change .d { font-size: 11.5px; color: var(--sub); margin-top: 4px; }
+.lf-legend { display: flex; justify-content: center; gap: 18px; font-size: 12.5px; color: var(--sub); font-weight: 700; padding-bottom: 8px; }
+.lf-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.lf-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.lf-stats:first-child { border-top: none; padding-top: 0; }
+.lf-stats .v { font-size: 22px; font-weight: 800; }
+.lf-stats .v small { font-size: 11px; color: var(--sub); margin-left: 2px; font-weight: 600; }
+.lf-stats .l { font-size: 11.5px; color: var(--sub); font-weight: 700; margin-top: 2px; }
+.lf-bars { display: flex; align-items: flex-end; gap: 3px; height: 120px; margin-top: 12px; padding-bottom: 18px; }
+.lf-bars > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
+.lf-bars i { width: 100%; max-width: 26px; border-radius: 6px 6px 3px 3px; background: var(--gold); min-height: 3px; }
+.lf-bars span { position: absolute; bottom: -18px; font-size: 11px; color: var(--sub); font-weight: 700; }
+.lf-tagrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.lf-tagrow span { font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: var(--bg); }
+.lf-log { padding: 10px 0; border-top: 1px solid var(--line); }
+.lf-log:first-child { border-top: none; padding-top: 0; }
+.lf-log > div:first-child { display: flex; justify-content: space-between; font-size: 13px; }
+.lf-log b { color: var(--gold-text); }
+.lf-log span { color: var(--sub); }
+.lf-comment { margin-bottom: 12px; }
+.lf-advice-row { padding: 12px 0; border-top: 1px solid var(--line); }
+.lf-advice-row:first-child { border-top: none; padding-top: 0; }
+.lf-advice-row .t { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.lf-advice-row .s { font-size: 12.5px; color: var(--sub); margin-top: 4px; }
+.lf-advice-row .b { font-size: 14px; line-height: 1.8; margin-top: 6px; }
+.lf-advice-row a { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 800; color: var(--green); text-decoration: none; }
+.lf-fold2 > button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font-weight: 800; font-size: 15.5px; }
+.lf-fold2 > button em { margin-left: auto; font-style: normal; font-size: 12.5px; color: var(--sub); }
+.lf-fold2 > button svg { color: var(--sub); transition: transform 0.2s; }
+.lf-comment-in { padding: 12px 0 0; margin-top: 12px; border-top: 1px solid var(--line); }
 
 /* 食事プログラム・トレーニングプログラム（共有された内容をそのまま表示） */
 .lf-rich { font-size: 14.5px; line-height: 1.85; }
