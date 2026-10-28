@@ -9,7 +9,7 @@
 //   { action: "push", lineUserId, text }                 → お客様のLINEにメッセージを送る
 //   { action: "link", lineUserId, profileId }            → LINEの人とアプリ会員を連携（記録も同期）
 //   { action: "unlink", lineUserId }                     → 連携を外す（体重・水分はLINE側にも残す）
-//   { action: "richmenu", links: { reserve, onlineSupport, shop, teamtop } } → リッチメニューを作り直す
+//   { action: "richmenu", links: { reserve, shop, teamtop } } → リッチメニューを作り直す
 
 import { loadUser, saveUser, kvGet, kvSet, kvDelete, push, appendLog, liffUrl } from "./_lib/nutri.js";
 import { setupRichMenu } from "./_lib/richmenu.js";
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
   const lineUserId = String(body.lineUserId || "");
   if (body.action === "richmenu") {
     const clean = v => (/^https?:\/\/\S+$/.test(String(v || "").trim()) ? String(v).trim() : "");
-    const links = Object.fromEntries(["reserve", "onlineSupport", "shop", "teamtop"].map(k => [k, clean(body.links?.[k])]));
+    const links = Object.fromEntries(["reserve", "shop", "teamtop"].map(k => [k, clean(body.links?.[k])]));
     // 画像は同じサイトの public/liff から取る
     const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
     try {

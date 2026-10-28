@@ -2,15 +2,15 @@
 // scripts/setup-rich-menu.mjs（手元・GitHub Actions）と api/line-admin.js（管理画面のボタン）から使う。
 // 画像は public/liff/richmenu-main.png / richmenu-sub.png（scripts/render-rich-menu.mjs で作成）。
 //
-// links（空ならタイル名をメッセージとして送り、スタッフがチャットで対応する）:
-//   reserve, onlineSupport（空ならアプリの配信タブ）, shop, teamtop
-// 体調・トレーニング管理 / レシピ・おすすめ店 / My成長・測定結果 は、TTGYMアプリの該当タブを
-// LIFF の中継ページ(/liff/open)経由で、そのLINEの人としてログインした状態で開く。
+// links（空ならタイル名をメッセージとして送り、スタッフがチャットで対応する）: reserve, shop, teamtop
+// それ以外のタイルは LINE の中で開くページ（src/liff）:
+//   今日の栄養 /liff、目標設定 /liff/goal、体調・トレーニング管理 /liff/condition、
+//   オンライントレーニングサポート /liff/online、レシピ・おすすめ店 /liff/recipe、
+//   My成長・測定結果 /liff/growth、ビフォーアフター /liff/beforeafter
 
 export async function setupRichMenu({ token, liffId, links = {}, loadImage, log = () => {} }) {
   const liff = p => ({ type: "uri", uri: `https://liff.line.me/${liffId}${p}` });
   const linkOr = (url, text) => (url ? { type: "uri", uri: url } : { type: "message", text });
-  const app = tab => liff(`/open?tab=${tab}`);
   const ALIAS = { main: "ttgym-main", sub: "ttgym-sub" };
   const MENU_NAMES = { main: "TTGYM main", sub: "TTGYM sub" };
 
@@ -33,13 +33,13 @@ export async function setupRichMenu({ token, liffId, links = {}, loadImage, log 
       ...tabAreas,
       box(0, TAB_H, 1664, ROW1_END - TAB_H, liff("")),
       box(1664, TAB_H, 836, ROW1_END - TAB_H, liff("/goal")),
-      ...lower(linkOr(links.reserve, "予約"), app("condition"), links.onlineSupport ? linkOr(links.onlineSupport) : app("live")),
+      ...lower(linkOr(links.reserve, "予約"), liff("/condition"), liff("/online")),
     ],
     sub: [
       ...tabAreas,
-      box(0, TAB_H, 1250, ROW1_END - TAB_H, app("recipe")),
-      box(1250, TAB_H, 1250, ROW1_END - TAB_H, app("growth")),
-      ...lower(liff("/goal"), linkOr(links.shop, "オススメ健康ショップ"), linkOr(links.teamtop, "TEAM TOPメンバー参加申込み")),
+      box(0, TAB_H, 1250, ROW1_END - TAB_H, liff("/recipe")),
+      box(1250, TAB_H, 1250, ROW1_END - TAB_H, liff("/growth")),
+      ...lower(liff("/beforeafter"), linkOr(links.shop, "オススメ健康ショップ"), linkOr(links.teamtop, "TEAM TOPメンバー参加申込み")),
     ],
   };
 

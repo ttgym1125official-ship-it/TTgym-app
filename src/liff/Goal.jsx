@@ -1,26 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import { BarChart3, Brain, ChefHat, Crown, Dumbbell, ImagePlus, LoaderCircle, MessageSquare, Pencil, Play, Sparkles, TrendingUp, Utensils } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Activity, ChefHat, Crown, ExternalLink, LoaderCircle, Pencil, Play, Sparkles, TrendingUp } from "lucide-react";
 import { TIERS, POINT_RULES, tierFor } from "../membership.js";
-import { fileToCompressedDataUrl } from "../imageUtils.js";
 import { fetchGoal, post, openPage, openApp } from "./api.js";
+import { BeforeAfterPhotos } from "./BeforeAfterPhotos.jsx";
 import { ACTIVITY, GOALS } from "./nutrients.js";
 import { comma } from "./ui.jsx";
-
-function PhotoSlot({ label, photo, busy, onSelect }) {
-  const ref = useRef(null);
-  return (
-    <div className="lf-photo">
-      <div className="lab">{label}</div>
-      <button className={`slot${photo ? " has" : ""}`} onClick={() => ref.current?.click()}>
-        {busy ? <LoaderCircle className="lf-spin" size={26} />
-          : photo ? <img src={photo} alt={label} />
-            : <span><ImagePlus size={26} strokeWidth={1.6} /><br />タップして選択</span>}
-      </button>
-      <input ref={ref} type="file" accept="image/*" style={{ display: "none" }}
-        onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onSelect(f); }} />
-    </div>
-  );
-}
 
 function MemberCard({ points }) {
   const { tierIdx, tier, nextTier } = tierFor(points);
@@ -58,26 +42,22 @@ function MemberCard({ points }) {
   );
 }
 
-// TTGYMアプリの各タブ（LINEの人としてそのまま開く）
-const APP_LINKS = [
-  { tab: "condition", label: "体調管理", Icon: Brain },
-  { tab: "training", label: "トレーニング", Icon: Dumbbell },
-  { tab: "growth", label: "成長・測定", Icon: TrendingUp },
-  { tab: "meal", label: "食事記録", Icon: Utensils },
-  { tab: "report", label: "レポート", Icon: BarChart3 },
-  { tab: "comments", label: "トレーナー\nコメント", Icon: MessageSquare },
-  { tab: "recipe", label: "レシピ", Icon: ChefHat },
-  { tab: "live", label: "配信", Icon: Play },
+// LINEの中で開くページ（リッチメニューと同じ）
+const PAGE_LINKS = [
+  { path: "/condition", label: "体調・\nトレーニング", Icon: Activity },
+  { path: "/growth", label: "My成長・\n測定結果", Icon: TrendingUp },
+  { path: "/online", label: "オンライン\nサポート", Icon: Play },
+  { path: "/recipe", label: "レシピ・\nおすすめ店", Icon: ChefHat },
 ];
 
-function AppLinks({ linked, toast }) {
+function PageLinks({ linked, toast }) {
   return (
     <>
-      <div className="lf-sec"><h2>TTGYMアプリ</h2><span className={`lf-badge ${linked ? "ok" : "almost"}`}>{linked ? "連携済み" : "未連携"}</span></div>
+      <div className="lf-sec"><h2>メニュー</h2><span className={`lf-badge ${linked ? "ok" : "almost"}`}>{linked ? "アプリ連携済み" : "アプリ未連携"}</span></div>
       <div className="lf-card">
         <div className="lf-applinks">
-          {APP_LINKS.map(({ tab, label, Icon }) => (
-            <button key={tab} onClick={() => openApp(tab).catch(e => toast(e.message))}>
+          {PAGE_LINKS.map(({ path, label, Icon }) => (
+            <button key={path} onClick={() => openPage(path)}>
               <span className="ic"><Icon size={22} /></span>
               <span>{label}</span>
             </button>
@@ -85,9 +65,12 @@ function AppLinks({ linked, toast }) {
         </div>
         <p className="lf-hint" style={{ margin: "14px 0 0", lineHeight: 1.8 }}>
           {linked
-            ? "LINEの食事・体重・水分はアプリにも反映され、アプリの記録もこのダッシュボードに表示されます。"
-            : "ここからアプリを開いて会員登録（登録済みの方はログイン）すると、公式LINEと自動で連携します。連携後はLINEの食事・体重・水分がアプリにも反映されます。"}
+            ? "記録はTTGYMアプリと共有されています。LINEで付けた食事・体重・水分・体調もアプリに反映されます。"
+            : "LINEだけで全部の記録ができます。TTGYMアプリに会員登録すると、ここでの記録もアプリに引き継がれます。"}
         </p>
+        <button className="lf-sublink" style={{ marginTop: 12 }} onClick={() => openApp("status").catch(e => toast(e.message))}>
+          <ExternalLink size={15} />TTGYMアプリを開く
+        </button>
       </div>
     </>
   );
@@ -97,7 +80,6 @@ export default function Goal({ data, toast }) {
   const [g, setG] = useState(null);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(null);
 
   useEffect(() => {
     fetchGoal().then(r => { setG(r); setText(r.goal.goal || ""); }).catch(e => toast(e.message));
@@ -108,18 +90,6 @@ export default function Goal({ data, toast }) {
   const save = async patch => {
     setG(prev => ({ ...prev, goal: { ...prev.goal, ...patch } }));
     try { await post("goal", { goal: patch }); } catch (e) { toast(e.message); }
-  };
-  const onPhoto = async (which, file) => {
-    setBusy(which);
-    try {
-      const dataUrl = await fileToCompressedDataUrl(file);
-      await post("photo", { which, dataUrl });
-      setG(prev => ({ ...prev, photos: { ...prev.photos, [which]: dataUrl } }));
-    } catch (e) {
-      toast("写真を保存できませんでした");
-    } finally {
-      setBusy(null);
-    }
   };
   const t = data.targets;
   const p = data.profile;
@@ -153,13 +123,19 @@ export default function Goal({ data, toast }) {
         </div>
       </div>
 
-      <div className="lf-sec"><h2>ビフォーアフター</h2></div>
+      <div className="lf-sec"><h2>体の情報・栄養目標</h2><button className="lf-btn-o" onClick={() => openPage("/profile")}><Pencil size={15} />変更する</button></div>
+      <div className="lf-card lf-body-sum">
+        <div><span>1日の目標</span><b>{comma(t.kcal)} kcal</b></div>
+        <div><span>たんぱく質・脂質・炭水化物</span><b>{t.p} / {t.f} / {t.c} g</b></div>
+        <div><span>体重・身長</span><b>{p.weight}kg ・ {p.height}cm</b></div>
+        <div><span>活動量・ゴール</span><b>{ACTIVITY[p.activity]?.label} ・ {GOALS[p.goal]?.label}</b></div>
+      </div>
+
+      <div className="lf-sec"><h2>ビフォーアフター</h2><button className="lf-btn-o" onClick={() => openPage("/beforeafter")}><Sparkles size={15} />会員様の変化</button></div>
       <div className="lf-card">
-        <div className="lf-grid2" style={{ marginBottom: 14 }}>
-          <PhotoSlot label="ビフォー" photo={g.photos.before} busy={busy === "before"} onSelect={f => onPhoto("before", f)} />
-          <PhotoSlot label={`アフター${g.goal.afterMonths ? `（${g.goal.afterMonths}ヶ月）` : ""}`} photo={g.photos.after} busy={busy === "after"} onSelect={f => onPhoto("after", f)} />
-        </div>
-        <label className="lf-mini" style={{ display: "block" }}>
+        <BeforeAfterPhotos photos={g.photos} afterMonths={g.goal.afterMonths} toast={toast}
+          onChange={(slot, url) => setG(prev => ({ ...prev, photos: { ...prev.photos, [slot]: url } }))} />
+        <label className="lf-mini" style={{ display: "block", marginTop: 16 }}>
           <span>アフター経過月数</span>
           <input inputMode="numeric" placeholder="例: 3" defaultValue={g.goal.afterMonths || ""}
             onBlur={e => { const v = e.target.value.replace(/[^\d]/g, ""); if (v !== String(g.goal.afterMonths || "")) save({ afterMonths: v }); }} />
@@ -171,15 +147,8 @@ export default function Goal({ data, toast }) {
       <MemberCard points={g.points} />
       {!g.linked && <p className="lf-hint" style={{ lineHeight: 1.8 }}>TTGYMアプリと連携すると、パーソナル・自宅トレーニングの記録もポイントに反映されます。</p>}
 
-      <AppLinks linked={data.linked} toast={toast} />
+      <PageLinks linked={data.linked} toast={toast} />
 
-      <div className="lf-sec"><h2>体の情報・栄養目標</h2><button className="lf-btn-o" onClick={() => openPage("/profile")}><Pencil size={15} />変更する</button></div>
-      <div className="lf-card lf-body-sum">
-        <div><span>1日の目標</span><b>{comma(t.kcal)} kcal</b></div>
-        <div><span>たんぱく質・脂質・炭水化物</span><b>{t.p} / {t.f} / {t.c} g</b></div>
-        <div><span>体重・身長</span><b>{p.weight}kg ・ {p.height}cm</b></div>
-        <div><span>活動量・ゴール</span><b>{ACTIVITY[p.activity]?.label} ・ {GOALS[p.goal]?.label}</b></div>
-      </div>
     </>
   );
 }

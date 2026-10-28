@@ -80,6 +80,8 @@ const CARD_C = {
 
 const ThemeContext = createContext(LIGHT_C);
 function useTheme() { return useContext(ThemeContext); }
+// Card の見た目を差し替える（公式LINEのページでリッチメニューと同じ白いカードにする）
+const CardSkinContext = createContext(null);
 
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -168,8 +170,13 @@ async function callClaudeVisionOnce(base64Data, mediaType, prompt, apiKey, opts 
   return extractJsonObject(text);
 }
 
+// 公式LINEの中（/liff/condition など）では、お客様のAPIキーの代わりにサーバー経由でAIを呼ぶ
+let aiProxy = null;
+export function setAiProxy(fn) { aiProxy = fn; }
+
 async function callClaudeVision(base64Data, mediaType, prompt, opts = {}) {
   const apiKey = getApiKey();
+  if (!apiKey && aiProxy) return extractJsonObject(await aiProxy({ prompt, image: { mediaType, data: base64Data }, ...opts }));
   if (!apiKey) {
     const err = new Error("API_KEY_MISSING");
     err.code = "API_KEY_MISSING";
@@ -221,6 +228,7 @@ async function callClaudeTextOnce(prompt, apiKey, opts = {}) {
 // API, same JSON-extraction contract, just no image content block.
 async function callClaudeText(prompt, opts = {}) {
   const apiKey = getApiKey();
+  if (!apiKey && aiProxy) return extractJsonObject(await aiProxy({ prompt, ...opts }));
   if (!apiKey) {
     const err = new Error("API_KEY_MISSING");
     err.code = "API_KEY_MISSING";
@@ -397,14 +405,16 @@ function SectionLabel({ children }) {
 }
 
 function Card({ children, style }) {
+  const skin = useContext(CardSkinContext);
   return (
     <div style={{
       background: "#FAFAFA",
       border: "1px solid #DBDBDB", borderRadius: 14,
       padding: 16, marginBottom: 12, boxShadow: "none",
+      ...skin?.style,
       ...style,
     }}>
-      <ThemeContext.Provider value={CARD_C}>{children}</ThemeContext.Provider>
+      <ThemeContext.Provider value={skin?.theme || CARD_C}>{children}</ThemeContext.Provider>
     </div>
   );
 }
@@ -3618,3 +3628,6 @@ function TrainerCommentsTab({ comments, meals }) {
   );
 }
 
+
+// 公式LINEの中のページ（src/liff/AppPages.jsx）で、アプリの各タブをそのまま使う
+export { ThemeContext, CardSkinContext, ConditionTab, GrowthTab, TrainingTab, ReportTab, RecipeTab, LiveStreamTab, TrainerCommentsTab };

@@ -17,12 +17,14 @@
 // POST /api/nutrition { action: "addMeal", date, time, label, items: [{ name, amount, kcal, p, f, c }] }
 // POST /api/nutrition { action: "water", date, ml }        ml は加算量（マイナスで取り消し）
 // POST /api/nutrition { action: "goal", goal: { goal, targetWeight, targetBodyFat, afterMonths } }
-// POST /api/nutrition { action: "photo", which: "before"|"after", dataUrl }
+// POST /api/nutrition { action: "photo", which: "before"|"before_side"|"before_back"|"after"|…, dataUrl }
+// POST /api/nutrition { action: "ai", prompt, image?: { mediaType, data }, maxTokens?, webSearch? } → { text }
+//   （LINE内の体調・成長ページのAI機能用。アプリではお客様のAPIキーで直接呼んでいるものを、サーバーのキーで代わりに呼ぶ）
 // POST /api/nutrition { action: "appLink", tab }          → { url }（TTGYMアプリをこのLINEの人として開くURL）
 
 import {
   loadUser, saveUser, kvGet, kvDelete, newId, calcTargets, normalizeItems, estimateNutrients,
-  loadGoal, saveGoal, savePhoto, computeMembership, appProfileHints, createAppLoginToken,
+  loadGoal, saveGoal, savePhoto, PHOTO_SLOTS, computeMembership, appProfileHints, createAppLoginToken,
 } from "./_lib/nutri.js";
 import { LINE_LOGIN_CHANNEL_ID } from "../src/lineConfig.js";
 
@@ -31,7 +33,8 @@ const APP_TABS = ["status", "condition", "meal", "training", "growth", "report",
 // レスポンスには内部用の項目（_appMealIds など）を含めない
 function view(user) {
   const { profile, meals, weights, water, goal, pid } = user;
-  return { profile, meals, weights, water, goal, linked: !!pid, targets: calcTargets(profile) };
+  // memberId: アプリと同じ形の記録（体調・トレーニングなど）の置き場（未連携なら line_<LINE userId>）
+  return { profile, meals, weights, water, goal, linked: !!pid, memberId: user.appId, targets: calcTargets(profile) };
 }
 
 async function verifyLineUser(req) {
@@ -103,7 +106,7 @@ export default async function handler(req, res) {
     }
     const user = await loadUser(userId);
     // アプリと連携した直後の初回は、LINEだけで記録していた分をアプリ側へ移しておく
-    if (user.pid && user.syncedTo !== user.pid) await saveUser(userId, user);
+    if (user.syncedTo !== user.appId) await saveUser(userId, user);
     if (action === "goal") {
       const [goal, membership] = await Promise.all([loadGoal(userId, user), computeMembership(userId, user)]);
       res.status(200).json({ ...goal, points: membership.points });
@@ -122,6 +125,32 @@ export default async function handler(req, res) {
   const user = await loadUser(userId);
 
   switch (body.action) {
+    case "ai": {
+      const prompt = String(body.prompt || "").slice(0, 20000);
+      const img = body.image && /^image\/(jpeg|png|webp|gif)$/.test(body.image.mediaType) ? body.image : null;
+      if (!prompt || (img && String(img.data || "").length > 4_000_000)) {
+        res.status(400).json({ error: "画像が大きすぎます" });
+        return;
+      }
+      const apiBody = {
+        model: "claude-sonnet-5",
+        max_tokens: Math.min(Number(body.maxTokens) || 1000, 4000),
+        messages: [{ role: "user", content: [...(img ? [{ type: "image", source: { type: "base64", media_type: img.mediaType, data: img.data } }] : []), { type: "text", text: prompt }] }],
+      };
+      if (body.webSearch) apiBody.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }];
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify(apiBody),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        res.status(502).json({ error: data?.error?.message || `AI error (${r.status})` });
+        return;
+      }
+      res.status(200).json({ text: (data.content || []).map(b => b.text || "").join("\n") });
+      return;
+    }
     case "appLink": {
       const tab = APP_TABS.includes(body.tab) ? body.tab : "status";
       const token = await createAppLoginToken(userId, user.pid);
@@ -204,7 +233,7 @@ export default async function handler(req, res) {
       return;
     }
     case "photo": {
-      const which = body.which === "after" ? "after" : "before";
+      const which = PHOTO_SLOTS.includes(body.which) ? body.which : "before";
       const dataUrl = body.dataUrl ? String(body.dataUrl) : null;
       if (dataUrl && (!/^data:image\/(jpeg|png|webp);base64,/.test(dataUrl) || dataUrl.length > 3_000_000)) {
         res.status(400).json({ error: "画像を読み込めませんでした" });

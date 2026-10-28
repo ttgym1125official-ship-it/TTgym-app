@@ -4,12 +4,14 @@
 //  - MemberLineBox: 会員詳細に出す、その会員のLINEのやりとりとメッセージ送信
 //  - notifyLine: トレーナーコメントなどをLINEに送る
 //  - RecipeBroadcastStatus: 週刊レシピのLINE配信状況
+//  - StoresBox: LINEの「レシピ・おすすめ店」ページに出すおすすめのお店（global:recommendedStores）
 // データの読み取りは他の管理画面と同じく kv_store を直接読む。送信と連携の付け外しだけ
 // api/line-admin.js（ADMIN_API_KEY が必要）を通す。
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Send } from "lucide-react";
 import { calcTargets, sumMeals, buildAdvice, fmt } from "../liff/nutrients.js";
 import { RECIPES } from "../recipes.js";
+import { fileToCompressedDataUrl } from "../imageUtils.js";
 
 // AdminDashboard.jsx と同じ配色
 const C = {
@@ -227,7 +229,6 @@ function LineUserDetail({ u, members, onChanged, hasKey }) {
 // リッチメニュー（2ページ）をLINEに登録・作り直す。リンク未定のタイルは空欄でOK
 const MENU_LINKS = [
   ["reserve", "予約"],
-  ["onlineSupport", "オンライントレーニングサポート（空欄ならアプリの配信タブ）"],
   ["shop", "オススメ健康ショップ"],
   ["teamtop", "TEAM TOPメンバー参加申込み"],
 ];
@@ -265,6 +266,71 @@ function RichMenuBox({ hasKey }) {
           {state === "sending" ? "登録中…" : links.updatedAt ? "この内容で作り直す" : "LINEに登録する"}
         </button>
         <span style={{ fontSize: 10.5, color: state === "done" ? C.line : C.danger }}>{state === "done" ? "✓ 登録しました。LINEのトーク画面を開き直すと反映されます" : state === "sending" ? "" : state}</span>
+      </div>
+    </details>
+  );
+}
+
+// LINEの「レシピ・おすすめ店」ページ（/liff/recipe）に出すお店。kv_store の global:recommendedStores に保存
+const STORE_FIELDS = [["name", "店名"], ["area", "エリア（例: 広尾）"], ["genre", "ジャンル（例: 定食・サラダ）"], ["url", "お店のページ（https://…）"]];
+
+function StoresBox() {
+  const [stores, setStores] = useState([]);
+  const [draft, setDraft] = useState({});
+  const [state, setState] = useState("");
+  useEffect(() => {
+    window.storage.get("global:recommendedStores", true).then(r => setStores(parse(r?.value, []))).catch(() => {});
+  }, []);
+  const save = async next => {
+    setState("saving");
+    try {
+      await window.storage.set("global:recommendedStores", JSON.stringify(next), true);
+      setStores(next);
+      setState("saved");
+    } catch (e) {
+      setState("保存できませんでした");
+    }
+  };
+  const add = () => {
+    if (!draft.name?.trim()) return;
+    const url = /^https?:\/\/\S+$/.test((draft.url || "").trim()) ? draft.url.trim() : "";
+    save([...stores, { ...draft, name: draft.name.trim(), url, id: Date.now().toString(36) }]);
+    setDraft({});
+  };
+  const move = (i, d) => {
+    const next = [...stores];
+    [next[i], next[i + d]] = [next[i + d], next[i]];
+    save(next);
+  };
+  return (
+    <details style={{ background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: "8px 10px", marginBottom: 12 }}>
+      <summary style={{ fontSize: 12, cursor: "pointer" }}>おすすめのお店（LINEの「レシピ・おすすめ店」ページ・{stores.length}件）</summary>
+      {stores.map((st, i) => (
+        <div key={st.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.cardBorder}`, fontSize: 12 }}>
+          {st.photo && <img src={st.photo} alt="" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }} />}
+          <span style={{ flex: 1, minWidth: 0 }}>{st.name}<span style={small}> {[st.area, st.genre].filter(Boolean).join(" ・ ")}</span></span>
+          <button style={btn(false)} disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
+          <button style={btn(false)} disabled={i === stores.length - 1} onClick={() => move(i, 1)}>↓</button>
+          <button style={btn(false)} onClick={() => window.confirm(`「${st.name}」を消しますか？`) && save(stores.filter(x => x.id !== st.id))}>削除</button>
+        </div>
+      ))}
+      <div style={{ ...small, margin: "10px 0 6px" }}>お店を追加（公式LINEのタイムラインで紹介したお店など）</div>
+      {STORE_FIELDS.map(([k, label]) => (
+        <input key={k} value={draft[k] || ""} placeholder={label} onChange={e => setDraft({ ...draft, [k]: e.target.value })} style={{ ...input, marginBottom: 6 }} />
+      ))}
+      <textarea rows={3} value={draft.comment || ""} placeholder="おすすめのメニュー・ポイント（例: 鶏むねのグリル定食がおすすめ。ご飯は少なめで）" onChange={e => setDraft({ ...draft, comment: e.target.value })} style={{ ...input, resize: "vertical", marginBottom: 6 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <label style={{ ...btn(false), display: "inline-block" }}>
+          {draft.photo ? "写真を変更" : "写真を選ぶ（任意）"}
+          <input type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) setDraft({ ...draft, photo: await fileToCompressedDataUrl(f, 480, 0.8) });
+          }} />
+        </label>
+        {draft.photo && <img src={draft.photo} alt="" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }} />}
+        <button style={btn(true)} disabled={!draft.name?.trim() || state === "saving"} onClick={add}>追加する</button>
+        <span style={{ fontSize: 10.5, color: state === "saved" ? C.line : C.danger }}>{state === "saved" ? "✓ 保存しました" : state === "saving" ? "" : state}</span>
       </div>
     </details>
   );
@@ -322,6 +388,7 @@ export function LinePanel({ members }) {
       </div>
       <KeyBox />
       <RichMenuBox hasKey={hasKey} />
+      <StoresBox />
       {stats && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 12 }}>
           {[["利用者", stats.total, "人"], ["アプリ未連携", stats.unlinked, "人"], ["今日の利用", stats.activeToday, "人"], ["今日の食事記録", stats.mealsToday, "件"]].map(([l, v, u]) => (
