@@ -4,7 +4,7 @@
 //  - MemberLineBox: 会員詳細に出す、その会員のLINEのやりとりとメッセージ送信
 //  - notifyLine: トレーナーコメントなどをLINEに送る
 //  - RecipeBroadcastStatus: 週刊レシピのLINE配信状況
-//  - StoresBox: LINEの「レシピ・おすすめ店」ページに出すおすすめのお店（global:recommendedStores）
+//  - ListBox: LINEのページに出すおすすめのお店（global:recommendedStores）・健康アイテム（global:recommendedItems）
 // データの読み取りは他の管理画面と同じく kv_store を直接読む。送信と連携の付け外しだけ
 // api/line-admin.js（ADMIN_API_KEY が必要）を通す。
 import React, { useEffect, useMemo, useState } from "react";
@@ -271,20 +271,34 @@ function RichMenuBox({ hasKey }) {
   );
 }
 
-// LINEの「レシピ・おすすめ店」ページ（/liff/recipe）に出すお店。kv_store の global:recommendedStores に保存
-const STORE_FIELDS = [["name", "店名"], ["area", "エリア（例: 広尾）"], ["genre", "ジャンル（例: 定食・サラダ）"], ["url", "お店のページ（https://…）"]];
+// LINEのページに出す一覧（kv_store に保存）。
+//  - おすすめのお店（/liff/recipe）: global:recommendedStores。src/liff/content/stores.js のお店の後ろに並ぶ
+//  - TTGYMオススメ健康アイテム（/liff/items）: global:recommendedItems
+const LISTS = {
+  stores: {
+    key: "global:recommendedStores", title: "おすすめのお店（LINEの「レシピ・おすすめ店」ページ）", addLabel: "お店を追加（麻布十番の5店はすでに表示されています）",
+    fields: [["name", "店名"], ["area", "エリア（例: 麻布十番）"], ["genre", "ジャンル（例: 定食・サラダ）"], ["address", "住所"], ["tel", "電話番号"], ["url", "お店のページ（https://…）"]],
+    comment: "おすすめのポイント（例: 鶏むねのグリル定食がおすすめ。ご飯は少なめで）",
+  },
+  items: {
+    key: "global:recommendedItems", title: "TTGYMオススメ健康アイテム（LINEのページ）", addLabel: "アイテムを追加",
+    fields: [["name", "アイテム名"], ["category", "種類（例: プロテイン・サプリ）"], ["url", "購入ページ（https://…）"]],
+    comment: "おすすめのポイント・飲み方（例: トレーニング後30分以内に1杯）",
+  },
+};
 
-function StoresBox() {
+function ListBox({ kind }) {
+  const cfg = LISTS[kind];
   const [stores, setStores] = useState([]);
   const [draft, setDraft] = useState({});
   const [state, setState] = useState("");
   useEffect(() => {
-    window.storage.get("global:recommendedStores", true).then(r => setStores(parse(r?.value, []))).catch(() => {});
+    window.storage.get(cfg.key, true).then(r => setStores(parse(r?.value, []))).catch(() => {});
   }, []);
   const save = async next => {
     setState("saving");
     try {
-      await window.storage.set("global:recommendedStores", JSON.stringify(next), true);
+      await window.storage.set(cfg.key, JSON.stringify(next), true);
       setStores(next);
       setState("saved");
     } catch (e) {
@@ -304,7 +318,7 @@ function StoresBox() {
   };
   return (
     <details style={{ background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: "8px 10px", marginBottom: 12 }}>
-      <summary style={{ fontSize: 12, cursor: "pointer" }}>おすすめのお店（LINEの「レシピ・おすすめ店」ページ・{stores.length}件）</summary>
+      <summary style={{ fontSize: 12, cursor: "pointer" }}>{cfg.title}・{stores.length}件</summary>
       {stores.map((st, i) => (
         <div key={st.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.cardBorder}`, fontSize: 12 }}>
           {st.photo && <img src={st.photo} alt="" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }} />}
@@ -314,11 +328,11 @@ function StoresBox() {
           <button style={btn(false)} onClick={() => window.confirm(`「${st.name}」を消しますか？`) && save(stores.filter(x => x.id !== st.id))}>削除</button>
         </div>
       ))}
-      <div style={{ ...small, margin: "10px 0 6px" }}>お店を追加（公式LINEのタイムラインで紹介したお店など）</div>
-      {STORE_FIELDS.map(([k, label]) => (
+      <div style={{ ...small, margin: "10px 0 6px" }}>{cfg.addLabel}</div>
+      {cfg.fields.map(([k, label]) => (
         <input key={k} value={draft[k] || ""} placeholder={label} onChange={e => setDraft({ ...draft, [k]: e.target.value })} style={{ ...input, marginBottom: 6 }} />
       ))}
-      <textarea rows={3} value={draft.comment || ""} placeholder="おすすめのメニュー・ポイント（例: 鶏むねのグリル定食がおすすめ。ご飯は少なめで）" onChange={e => setDraft({ ...draft, comment: e.target.value })} style={{ ...input, resize: "vertical", marginBottom: 6 }} />
+      <textarea rows={3} value={draft.comment || ""} placeholder={cfg.comment} onChange={e => setDraft({ ...draft, comment: e.target.value })} style={{ ...input, resize: "vertical", marginBottom: 6 }} />
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <label style={{ ...btn(false), display: "inline-block" }}>
           {draft.photo ? "写真を変更" : "写真を選ぶ（任意）"}
@@ -388,7 +402,8 @@ export function LinePanel({ members }) {
       </div>
       <KeyBox />
       <RichMenuBox hasKey={hasKey} />
-      <StoresBox />
+      <ListBox kind="stores" />
+      <ListBox kind="items" />
       {stats && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 12 }}>
           {[["利用者", stats.total, "人"], ["アプリ未連携", stats.unlinked, "人"], ["今日の利用", stats.activeToday, "人"], ["今日の食事記録", stats.mealsToday, "件"]].map(([l, v, u]) => (
