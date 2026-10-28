@@ -394,8 +394,11 @@ export default async function handler(req, res) {
       const answer = await answerFromData(linkedProfileId, text);
       await replyToLine(replyToken, answer || "うまく答えられませんでした。もう一度お試しください。", lineUserId);
     } catch (e) {
+      // 原因を管理画面（公式LINE → やりとり）で確認できるように残す
+      const uid = event.source?.userId;
+      if (uid) await appendLog(uid, [{ from: "system", text: `エラー: ${e?.message || e}` }]);
       try {
-        if (event.replyToken) await replyToLine(event.replyToken, "エラーが発生しました。しばらくしてからもう一度お試しください。");
+        if (event.replyToken) await replyToLine(event.replyToken, "うまく読み取れませんでした。少し時間をおいてもう一度送るか、「昼食 牛丼並と味噌汁」のように文章で送ってください。", uid);
       } catch (e2) {
         // give up silently — LINE will not retry indefinitely and we've
         // already responded 200 below so the webhook itself won't be

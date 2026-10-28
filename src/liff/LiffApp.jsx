@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ChartNoAxesColumn, Download, Flag, House, LoaderCircle } from "lucide-react";
 import "./liff.css";
 import { NUTRIENTS } from "./nutrients.js";
@@ -8,6 +8,10 @@ import Today from "./Today.jsx";
 import History, { dailyTotals } from "./History.jsx";
 import Onboarding from "./Onboarding.jsx";
 import Goal from "./Goal.jsx";
+
+// リッチメニューの各タイルから開くページ（/liff/condition など）。必要なときだけ読み込む
+const AppPage = lazy(() => import("./AppPages.jsx"));
+const PAGE_NAMES = ["condition", "growth", "online", "recipe", "beforeafter"];
 
 function exportCsv(data) {
   const daily = dailyTotals(data.meals);
@@ -50,6 +54,14 @@ function OpenApp() {
 export default function LiffApp() {
   const path = window.location.pathname.replace(/\/+$/, "");
   if (path.endsWith("/open")) return <OpenApp />;
+  const page = PAGE_NAMES.find(n => path.endsWith(`/${n}`));
+  if (page) {
+    return (
+      <Suspense fallback={<div className="lf"><div className="lf-center"><LoaderCircle className="lf-spin" size={28} /></div></div>}>
+        <AppPage page={page} />
+      </Suspense>
+    );
+  }
   return <Dashboard path={path} />;
 }
 

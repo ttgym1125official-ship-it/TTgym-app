@@ -4,7 +4,8 @@
 // データは既存アプリと同じ Supabase kv_store に、LINEユーザーごとに保存する:
 //   nutri:<LINE userId>                 → { profile, meals, weights, water, goal }
 //   nutri_img:<LINE userId>:<meal id>   → 食事写真のサムネイル(dataURL)
-//   nutri_photo:<LINE userId>:before|after → ビフォーアフター写真(dataURL)
+//   nutri_photo:<LINE userId>:<slot> → ビフォーアフター写真(dataURL)。slot は before|before_side|before_back|after|…
+//   profile_photo:<アプリ会員ID>:<slot> → 連携済みの人の横・後ろの写真（正面は profile の beforePhoto/afterPhoto）
 // 公式アプリと連携済み（line_user:<LINE userId> がある）の人は、目標・ビフォーアフター写真を
 // アプリのプロフィール（profile:<id>）に読み書きして、アプリ側と同じものを表示する。
 
@@ -69,24 +70,50 @@ function lineMealToApp(m) {
 const round1 = v => Math.round((Number(v) || 0) * 10) / 10;
 const appKey = (pid, k) => `data:${pid}:${k}`;
 
+// アプリ未連携の人も、体調・トレーニング・成長などのページ（/liff/condition など）を使えるように、
+// アプリと同じ形のデータを data:line_<LINE userId>:<key> に持つ。連携したらアプリ会員側へ移す
+export const virtualId = lineUserId => `line_${lineUserId}`;
+export const APP_DATA_KEYS = ["meals", "water", "conditions", "growth", "workouts", "monthly", "sessions", "personalLogs", "comments"];
+
+async function migrateVirtual(lineUserId, pid) {
+  const from = virtualId(lineUserId);
+  await Promise.all(APP_DATA_KEYS.map(async k => {
+    const src = parseJson(await kvGet(appKey(from, k)), null);
+    if (!src) return;
+    const dst = parseJson(await kvGet(appKey(pid, k)), null);
+    let merged;
+    if (Array.isArray(src)) {
+      const have = new Set((dst || []).map(x => x.id));
+      merged = [...(dst || []), ...src.filter(x => !have.has(x.id) && !(k === "meals" && String(x.id).startsWith("line-")))];
+    } else {
+      merged = { ...(dst || {}) };
+      for (const [d, v] of Object.entries(src)) merged[d] = (Number(merged[d]) || 0) + (Number(v) || 0);
+    }
+    await kvSet(appKey(pid, k), JSON.stringify(merged));
+    await kvDelete(appKey(from, k)); // 二重に移さないように消す
+  }));
+}
+
 export async function loadUser(lineUserId) {
   const [raw, pid] = await Promise.all([kvGet(`nutri:${lineUserId}`), kvGet(`line_user:${lineUserId}`)]);
   const data = parseJson(raw, {});
+  const appId = pid || virtualId(lineUserId);
   const user = {
     profile: data.profile || null, meals: data.meals || [], weights: data.weights || [],
-    water: data.water || {}, goal: data.goal || {}, pid: pid || null, syncedTo: data.syncedTo || null,
+    water: data.water || {}, goal: data.goal || {}, pid: pid || null, appId, syncedTo: data.syncedTo || null,
     line: data.line || null, followedAt: data.followedAt || null, unfollowedAt: data.unfollowedAt || null,
   };
-  if (!pid) return user;
+  // アプリと連携した直後は、未連携の間に使っていた分をアプリ会員へ移す
+  if (pid && user.syncedTo === virtualId(lineUserId)) await migrateVirtual(lineUserId, pid);
 
-  const [mealsRaw, growthRaw, waterRaw] = await Promise.all(["meals", "growth", "water"].map(k => kvGet(appKey(pid, k))));
+  const [mealsRaw, growthRaw, waterRaw] = await Promise.all(["meals", "growth", "water"].map(k => kvGet(appKey(appId, k))));
   const appMeals = parseJson(mealsRaw, []).filter(m => !String(m.id).startsWith("line-")).map(appMealToLine);
   const growth = parseJson(growthRaw, []);
   const appWater = parseJson(waterRaw, {});
-  const firstSync = user.syncedTo !== pid;
+  // 一度もどこにも同期していない人だけ、LINE側（nutri:）に付けていた体重・水分を移す
+  const firstSync = !user.syncedTo;
   user.meals = [...user.meals.filter(m => m.source !== "app"), ...appMeals];
   user._appMealIds = appMeals.map(m => m.id);
-  // 初めての同期では、LINEだけで付けていた体重・水分もアプリ側へ移す
   const growthWeights = growth.filter(g => g.weight || g.bodyFat).map(g => ({ id: g.id, date: g.date, weight: g.weight ?? null, bodyFat: g.bodyFat ?? null }));
   const growthDates = new Set(growthWeights.map(w => w.date));
   user.weights = [...growthWeights, ...(firstSync ? user.weights.filter(w => !growthDates.has(w.date)) : [])];
@@ -103,17 +130,21 @@ export async function loadUser(lineUserId) {
 }
 
 export async function saveUser(lineUserId, data) {
+  // 連携を外したとき（pid: null で保存）は、LINE専用のデータ置き場に切り替える
+  const appId = data.pid || virtualId(lineUserId);
+  const switched = data.appId && data.appId !== appId;
   await kvSet(`nutri:${lineUserId}`, JSON.stringify({
+    // 未連携の人の体重・水分は、念のためLINE側にも控えを残す
     profile: data.profile, meals: data.meals.filter(m => m.source !== "app"), weights: data.pid ? [] : data.weights,
-    water: data.pid ? {} : data.water || {}, goal: data.goal || {}, syncedTo: data.pid || null,
+    water: data.pid ? {} : data.water || {}, goal: data.goal || {}, syncedTo: appId,
     line: data.line || null, followedAt: data.followedAt || null, unfollowedAt: data.unfollowedAt || null,
   }));
-  if (data.pid) await syncToApp(data);
+  await syncToApp(switched ? { ...data, appId, _appMealIds: [], _growthIds: [], _waterDates: [] } : { ...data, appId });
 }
 
 // アプリ側の配列は、アプリを開いている間に追加された分を消さないよう、最新を読み直してから差分だけ反映する
 async function syncToApp(user) {
-  const pid = user.pid;
+  const pid = user.appId;
   const [mealsRaw, growthRaw, waterRaw] = await Promise.all(["meals", "growth", "water"].map(k => kvGet(appKey(pid, k))));
 
   const keptAppIds = new Set(user.meals.filter(m => m.source === "app").map(m => m.id));
@@ -184,22 +215,32 @@ export async function linkedProfileId(lineUserId) {
   return kvGet(`line_user:${lineUserId}`);
 }
 
+// ビフォーアフター写真: 正面は従来どおり（アプリの beforePhoto / afterPhoto と共通）、横・後ろは別キー
+export const PHOTO_SLOTS = ["before", "before_side", "before_back", "after", "after_side", "after_back"];
+const photoKey = (lineUserId, pid, slot) => (pid ? `profile_photo:${pid}:${slot}` : `nutri_photo:${lineUserId}:${slot}`);
+
 export async function loadGoal(lineUserId, user) {
   const pid = await linkedProfileId(lineUserId);
+  // 連携前にLINEだけで登録した写真は、連携後も（アプリ側が空なら）そのまま見せる
+  const read = async s => (await kvGet(photoKey(lineUserId, pid, s))) || (pid ? await kvGet(photoKey(lineUserId, null, s)) : null) || null;
+  const extra = async slots => Object.fromEntries(await Promise.all(slots.map(async s => [s, await read(s)])));
   if (pid) {
     const p = parseJson(await kvGet(`profile:${pid}`), {});
     return {
       linked: true,
       goal: { goal: p.goal || "", targetWeight: p.targetWeight ?? null, targetBodyFat: p.targetBodyFat ?? null, afterMonths: p.afterMonths || "" },
-      photos: { before: p.beforePhoto || null, after: p.afterPhoto || null },
+      photos: {
+        ...(await extra(["before_side", "before_back", "after_side", "after_back"])),
+        before: p.beforePhoto || (await read("before")),
+        after: p.afterPhoto || (await read("after")),
+      },
     };
   }
-  const [before, after] = await Promise.all([kvGet(`nutri_photo:${lineUserId}:before`), kvGet(`nutri_photo:${lineUserId}:after`)]);
   const g = user.goal || {};
   return {
     linked: false,
     goal: { goal: g.goal || "", targetWeight: g.targetWeight ?? user.profile?.targetWeight ?? null, targetBodyFat: g.targetBodyFat ?? null, afterMonths: g.afterMonths || "" },
-    photos: { before: before || null, after: after || null },
+    photos: await extra(PHOTO_SLOTS),
   };
 }
 
@@ -219,15 +260,15 @@ export async function saveGoal(lineUserId, user, patch) {
   }
 }
 
-export async function savePhoto(lineUserId, which, dataUrl) {
+export async function savePhoto(lineUserId, slot, dataUrl) {
   const pid = await linkedProfileId(lineUserId);
-  if (pid) {
+  if (pid && (slot === "before" || slot === "after")) {
     const p = parseJson(await kvGet(`profile:${pid}`), { id: pid });
-    await kvSet(`profile:${pid}`, JSON.stringify({ ...p, [which === "before" ? "beforePhoto" : "afterPhoto"]: dataUrl }));
+    await kvSet(`profile:${pid}`, JSON.stringify({ ...p, [slot === "before" ? "beforePhoto" : "afterPhoto"]: dataUrl }));
   } else if (dataUrl) {
-    await kvSet(`nutri_photo:${lineUserId}:${which}`, dataUrl);
+    await kvSet(photoKey(lineUserId, pid, slot), dataUrl);
   } else {
-    await kvDelete(`nutri_photo:${lineUserId}:${which}`);
+    await kvDelete(photoKey(lineUserId, pid, slot));
   }
 }
 
@@ -449,19 +490,57 @@ export async function analyzeMessage({ images = [], text = "", todayMeals = [], 
     { type: "text", text: `${context}\n\nお客様からの投稿: ${text ? `「${text}」` : "（写真のみ）"}` },
   ];
 
-  const stream = anthropic.beta.messages.stream({
-    model: "claude-opus-5-5",
-    max_tokens: 32000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "low", format: { type: "json_schema", schema: RESULT_SCHEMA } },
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content }],
+  try {
+    const stream = anthropic.beta.messages.stream({
+      model: "claude-opus-5-5",
+      max_tokens: 32000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low", format: { type: "json_schema", schema: RESULT_SCHEMA } },
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content }],
+    });
+    const message = await stream.finalMessage();
+    if (message.stop_reason === "refusal") throw new Error("refusal");
+    return JSON.parse(message.content.find(b => b.type === "text").text);
+  } catch (e) {
+    // 1回目が失敗したら（モデルの混雑・設定の違いなど）、構造化出力なしの普通の呼び出しでやり直す
+    const first = e?.message || String(e);
+    try {
+      return await analyzePlain(content);
+    } catch (e2) {
+      throw new Error(`AI解析に失敗: ${first} / 再試行: ${e2?.message || e2}`);
+    }
+  }
+}
+
+// 予備: JSONの形を文章で指示して、返ってきた文字列からJSONを取り出す
+async function analyzePlain(content) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: 8000,
+      system: `${SYSTEM_PROMPT}
+
+## 出力形式
+次のJSONスキーマに合うJSONオブジェクトだけを出力してください（前後に説明文やコードブロックは付けない）。
+${JSON.stringify(RESULT_SCHEMA)}`,
+      messages: [{ role: "user", content }],
+    }),
   });
-  const message = await stream.finalMessage();
-  if (message.stop_reason === "refusal") throw new Error("refusal");
-  const textBlock = message.content.find(b => b.type === "text");
-  return JSON.parse(textBlock.text);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || `API error (${res.status})`);
+  const text = (data.content || []).map(b => b.text || "").join("");
+  const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+  const r = JSON.parse(json);
+  return {
+    intent: ["meal", "correction", "body", "other"].includes(r.intent) ? r.intent : "other",
+    title: r.title || "", mealLabel: r.mealLabel || "食事", items: Array.isArray(r.items) ? r.items : [],
+    basisNote: r.basisNote || "", comment: r.comment || "", suggestions: Array.isArray(r.suggestions) ? r.suggestions : [],
+    closing: r.closing || "", weight: Number(r.weight) || 0, bodyFat: Number(r.bodyFat) || 0, replyText: r.replyText || "",
+  };
 }
 
 // 手入力・お店メニューの品目（名前とPFCは確定）に、36項目の栄養素だけをAIで見積もる。

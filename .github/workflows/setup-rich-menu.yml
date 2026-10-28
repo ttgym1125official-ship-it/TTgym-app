@@ -19,9 +19,6 @@ on:
       reserve_url:
         description: "予約 link (empty = sends 「予約」 as a message)"
         required: false
-      online_support_url:
-        description: "オンライントレーニングサポート link (empty = opens the app's 配信 tab)"
-        required: false
       shop_url:
         description: "オススメ健康ショップ link (empty = sends its name as a message)"
         required: false
@@ -42,7 +39,6 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LIFF_ID: ${{ github.event.inputs.liff_id }}
           RESERVE_URL: ${{ github.event.inputs.reserve_url }}
-          ONLINE_SUPPORT_URL: ${{ github.event.inputs.online_support_url }}
           SHOP_URL: ${{ github.event.inputs.shop_url }}
           TEAMTOP_URL: ${{ github.event.inputs.teamtop_url }}
         run: node scripts/setup-rich-menu.mjs
