@@ -11,6 +11,7 @@
 
 import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
+import sharp from "sharp";
 import { createClient } from "@supabase/supabase-js";
 import { NUTRIENTS, NUTRIENT_KEYS, calcTargets, sumMeals, buildAdvice, fmt } from "../../src/liff/nutrients.js";
 import { computePoints } from "../../src/membership.js";
@@ -373,17 +374,23 @@ export async function showLoading(lineUserId, seconds = 60) {
 async function fetchLineContent(messageId, preview) {
   const url = `https://api-data.line.me/v2/bot/message/${messageId}/content${preview ? "/preview" : ""}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` } });
-  if (!res.ok) throw new Error(`LINE content ${res.status}`);
-  const mediaType = (res.headers.get("content-type") || "image/jpeg").split(";")[0];
-  const data = Buffer.from(await res.arrayBuffer()).toString("base64");
-  return { mediaType, data };
+  if (!res.ok) throw new Error(`LINEから写真を取得できませんでした (${res.status})`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// スマホの写真はそのままだとAIに送れる大きさ（5MB）を超えることがあるので、
+// 向きを直して長辺1568pxのJPEGに縮める（AIが読み取れる上限の大きさ）
+async function toJpeg(buf, maxSide, quality) {
+  const out = await sharp(buf).rotate().resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true }).jpeg({ quality }).toBuffer();
+  return { mediaType: "image/jpeg", data: out.toString("base64") };
 }
 
 export async function fetchLineImage(messageId) {
-  const full = await fetchLineContent(messageId, false);
-  let thumb = null;
-  try { thumb = await fetchLineContent(messageId, true); } catch (e) { thumb = null; }
-  return { full, thumb: thumb || full };
+  const buf = await fetchLineContent(messageId, false);
+  const full = await toJpeg(buf, 1568, 85);
+  // ダッシュボードに出す小さい写真
+  const thumb = await toJpeg(buf, 480, 78).catch(() => full);
+  return { full, thumb };
 }
 
 export function liffUrl(path = "") {
@@ -490,38 +497,49 @@ export async function analyzeMessage({ images = [], text = "", todayMeals = [], 
     { type: "text", text: `${context}\n\nお客様からの投稿: ${text ? `「${text}」` : "（写真のみ）"}` },
   ];
 
+  // 1回目はアプリの写真解析と同じ呼び出し（実績あり）、失敗したら構造化出力でやり直す。
+  // LINEの返信が来ないままにならないよう、どちらも時間を区切る
   try {
-    const stream = anthropic.beta.messages.stream({
-      model: "claude-opus-5-5",
-      max_tokens: 32000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low", format: { type: "json_schema", schema: RESULT_SCHEMA } },
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content }],
-    });
-    const message = await stream.finalMessage();
-    if (message.stop_reason === "refusal") throw new Error("refusal");
-    return JSON.parse(message.content.find(b => b.type === "text").text);
+    return await withTimeout(analyzePlain(content), 55000, "AIの応答が時間内に返りませんでした");
   } catch (e) {
-    // 1回目が失敗したら（モデルの混雑・設定の違いなど）、構造化出力なしの普通の呼び出しでやり直す
     const first = e?.message || String(e);
     try {
-      return await analyzePlain(content);
+      return await withTimeout(analyzeStructured(content), 50000, "AIの応答が時間内に返りませんでした（再試行）");
     } catch (e2) {
       throw new Error(`AI解析に失敗: ${first} / 再試行: ${e2?.message || e2}`);
     }
   }
 }
 
-// 予備: JSONの形を文章で指示して、返ってきた文字列からJSONを取り出す
+function withTimeout(promise, ms, message) {
+  let timer;
+  return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })])
+    .finally(() => clearTimeout(timer));
+}
+
+async function analyzeStructured(content) {
+  const stream = anthropic.beta.messages.stream({
+    model: "claude-opus-5-5",
+    max_tokens: 32000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: { type: "json_schema", schema: RESULT_SCHEMA } },
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content }],
+  });
+  const message = await stream.finalMessage();
+  if (message.stop_reason === "refusal") throw new Error("refusal");
+  return JSON.parse(message.content.find(b => b.type === "text").text);
+}
+
+// JSONの形を文章で指示して、返ってきた文字列からJSONを取り出す（アプリの写真解析と同じモデル）
 async function analyzePlain(content) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 8000,
+      max_tokens: 12000,
       system: `${SYSTEM_PROMPT}
 
 ## 出力形式

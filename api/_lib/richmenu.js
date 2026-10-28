@@ -6,7 +6,10 @@
 // それ以外のタイルは LINE の中で開くページ（src/liff）:
 //   今日の栄養 /liff、目標設定 /liff/goal、体調・トレーニング管理 /liff/condition、
 //   オンライントレーニングサポート /liff/online、レシピ・おすすめ店 /liff/recipe、
-//   My成長・測定結果 /liff/growth、ビフォーアフター /liff/beforeafter
+//   My成長・測定結果 /liff/growth
+// ビフォーアフターは TTGYM のビフォーアフターのページ（BEFORE_AFTER_URL）を直接開く
+
+export const BEFORE_AFTER_URL = "https://claude.ai/artifact/PALnehkVe6vqe72S7kkVz6";
 
 export async function setupRichMenu({ token, liffId, links = {}, loadImage, log = () => {} }) {
   const liff = p => ({ type: "uri", uri: `https://liff.line.me/${liffId}${p}` });
@@ -39,7 +42,7 @@ export async function setupRichMenu({ token, liffId, links = {}, loadImage, log 
       ...tabAreas,
       box(0, TAB_H, 1250, ROW1_END - TAB_H, liff("/recipe")),
       box(1250, TAB_H, 1250, ROW1_END - TAB_H, liff("/growth")),
-      ...lower(liff("/beforeafter"), linkOr(links.shop, "オススメ健康ショップ"), linkOr(links.teamtop, "TEAM TOPメンバー参加申込み")),
+      ...lower({ type: "uri", uri: BEFORE_AFTER_URL }, linkOr(links.shop, "オススメ健康ショップ"), linkOr(links.teamtop, "TEAM TOPメンバー参加申込み")),
     ],
   };
 

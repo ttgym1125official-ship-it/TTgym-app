@@ -142,7 +142,7 @@ export function closeOrBack() {
 }
 
 export function openPage(path = "") {
-  window.location.href = `/liff${path}${isDemo ? "?demo=1" : ""}`;
+  window.location.href = `/liff${path}${isDemo ? `${path.includes("?") ? "&" : "?"}demo=1` : ""}`;
 }
 
 export function openDashboard() {

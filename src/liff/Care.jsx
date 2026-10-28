@@ -9,8 +9,9 @@ import {
 } from "../careData.js";
 import { fileToCompressedDataUrl } from "../imageUtils.js";
 import { fetchData, fetchGoal, post, isDemo } from "./api.js";
-import { addDays, comma, jstToday, md } from "./ui.jsx";
+import { addDays, jstToday, md } from "./ui.jsx";
 import { WeightChart } from "./History.jsx";
+import ReportPanel from "./Report.jsx";
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const KEYS = ["meals", "water", "conditions", "growth", "workouts", "monthly", "sessions", "personalLogs", "comments"];
@@ -59,16 +60,6 @@ function Scale({ levels, value, onChange, caption }) {
 
 function Q({ label, children }) {
   return <div className="lf-q"><div className="lab">{label}</div>{children}</div>;
-}
-
-function Stats({ items }) {
-  return (
-    <div className="lf-stats">
-      {items.map(([label, value, unit]) => (
-        <div key={label}><div className="v">{value}<small>{unit}</small></div><div className="l">{label}</div></div>
-      ))}
-    </div>
-  );
 }
 
 const Empty = ({ text }) => <div className="lf-card lf-hint" style={{ margin: 0, textAlign: "center", lineHeight: 1.8 }}>{text}</div>;
@@ -138,7 +129,7 @@ export default function Care({ page, tab, toast }) {
       ? <TrainingView workouts={d.workouts} sessions={d.sessions} mutate={mutate} />
       : <ConditionView conditions={d.conditions} comments={d.comments} mutate={mutate} />;
   }
-  if (tab === "report") return <ReportView data={d} />;
+  if (tab === "report") return <ReportPanel />;
   if (tab === "comments") return <CommentsView comments={d.comments} meals={d.meals} />;
   return <GrowthView growth={d.growth} monthly={d.monthly} mutate={mutate} toast={toast} />;
 }
@@ -486,102 +477,6 @@ function MonthlyTags({ m }) {
     m.situps != null && `腹筋 ${m.situps}回`, m.benchMax != null && `BP ${m.benchMax}kg`, m.hipThrust != null && `HT ${m.hipThrust}kg`,
     m.bridge && "ブリッジ／倒立◎", m.photoSubmitted && "写真提出済",
   ].filter(Boolean).join(" ・ ");
-}
-
-// ── レポート ──
-function ReportView({ data }) {
-  const [period, setPeriod] = useState("week");
-  const days = period === "week" ? 7 : 30;
-  const today = jstToday();
-  const cutoff = addDays(today, -(days - 1));
-  const inP = x => x.date >= cutoff;
-  const meals = data.meals.filter(inP);
-  const conds = data.conditions.filter(inP);
-  const growth = data.growth.filter(inP).sort((a, b) => a.date.localeCompare(b.date));
-  const works = data.workouts.filter(inP);
-  const water = Object.entries(data.water || {}).filter(([dt]) => dt >= cutoff);
-  const monthly = data.monthly.filter(inP).sort((a, b) => b.date.localeCompare(a.date));
-  const logs = data.personalLogs.filter(inP).sort((a, b) => b.seq - a.seq);
-
-  const avg = (list, key, digits = 1) => (list.length ? (list.reduce((s, x) => s + (Number(x[key]) || 0), 0) / list.length).toFixed(digits) : "—");
-  const mealDays = new Set(meals.map(x => x.date)).size;
-  const totalKcal = meals.reduce((s, x) => s + (x.calories || 0), 0);
-  const waterTotal = water.reduce((s, [, ml]) => s + ml, 0);
-  const dates = Array.from({ length: days }, (_, i) => addDays(cutoff, i));
-  const kcalBy = Object.fromEntries(dates.map(dt => [dt, 0]));
-  for (const x of meals) kcalBy[x.date] = (kcalBy[x.date] || 0) + (x.calories || 0);
-  const maxKcal = Math.max(1, ...Object.values(kcalBy));
-  const change = key => {
-    const list = growth.filter(g => g[key] != null);
-    return list.length >= 2 ? list[list.length - 1][key] - list[0][key] : null;
-  };
-  const sleepHours = conds.filter(c => c.sleepHours);
-  const bowelRate = conds.length ? Math.round((conds.filter(c => c.bowel <= 1).length / conds.length) * 100) : "—";
-  const exercises = [...new Set(works.map(x => x.exercise))];
-
-  return (
-    <>
-      <div className="lf-chips eq" style={{ marginBottom: 6 }}>
-        {[["week", "1週間"], ["month", "1ヶ月"]].map(([k, l]) => <button key={k} className={period === k ? "on" : ""} onClick={() => setPeriod(k)}>{l}</button>)}
-      </div>
-
-      <Sec title="食事・水分" />
-      <div className="lf-card">
-        <Stats items={[["記録日数", mealDays, "日"], ["平均カロリー", mealDays ? comma(totalKcal / mealDays) : "—", "kcal"], ["平均水分", water.length ? comma(waterTotal / water.length) : "—", "ml"]]} />
-        <div className="lf-bars">
-          {dates.map(dt => (
-            <div key={dt} title={`${md(dt)} ${comma(kcalBy[dt])}kcal`}>
-              <i style={{ height: `${(kcalBy[dt] / maxKcal) * 100}%` }} />
-              {(days === 7 || dt.endsWith("1") || dt === today) && <span>{Number(dt.slice(8))}</span>}
-            </div>
-          ))}
-        </div>
-        <p className="lf-hint" style={{ margin: "6px 2px 0" }}>1日ごとのカロリー（合計 {comma(totalKcal)}kcal・水分 {comma(waterTotal)}ml）</p>
-      </div>
-
-      <Sec title="体調" />
-      <div className="lf-card">
-        <Stats items={[["記録回数", conds.length, "回"], ["睡眠の質", avg(conds, "sleep"), "/5"], ["睡眠時間", avg(sleepHours, "sleepHours"), "h"]]} />
-        <Stats items={[["メンタル", avg(conds, "mental"), "/5"], ["起床時だるさ", avg(conds, "morningFatigue"), "/5"], ["お通じ良好", bowelRate, bowelRate === "—" ? "" : "%"]]} />
-        <Stats items={[["朝日光", conds.filter(c => c.sunAM).length, "日"], ["湯船10分", conds.filter(c => c.bath10).length, "日"], ["運動・ストレッチ", conds.filter(c => c.exercise).length, "日"]]} />
-      </div>
-
-      <Sec title="成長" />
-      <div className="lf-card">
-        <Stats items={[["体重", signed(change("weight")), "kg"], ["体脂肪率", signed(change("bodyFat")), "%"], ["骨格筋量", signed(change("muscleMass")), "kg"]]} />
-        <p className="lf-hint" style={{ margin: "4px 2px 0" }}>期間中の変化（記録 {growth.length}回）</p>
-      </div>
-
-      <Sec title="トレーニング" />
-      <div className="lf-card">
-        <Stats items={[["実施日数", new Set(works.map(x => x.date)).size, "日"], ["種目数", exercises.length, "種"], ["消費カロリー", comma(works.reduce((s, x) => s + (x.calories || 0), 0)), "kcal"]]} />
-        {exercises.length > 0 && <div className="lf-tagrow">{exercises.map(n => <span key={n}>{n}</span>)}</div>}
-      </div>
-
-      {logs.length > 0 && (
-        <>
-          <Sec title="パーソナルトレーニング" />
-          <div className="lf-card">
-            {logs.map(p => (
-              <div key={p.id} className="lf-log">
-                <div><b>第{p.seq}回</b><span>{md(p.date)}</span></div>
-                <div className="lf-text">{p.menu}</div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {period === "month" && monthly.length > 0 && (
-        <>
-          <Sec title="月次測定" />
-          <div className="lf-card">
-            {monthly.map(x => <div key={x.id} className="lf-row"><span className="n">{md(x.date)}</span><span className="v"><MonthlyTags m={x} /></span></div>)}
-          </div>
-        </>
-      )}
-    </>
-  );
 }
 
 // ── コメント ──
