@@ -3,22 +3,20 @@
 //   /liff/growth      My成長・測定結果（アプリの成長・レポート・コメントタブ）
 //   /liff/online      オンライントレーニングサポート（配信・食事プログラム・トレーニングプログラム）
 //   /liff/recipe      レシピ・おすすめ店
-//   /liff/beforeafter ビフォーアフター
+//   /liff/beforeafter ビフォーアフター（TTGYMのビフォーアフターのページへそのまま移動）
 // 体調・成長のページ（Care.jsx）は、アプリと同じ記録（data:<会員ID>:<key>）を読み書きするので、
 // アプリ・管理画面・LINEのダッシュボードと同じ内容が見える（未連携の人は line_<LINE userId> に保存）。
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import {
   Activity, ArrowLeft, Camera, ChefHat, ChevronDown, ChevronRight, LoaderCircle,
-  MapPin, MessageCircle, Play, Sparkles, TrendingUp, Utensils,
+  MapPin, Play, TrendingUp, Utensils,
 } from "lucide-react";
-import { fetchData, fetchGoal, post, isDemo, openDashboard, openPage, closeOrBack } from "./api.js";
+import { isDemo, openDashboard, closeOrBack } from "./api.js";
 import { Header, Toast } from "./ui.jsx";
 import { publishedRecipes, recipeImage } from "../recipes.js";
 import { STORE_CHAINS, STORE_MENU } from "../storeMenu.js";
 import foodProgram from "./content/foodProgram.json";
 import trainingProgram from "./content/trainingProgram.json";
-import { BA_CASES, caseImage } from "./content/beforeAfter.js";
-import { BeforeAfterPhotos } from "./BeforeAfterPhotos.jsx";
 
 // 体調・成長のページの中身（入力フォームなど）は開いたときだけ読み込む
 const Care = lazy(() => import("./Care.jsx"));
@@ -28,7 +26,6 @@ export const PAGES = {
   growth: { eb: "MY GROWTH", title: "My成長・測定結果", sub: "体重・体組成の変化、毎月のレポート、トレーナーからのコメントをまとめて確認できます。", Icon: TrendingUp, tabs: [["growth", "成長"], ["report", "レポート"], ["comments", "コメント"]] },
   online: { eb: "ONLINE SUPPORT", title: "オンライントレーニングサポート", sub: "ライブ配信・2週間食事プログラム・目的別トレーニングプログラムで、ジムの外でも一緒に。", Icon: Play, tabs: [["live", "配信"], ["food", "食事プログラム"], ["training", "トレーニング"]] },
   recipe: { eb: "RECIPE & SHOPS", title: "レシピ・おすすめ店", sub: "毎週土曜に届くボディメイクレシピと、TTGYMおすすめのお店・外食メニュー。", Icon: ChefHat, tabs: [["recipe", "レシピ"], ["shops", "おすすめ店"]] },
-  beforeafter: { eb: "BEFORE & AFTER", title: "ビフォーアフター", sub: "あなたの変化の記録と、TTGYMでトレーニングされた会員様の変化の一例です。", Icon: Sparkles, tabs: null },
 };
 
 function Shell({ page, tab, onTab, children, toast }) {
@@ -74,10 +71,8 @@ export default function AppPage({ page }) {
     body = <Suspense fallback={<Spinner />}><Care page={page} tab={tab} toast={flash} /></Suspense>;
   } else if (page === "online") {
     body = tab === "live" ? <Live /> : tab === "food" ? <FoodProgram /> : <TrainingProgram />;
-  } else if (page === "recipe") {
-    body = tab === "recipe" ? <Recipes /> : <Shops />;
   } else {
-    body = <BeforeAfter toast={flash} />;
+    body = tab === "recipe" ? <Recipes /> : <Shops />;
   }
   return <Shell page={page} tab={tab} onTab={setTab} toast={toast}>{body}</Shell>;
 }
@@ -240,43 +235,4 @@ function Shops() {
 }
 
 // ── ビフォーアフター ──
-function BeforeAfter({ toast }) {
-  const [g, setG] = useState(null);
-  useEffect(() => { fetchGoal().then(setG).catch(() => setG({ photos: {}, goal: {} })); }, []);
-  return (
-    <>
-      <div className="lf-sec" style={{ marginTop: 0 }}><h2>あなたのビフォーアフター</h2></div>
-      <div className="lf-card">
-        {g ? (
-          <BeforeAfterPhotos photos={g.photos || {}} afterMonths={g.goal?.afterMonths} toast={toast}
-            onChange={(slot, url) => setG(prev => ({ ...prev, photos: { ...prev.photos, [slot]: url } }))} />
-        ) : <Spinner />}
-        <p className="lf-hint" style={{ margin: "14px 0 0", lineHeight: 1.8 }}>写真はあなたとTTGYMのスタッフだけが見られます。経過月数は「目標設定」で変更できます。</p>
-      </div>
-
-      <div className="lf-sec"><h2>会員様の変化</h2></div>
-      <p className="lf-hint" style={{ margin: "-6px 2px 14px", lineHeight: 1.8 }}>TTGYMでトレーニングされた会員様の変化の一例です。写真はすべてご本人の同意のもと掲載しています。</p>
-      {BA_CASES.map(c => {
-        const heading = c.tags.find(t => t === "MEN'S RESULT" || t === "MORE RESULTS");
-        return (
-          <React.Fragment key={c.no}>
-            <div className="lf-card lf-case">
-              <img src={caseImage(c)} alt={`Case ${c.no}`} loading="lazy" />
-              <div className="cap">
-                <div className="no">CASE {String(c.no).padStart(2, "0")}</div>
-                <div className="tags">{c.tags.filter(t => t !== heading).map(t => <span key={t}>{t}</span>)}</div>
-              </div>
-            </div>
-            {heading && <div className="lf-divider">{heading}</div>}
-          </React.Fragment>
-        );
-      })}
-      <div className="lf-cta">
-        <h3>あなたも変わりませんか？</h3>
-        <p>まずはLINEから無料カウンセリングにお申し込みください。<br />トレーナーが丁寧にお応えします。</p>
-        <button onClick={closeOrBack}><MessageCircle size={16} style={{ verticalAlign: -3, marginRight: 6 }} />LINEで相談する</button>
-      </div>
-    </>
-  );
-}
 

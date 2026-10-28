@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Activity, ChefHat, Crown, LoaderCircle, Pencil, Play, Sparkles, TrendingUp } from "lucide-react";
 import { TIERS, POINT_RULES, tierFor } from "../membership.js";
 import { fetchGoal, post, openPage } from "./api.js";
 import { BeforeAfterPhotos } from "./BeforeAfterPhotos.jsx";
+
+// 食事・水分・体重・体調・トレーニングのレポート（My成長のレポートと同じもの）
+const ReportPanel = lazy(() => import("./Report.jsx"));
 import { ACTIVITY, GOALS } from "./nutrients.js";
 import { comma } from "./ui.jsx";
 
@@ -120,6 +123,11 @@ export default function Goal({ data, toast }) {
         </div>
       </div>
 
+      <div className="lf-sec"><h2>レポート</h2><button className="lf-btn-o" onClick={() => openPage("/growth?tab=report")}><TrendingUp size={15} />くわしく</button></div>
+      <Suspense fallback={<div className="lf-center" style={{ minHeight: "20vh" }}><LoaderCircle className="lf-spin" size={24} /></div>}>
+        <ReportPanel compact />
+      </Suspense>
+
       <div className="lf-sec"><h2>体の情報・栄養目標</h2><button className="lf-btn-o" onClick={() => openPage("/profile")}><Pencil size={15} />変更する</button></div>
       <div className="lf-card lf-body-sum">
         <div><span>1日の目標</span><b>{comma(t.kcal)} kcal</b></div>
@@ -128,7 +136,7 @@ export default function Goal({ data, toast }) {
         <div><span>活動量・ゴール</span><b>{ACTIVITY[p.activity]?.label} ・ {GOALS[p.goal]?.label}</b></div>
       </div>
 
-      <div className="lf-sec"><h2>ビフォーアフター</h2><button className="lf-btn-o" onClick={() => openPage("/beforeafter")}><Sparkles size={15} />会員様の変化</button></div>
+      <div className="lf-sec"><h2>ビフォーアフター</h2><button className="lf-btn-o" onClick={() => { window.location.href = "https://claude.ai/artifact/PALnehkVe6vqe72S7kkVz6"; }}><Sparkles size={15} />会員様の変化</button></div>
       <div className="lf-card">
         <BeforeAfterPhotos photos={g.photos} afterMonths={g.goal.afterMonths} toast={toast}
           onChange={(slot, url) => setG(prev => ({ ...prev, photos: { ...prev.photos, [slot]: url } }))} />

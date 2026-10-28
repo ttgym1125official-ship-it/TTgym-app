@@ -11,7 +11,9 @@ import Goal from "./Goal.jsx";
 
 // リッチメニューの各タイルから開くページ（/liff/condition など）。必要なときだけ読み込む
 const AppPage = lazy(() => import("./AppPages.jsx"));
-const PAGE_NAMES = ["condition", "growth", "online", "recipe", "beforeafter"];
+const PAGE_NAMES = ["condition", "growth", "online", "recipe"];
+// ビフォーアフターは TTGYM のビフォーアフターのページ（会員様の変化の例）へそのまま移動する
+export const BEFORE_AFTER_URL = "https://claude.ai/artifact/PALnehkVe6vqe72S7kkVz6";
 
 function exportCsv(data) {
   const daily = dailyTotals(data.meals);
@@ -56,6 +58,10 @@ function OpenOld() {
 export default function LiffApp() {
   const path = window.location.pathname.replace(/\/+$/, "");
   if (path.endsWith("/open")) return <OpenOld />;
+  if (path.endsWith("/beforeafter")) {
+    window.location.replace(BEFORE_AFTER_URL);
+    return null;
+  }
   const page = PAGE_NAMES.find(n => path.endsWith(`/${n}`));
   if (page) {
     return (
