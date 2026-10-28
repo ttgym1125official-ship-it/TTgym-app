@@ -11,7 +11,11 @@ import Goal from "./Goal.jsx";
 
 // リッチメニューの各タイルから開くページ（/liff/condition など）。必要なときだけ読み込む
 const AppPage = lazy(() => import("./AppPages.jsx"));
-const PAGE_NAMES = ["condition", "growth", "online", "recipe"];
+const PAGE_NAMES = ["condition", "online", "recipe", "items"];
+// 「目標設定・MY成長・測定結果」のタブ（成長・コメントは Care.jsx、レポートは Report.jsx）
+const Care = lazy(() => import("./Care.jsx"));
+const ReportPanel = lazy(() => import("./Report.jsx"));
+const GOAL_TABS = [["goal", "目標"], ["growth", "成長・測定"], ["report", "レポート"], ["comments", "コメント"]];
 // ビフォーアフターは TTGYM のビフォーアフターのページ（会員様の変化の例）へそのまま移動する
 export const BEFORE_AFTER_URL = "https://claude.ai/artifact/PALnehkVe6vqe72S7kkVz6";
 
@@ -77,8 +81,13 @@ function Dashboard({ path }) {
   const isProfilePage = path.endsWith("/profile");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
-  // /liff/goal（リッチメニューの「目標設定」「ビフォーアフター」）は目標タブから開く
-  const [view, setView] = useState(path.endsWith("/goal") ? "goal" : "today");
+  // /liff/goal（リッチメニューの「目標設定・MY成長」）と以前の /liff/growth は目標タブから開く
+  const isGoalPage = path.endsWith("/goal") || path.endsWith("/growth");
+  const [view, setView] = useState(isGoalPage ? "goal" : "today");
+  const [goalTab, setGoalTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return GOAL_TABS.some(([k]) => k === t) ? t : path.endsWith("/growth") ? "growth" : "goal";
+  });
   const [selected, setSelected] = useState(jstToday());
   const [toast, setToast] = useState("");
   const today = jstToday();
@@ -125,7 +134,22 @@ function Dashboard({ path }) {
       <div className="lf-wrap">
         <Header right={headerRight} />
         {isDemo && <div className="lf-demo">デモ表示中（サンプルデータ）</div>}
-        {view === "goal" ? <Goal data={data} toast={flash} /> : view === "today" ? (
+        {view === "goal" ? (
+          <>
+            <div className="lf-page-hero">
+              <div className="eb">GOAL & MY GROWTH</div>
+              <h1>目標設定<br />MY成長・測定結果</h1>
+            </div>
+            <div className="lf-seg">
+              {GOAL_TABS.map(([k, l]) => <button key={k} className={goalTab === k ? "on" : ""} onClick={() => { setGoalTab(k); window.scrollTo(0, 0); }}>{l}</button>)}
+            </div>
+            <Suspense fallback={<div className="lf-center" style={{ minHeight: "30vh" }}><LoaderCircle className="lf-spin" size={26} /></div>}>
+              {goalTab === "goal" ? <Goal data={data} toast={flash} />
+                : goalTab === "report" ? <ReportPanel compact />
+                  : <Care page="growth" tab={goalTab} toast={flash} />}
+            </Suspense>
+          </>
+        ) : view === "today" ? (
           <Today
             data={data} today={today} selected={selected} onSelect={setSelected}
             onDeleteItem={(meal, item) => window.confirm(`「${item.name}」を削除しますか？`) && act("deleteItem", { mealId: meal.id, itemId: item.id }, "削除しました")}

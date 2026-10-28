@@ -9,12 +9,14 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import {
   Activity, ArrowLeft, Camera, ChefHat, ChevronDown, ChevronRight, LoaderCircle,
-  MapPin, Play, TrendingUp, Utensils,
+  MapPin, Phone, Play, Sparkles, Utensils,
 } from "lucide-react";
 import { isDemo, openDashboard, closeOrBack } from "./api.js";
 import { Header, Toast } from "./ui.jsx";
 import { publishedRecipes, recipeImage } from "../recipes.js";
 import { STORE_CHAINS, STORE_MENU } from "../storeMenu.js";
+import { AGING_NUTRIENTS } from "../careData.js";
+import { STORES } from "./content/stores.js";
 import foodProgram from "./content/foodProgram.json";
 import trainingProgram from "./content/trainingProgram.json";
 
@@ -22,8 +24,8 @@ import trainingProgram from "./content/trainingProgram.json";
 const Care = lazy(() => import("./Care.jsx"));
 
 export const PAGES = {
-  condition: { eb: "CONDITION & TRAINING", title: "体調・トレーニング管理", sub: "毎日の体調と、トレーニングの記録をここで。トレーナーも同じ記録を見てサポートします。", Icon: Activity, tabs: [["condition", "体調管理"], ["training", "トレーニング"]] },
-  growth: { eb: "MY GROWTH", title: "My成長・測定結果", sub: "体重・体組成の変化、毎月のレポート、トレーナーからのコメントをまとめて確認できます。", Icon: TrendingUp, tabs: [["growth", "成長"], ["report", "レポート"], ["comments", "コメント"]] },
+  condition: { eb: "CONDITION & TRAINING", title: "体調・トレーニング\n自己管理", sub: "毎日の体調と、トレーニングの記録をここで。トレーナーも同じ記録を見てサポートします。", Icon: Activity, tabs: [["condition", "体調管理"], ["training", "トレーニング"]] },
+  items: { eb: "TTGYM RECOMMEND", title: "TTGYMオススメ\n健康アイテム", sub: "トレーナーが実際に選んでいる、からだづくりに役立つアイテムとサプリメントの目安。", Icon: Sparkles, tabs: null },
   online: { eb: "ONLINE SUPPORT", title: "オンライントレーニングサポート", sub: "ライブ配信・2週間食事プログラム・目的別トレーニングプログラムで、ジムの外でも一緒に。", Icon: Play, tabs: [["live", "配信"], ["food", "食事プログラム"], ["training", "トレーニング"]] },
   recipe: { eb: "RECIPE & SHOPS", title: "レシピ・おすすめ店", sub: "毎週土曜に届くボディメイクレシピと、TTGYMおすすめのお店・外食メニュー。", Icon: ChefHat, tabs: [["recipe", "レシピ"], ["shops", "おすすめ店"]] },
 };
@@ -67,7 +69,9 @@ export default function AppPage({ page }) {
   useEffect(() => { document.title = p.title; }, [p]);
 
   let body;
-  if (page === "condition" || page === "growth") {
+  if (page === "items") {
+    body = <Items />;
+  } else if (page === "condition") {
     body = <Suspense fallback={<Spinner />}><Care page={page} tab={tab} toast={flash} /></Suspense>;
   } else if (page === "online") {
     body = tab === "live" ? <Live /> : tab === "food" ? <FoodProgram /> : <TrainingProgram />;
@@ -129,6 +133,46 @@ function TrainingProgram() {
   );
 }
 
+// ── TTGYMオススメ健康アイテム ──
+function Items() {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    loadGlobalList("global:recommendedItems", [{ id: "demo", name: "（例）ホエイプロテイン", category: "プロテイン", comment: "トレーニング後30分以内に1杯。", url: "" }]).then(setItems);
+  }, []);
+  const cats = ["アミノ酸", "ビタミン", "ミネラル", "追加提案"];
+  return (
+    <>
+      <div className="lf-sec" style={{ marginTop: 22 }}><h2>おすすめアイテム</h2></div>
+      {items === null ? <Spinner /> : items.length === 0 ? (
+        <div className="lf-card lf-hint" style={{ margin: 0, lineHeight: 1.8 }}>おすすめアイテムは準備中です。もうしばらくお待ちください。</div>
+      ) : items.map(it => (
+        <div key={it.id} className="lf-card lf-store2">
+          {it.photo && <img src={it.photo} alt={it.name} loading="lazy" />}
+          <div className="body">
+            {it.category && <div className="area">{it.category}</div>}
+            <div className="nm">{it.name}</div>
+            {it.comment && <div className="cm">{it.comment}</div>}
+            {it.url && <div className="acts"><a href={it.url} target="_blank" rel="noopener noreferrer">くわしく見る・購入する</a></div>}
+          </div>
+        </div>
+      ))}
+
+      <div className="lf-sec"><h2>補いたい栄養素の目安</h2></div>
+      <div className="lf-card">
+        <p className="lf-hint" style={{ margin: "0 0 6px", lineHeight: 1.8 }}>食事だけでは摂りにくく、サプリメントなどで補いたい成分です（1日の目安）。体調管理のページで、摂ったものをチェックできます。</p>
+        {cats.map(cat => (
+          <div key={cat} style={{ marginTop: 10 }}>
+            <div className="lf-cat">{cat}</div>
+            {AGING_NUTRIENTS.filter(n => n.category === cat).map(n => (
+              <div key={n.key} className="lf-row"><span className="n">{n.label}</span><span className="v">{n.range}</span></div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // ── レシピ・おすすめ店 ──
 const fmt1 = n => (Number.isInteger(n) ? String(n) : Number(n).toFixed(1));
 
@@ -174,15 +218,42 @@ function Recipes() {
 }
 
 // 管理画面（公式LINE → おすすめのお店）で登録したお店。global:recommendedStores
-async function loadStores() {
-  if (isDemo) return [{ id: "demo", name: "（例）サラダ専門店 GREEN", area: "広尾", genre: "サラダ・ボウル", comment: "鶏むね＋玄米のボウルがおすすめ。\nドレッシングは別添えで。", url: "" }];
+// 管理画面（公式LINE → おすすめのお店／健康アイテム）で追加したもの
+async function loadGlobalList(key, demo) {
+  if (isDemo) return demo;
   await import("../storage.js");
   try {
-    const r = await window.storage.get("global:recommendedStores", true);
+    const r = await window.storage.get(key, true);
     return r ? JSON.parse(r.value) : [];
   } catch (e) {
     return [];
   }
+}
+
+const CIRCLED = "⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳";
+
+function StoreCard({ s }) {
+  const map = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${s.name} ${s.address || s.area || ""}`)}`;
+  return (
+    <div className="lf-card lf-store2">
+      {s.photo && <img src={s.photo} alt={s.name} loading="lazy" />}
+      <div className="body">
+        <div className="area">{s.no ? `${CIRCLED[s.no] || s.no} ` : ""}{[s.area, s.genre].filter(Boolean).join(" ・ ")}</div>
+        <div className="nm">{s.name}</div>
+        {s.comment && <div className="cm">{s.comment}</div>}
+        {(s.address || s.tel) && (
+          <div className="info">
+            {s.address && <div><MapPin size={13} />{s.address}</div>}
+            {s.tel && <div><Phone size={13} /><a href={`tel:${s.tel.replace(/[^\d]/g, "")}`}>{s.tel}</a></div>}
+          </div>
+        )}
+        <div className="acts">
+          <a href={map} target="_blank" rel="noopener noreferrer">地図を見る</a>
+          {s.url && <a href={s.url} target="_blank" rel="noopener noreferrer">お店の情報</a>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // チェーン店ごとに、たんぱく質が多く脂質が控えめなメニューを3つ
@@ -194,25 +265,13 @@ function chainPicks(chain) {
 }
 
 function Shops() {
-  const [stores, setStores] = useState(null);
+  const [added, setAdded] = useState([]);
   const [chain, setChain] = useState(STORE_CHAINS[0]);
-  useEffect(() => { loadStores().then(setStores); }, []);
+  useEffect(() => { loadGlobalList("global:recommendedStores", []).then(setAdded); }, []);
   return (
     <>
-      <div className="lf-sec" style={{ marginTop: 0 }}><h2>おすすめのお店</h2></div>
-      {stores === null ? <Spinner /> : stores.length === 0 ? (
-        <div className="lf-card lf-hint" style={{ lineHeight: 1.8 }}>おすすめのお店は準備中です。もうしばらくお待ちください。</div>
-      ) : stores.map(s => (
-        <div key={s.id} className="lf-card lf-store" style={{ marginBottom: 12 }}>
-          {s.photo && <img src={s.photo} alt={s.name} />}
-          <div style={{ minWidth: 0 }}>
-            <div className="nm">{s.name}</div>
-            {(s.area || s.genre) && <div className="meta"><MapPin size={12} style={{ verticalAlign: -1 }} /> {[s.area, s.genre].filter(Boolean).join(" ・ ")}</div>}
-            {s.comment && <div className="cm">{s.comment}</div>}
-            {s.url && <a href={s.url} target="_blank" rel="noopener noreferrer">お店の情報を見る →</a>}
-          </div>
-        </div>
-      ))}
+      <div className="lf-sec" style={{ marginTop: 0 }}><h2>おすすめのお店</h2><span className="meta">{STORES.length + added.length}店</span></div>
+      {[...STORES, ...added].map(s => <StoreCard key={s.id} s={s} />)}
 
       <div className="lf-sec"><h2>外食のおすすめメニュー</h2></div>
       <div className="lf-tabs" style={{ marginTop: 0 }}>

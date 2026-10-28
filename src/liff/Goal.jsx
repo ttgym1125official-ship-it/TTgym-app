@@ -1,11 +1,8 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
-import { Activity, ChefHat, Crown, LoaderCircle, Pencil, Play, Sparkles, TrendingUp } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Activity, ChefHat, Crown, LoaderCircle, Pencil, Play, Sparkles } from "lucide-react";
 import { TIERS, POINT_RULES, tierFor } from "../membership.js";
 import { fetchGoal, post, openPage } from "./api.js";
 import { BeforeAfterPhotos } from "./BeforeAfterPhotos.jsx";
-
-// 食事・水分・体重・体調・トレーニングのレポート（My成長のレポートと同じもの）
-const ReportPanel = lazy(() => import("./Report.jsx"));
 import { ACTIVITY, GOALS } from "./nutrients.js";
 import { comma } from "./ui.jsx";
 
@@ -47,8 +44,8 @@ function MemberCard({ points }) {
 
 // LINEの中で開くページ（リッチメニューと同じ）
 const PAGE_LINKS = [
-  { path: "/condition", label: "体調・\nトレーニング", Icon: Activity },
-  { path: "/growth", label: "My成長・\n測定結果", Icon: TrendingUp },
+  { path: "/condition", label: "体調・\n自己管理", Icon: Activity },
+  { path: "/items", label: "オススメ\n健康アイテム", Icon: Sparkles },
   { path: "/online", label: "オンライン\nサポート", Icon: Play },
   { path: "/recipe", label: "レシピ・\nおすすめ店", Icon: ChefHat },
 ];
@@ -96,7 +93,7 @@ export default function Goal({ data, toast }) {
 
   return (
     <>
-      <div className="lf-sec" style={{ marginTop: 12 }}><h2>目標</h2>{!editing && <button className="lf-btn-o" onClick={() => setEditing(true)}><Pencil size={15} />編集</button>}</div>
+      <div className="lf-sec" style={{ marginTop: 0 }}><h2>目標</h2>{!editing && <button className="lf-btn-o" onClick={() => setEditing(true)}><Pencil size={15} />編集</button>}</div>
       <div className="lf-card">
         {editing ? (
           <>
@@ -122,11 +119,6 @@ export default function Goal({ data, toast }) {
           ))}
         </div>
       </div>
-
-      <div className="lf-sec"><h2>レポート</h2><button className="lf-btn-o" onClick={() => openPage("/growth?tab=report")}><TrendingUp size={15} />くわしく</button></div>
-      <Suspense fallback={<div className="lf-center" style={{ minHeight: "20vh" }}><LoaderCircle className="lf-spin" size={24} /></div>}>
-        <ReportPanel compact />
-      </Suspense>
 
       <div className="lf-sec"><h2>体の情報・栄養目標</h2><button className="lf-btn-o" onClick={() => openPage("/profile")}><Pencil size={15} />変更する</button></div>
       <div className="lf-card lf-body-sum">

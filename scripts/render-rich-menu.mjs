@@ -35,7 +35,7 @@ const ICONS = {
   condition: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
   online: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>',
   recipe: '<path d="M6 13a6 6 0 1 1 12 0v6H6z"/><path d="M6 16h12M9 4.5A3 3 0 0 1 15 4.5"/>',
-  growth: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  items: '<path d="M10 3h4v3l3 3v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V9l3-3z"/><path d="M7 12h10M10 16h4"/>',
   beforeafter: '<rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/><path d="M7 9v6M17 9v6"/>',
   shop: '<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
   team: '<circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M15.5 14.5c3 0 6 1.6 6 5"/>',
@@ -87,15 +87,15 @@ const MAIN = page(0, `
     </div>
     <div class="logo"><img src="data:image/png;base64,${logo}"></div>
   </div>
-  ${tile({ key: "goal", eyebrow: "GOAL", label: "目標設定", sub: "目標・ビフォーアフター・会員ランク" })}
+  ${tile({ key: "goal", eyebrow: "GOAL & MY GROWTH", label: "目標設定<br>MY成長・測定結果", size: 64, sub: "目標・成長・レポート・会員ランク" })}
   ${tile({ key: "reserve", eyebrow: "RESERVATION", label: "予約" })}
-  ${tile({ key: "condition", eyebrow: "CONDITION & TRAINING", label: "体調・<br>トレーニング管理", size: 72 })}
+  ${tile({ key: "condition", eyebrow: "CONDITION & TRAINING", label: "体調・トレーニング<br>自己管理", size: 68 })}
   ${tile({ key: "online", eyebrow: "ONLINE SUPPORT", label: "オンライン<br>トレーニングサポート", size: 64 })}
 `);
 
 const SUB = page(1, `
   ${tile({ key: "recipe", eyebrow: "RECIPE & RESTAURANT", label: "レシピ・おすすめ店", span: 3 })}
-  ${tile({ key: "growth", eyebrow: "MY GROWTH", label: "My成長・測定結果", span: 3 })}
+  ${tile({ key: "items", eyebrow: "TTGYM RECOMMEND", label: "TTGYMオススメ<br>健康アイテム", span: 3 })}
   ${tile({ key: "beforeafter", eyebrow: "BEFORE / AFTER", label: "ビフォーアフター", size: 76 })}
   ${tile({ key: "shop", eyebrow: "HEALTH SHOP", label: "オススメ<br>健康ショップ", size: 72 })}
   ${tile({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", size: 64, dark: true })}
