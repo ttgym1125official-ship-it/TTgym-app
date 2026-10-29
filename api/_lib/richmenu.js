@@ -2,7 +2,8 @@
 // scripts/setup-rich-menu.mjs（手元・GitHub Actions）と api/line-admin.js（管理画面のボタン）から使う。
 // 画像は public/liff/richmenu-main.png / richmenu-sub.png（scripts/render-rich-menu.mjs で作成）。
 //
-// links（空ならタイル名をメッセージとして送り、スタッフがチャットで対応する）: reserve, shop, teamtop
+// links（空ならタイル名をメッセージとして送り、スタッフがチャットで対応する）: reserve, textbook（TTGYM教科書）,
+//   teamtop（TEAM TOPメンバー参加申込み）, kickboxing（キックボクシング体験申込み）
 // それ以外のタイルは LINE の中で開くページ（src/liff）:
 //   今日の栄養 /liff、目標設定・MY成長・測定結果 /liff/goal、体調・トレーニング自己管理 /liff/condition、
 //   オンライントレーニングサポート /liff/online、レシピ・おすすめ店 /liff/recipe、
@@ -19,7 +20,7 @@ export async function setupRichMenu({ token, liffId, links = {}, loadImage, log 
 
   // Matches the layout drawn by scripts/render-rich-menu.mjs:
   // tabs y 0–150, upper row y 150–949, lower row y 949–1686
-  const TAB_H = 150, ROW1_END = 949;
+  const TAB_H = 150, ROW1_END = 949, SPLIT = Math.round((ROW1_END + 1686) / 2);
   const box = (x, y, width, height, action) => ({ bounds: { x, y, width, height }, action });
   const tabAreas = [
     box(0, 0, 1250, TAB_H, { type: "richmenuswitch", richMenuAliasId: ALIAS.main, data: "tab=main" }),
@@ -42,7 +43,11 @@ export async function setupRichMenu({ token, liffId, links = {}, loadImage, log 
       ...tabAreas,
       box(0, TAB_H, 1250, ROW1_END - TAB_H, liff("/recipe")),
       box(1250, TAB_H, 1250, ROW1_END - TAB_H, liff("/items")),
-      ...lower({ type: "uri", uri: BEFORE_AFTER_URL }, linkOr(links.shop, "オススメ健康ショップ"), linkOr(links.teamtop, "TEAM TOPメンバー参加申込み")),
+      box(0, ROW1_END, 833, 1686 - ROW1_END, { type: "uri", uri: BEFORE_AFTER_URL }),
+      box(833, ROW1_END, 834, 1686 - ROW1_END, linkOr(links.textbook, "TTGYM教科書")),
+      // 右下は上下2つのボタン（TEAM TOP・キックボクシング体験）
+      box(1667, ROW1_END, 833, SPLIT - ROW1_END, linkOr(links.teamtop, "TEAM TOPメンバー参加申込み")),
+      box(1667, SPLIT, 833, 1686 - SPLIT, linkOr(links.kickboxing, "キックボクシング体験申込み")),
     ],
   };
 
