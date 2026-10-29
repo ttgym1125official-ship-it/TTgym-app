@@ -229,8 +229,9 @@ function LineUserDetail({ u, members, onChanged, hasKey }) {
 // リッチメニュー（2ページ）をLINEに登録・作り直す。リンク未定のタイルは空欄でOK
 const MENU_LINKS = [
   ["reserve", "予約"],
-  ["shop", "オススメ健康ショップ"],
+  ["textbook", "TTGYM教科書"],
   ["teamtop", "TEAM TOPメンバー参加申込み"],
+  ["kickboxing", "キックボクシング体験申込み"],
 ];
 
 function RichMenuBox({ hasKey }) {

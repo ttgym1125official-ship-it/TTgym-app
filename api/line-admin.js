@@ -9,7 +9,7 @@
 //   { action: "push", lineUserId, text }                 → お客様のLINEにメッセージを送る
 //   { action: "link", lineUserId, profileId }            → LINEの人とアプリ会員を連携（記録も同期）
 //   { action: "unlink", lineUserId }                     → 連携を外す（体重・水分はLINE側にも残す）
-//   { action: "richmenu", links?: { reserve, shop, teamtop } } → リッチメニューを作り直す
+//   { action: "richmenu", links?: { reserve, textbook, teamtop, kickboxing } } → リッチメニューを作り直す
 //     （"Authorization: Bearer <CRON_SECRET>" でも可。links を省略すると前回登録したリンクを使う）
 
 import { loadUser, saveUser, kvGet, kvSet, kvDelete, push, appendLog, liffUrl } from "./_lib/nutri.js";

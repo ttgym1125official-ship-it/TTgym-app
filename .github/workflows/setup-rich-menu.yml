@@ -1,7 +1,7 @@
 # LINEのリッチメニュー（2ページ）を、本番サイトの画像（public/liff/richmenu-main.png /
 # richmenu-sub.png）で登録し直す。管理画面（/admin → 公式LINE → リッチメニュー）の
 # 「この内容で作り直す」と同じ処理を、/api/line-admin に CRON_SECRET で頼む。
-# 予約・オススメ健康ショップ・TEAM TOP のリンクは、管理画面で前回登録したものを使う。
+# 予約・TTGYM教科書・TEAM TOP・キックボクシング体験のリンクは、管理画面で前回登録したものを使う。
 #
 # 画像やリンク先を変えて本番に反映されたあと、「Run workflow」で実行する。
 # リポジトリの Secrets の CRON_SECRET（週刊レシピの予備送信と同じもの）を使う。

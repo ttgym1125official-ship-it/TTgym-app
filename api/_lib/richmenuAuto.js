@@ -8,16 +8,19 @@ import { kvGet, kvSet } from "./nutri.js";
 import { setupRichMenu } from "./richmenu.js";
 import { LIFF_ID } from "../../src/lineConfig.js";
 
-export const RICHMENU_VERSION = "2026-10-29-larger-text";
+export const RICHMENU_VERSION = "2026-10-29-textbook-kickboxing";
 
 const parse = raw => { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
 const clean = v => (/^https?:\/\/\S+$/.test(String(v || "").trim()) ? String(v).trim() : "");
 
-// links を省略すると、前回登録したリンク（予約・オススメ健康ショップ・TEAM TOP）を使う
+// リンクを入れられるタイル（空ならタイル名がメッセージとして送られる）
+export const LINK_KEYS = ["reserve", "textbook", "teamtop", "kickboxing"];
+
+// links を省略すると、前回登録したリンク（予約・TTGYM教科書・TEAM TOP・キックボクシング体験）を使う
 export async function registerRichMenu({ origin, links }) {
   const saved = parse(await kvGet("line_richmenu:links")) || {};
   const src = links || saved;
-  const clean3 = Object.fromEntries(["reserve", "shop", "teamtop"].map(k => [k, clean(src[k])]));
+  const clean3 = Object.fromEntries(LINK_KEYS.map(k => [k, clean(src[k])]));
   const created = await setupRichMenu({
     token: process.env.LINE_CHANNEL_ACCESS_TOKEN,
     liffId: process.env.LIFF_ID || process.env.VITE_LIFF_ID || LIFF_ID,

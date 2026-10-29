@@ -37,7 +37,8 @@ const ICONS = {
   recipe: '<path d="M6 13a6 6 0 1 1 12 0v6H6z"/><path d="M6 16h12M9 4.5A3 3 0 0 1 15 4.5"/>',
   items: '<path d="M10 3h4v3l3 3v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V9l3-3z"/><path d="M7 12h10M10 16h4"/>',
   beforeafter: '<rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/><path d="M7 9v6M17 9v6"/>',
-  shop: '<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  textbook: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5z"/><path d="M9 7.5h7M9 11h5"/>',
+  kick: '<path d="M7 4h7a4 4 0 0 1 4 4v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a2 2 0 0 1 2-2z"/><path d="M5 10h13M10 4v6"/><path d="M8 17v3h7v-3"/>',
   team: '<circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M15.5 14.5c3 0 6 1.6 6 5"/>',
 };
 
@@ -47,6 +48,13 @@ const tile = ({ key, eyebrow, label, sub = "", span = 2, dark = false, size = 84
     <div class="eb">${eyebrow}</div>
     <div class="lb" style="font-size:${size}px">${label}</div>
     ${sub ? `<div class="sub">${sub}</div>` : ""}
+  </div>`;
+
+// 1つのタイルを上下2つのボタンに分けたもの（アイコン左・文字右）
+const half = ({ key, eyebrow, label, dark = false }) => `
+  <div class="half${dark ? " dark" : ""}">
+    <div class="ic">${icon(ICONS[key], dark ? "#E2BB66" : "#111814")}</div>
+    <div><div class="eb">${eyebrow}</div><div class="lb">${label}</div></div>
   </div>`;
 
 const tabs = active => `<div class="tabs">${TABS.map((t, i) => `<div class="tab${i === active ? " on" : ""}">${t}</div>`).join("")}</div>`;
@@ -73,6 +81,14 @@ const STYLE = `
   .lb { font-weight: 800; margin-top: 8px; line-height: 1.22; }
   .sub { font-size: 38px; color: #666; margin-top: 14px; }
   .tile.dark .sub { color: #B9B4A8; }
+  .split { display: grid; grid-template-rows: 1fr 1fr; gap: 14px; }
+  .half { background: #fff; border-radius: 26px; display: flex; align-items: center; gap: 30px; padding: 0 34px; }
+  .half.dark { background: linear-gradient(135deg, #1D2420, #0F1411); color: #fff; }
+  .half .ic { width: 112px; height: 112px; flex-shrink: 0; }
+  .half.dark .ic { background: rgba(226, 187, 102, 0.14); }
+  .half .eb { margin-top: 0; font-size: 28px; }
+  .half.dark .eb { color: #E2BB66; }
+  .half .lb { font-size: 62px; margin-top: 4px; }
 `;
 
 const page = (active, body) => `<!doctype html><html><head><meta charset="utf-8"><style>${STYLE}</style></head><body>${tabs(active)}<div class="grid">${body}</div></body></html>`;
@@ -97,8 +113,11 @@ const SUB = page(1, `
   ${tile({ key: "recipe", eyebrow: "RECIPE & RESTAURANT", label: "レシピ・おすすめ店", span: 3, size: 112 })}
   ${tile({ key: "items", eyebrow: "TTGYM RECOMMEND", label: "TTGYMオススメ<br>健康アイテム", span: 3, size: 108 })}
   ${tile({ key: "beforeafter", eyebrow: "BEFORE / AFTER", label: "ビフォー<br>アフター", size: 104 })}
-  ${tile({ key: "shop", eyebrow: "HEALTH SHOP", label: "オススメ<br>健康ショップ", size: 96 })}
-  ${tile({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", size: 82, dark: true })}
+  ${tile({ key: "textbook", eyebrow: "TTGYM TEXTBOOK", label: "TTGYM<br>教科書", size: 104 })}
+  <div class="split" style="grid-column: span 2">
+    ${half({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", dark: true })}
+    ${half({ key: "kick", eyebrow: "KICKBOXING", label: "キックボクシング<br>体験申込み" })}
+  </div>
 `);
 
 const chromium = await loadChromium();
