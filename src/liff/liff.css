@@ -600,3 +600,4 @@
 .lf-store2 .acts { display: flex; gap: 8px; margin-top: 12px; }
 .lf-store2 .acts a { flex: 1; text-align: center; padding: 11px 0; border-radius: 14px; background: var(--dark); color: #fff; font-weight: 800; font-size: 14px; text-decoration: none; }
 .lf-store2 .acts a + a { background: #fff; color: var(--ink); border: 1.5px solid var(--line); }
+.lf-store-cover { width: 100%; display: block; border-radius: 24px; margin-bottom: 4px; }

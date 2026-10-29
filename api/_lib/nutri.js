@@ -11,7 +11,6 @@
 
 import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
-import sharp from "sharp";
 import { createClient } from "@supabase/supabase-js";
 import { NUTRIENTS, NUTRIENT_KEYS, calcTargets, sumMeals, buildAdvice, fmt } from "../../src/liff/nutrients.js";
 import { computePoints } from "../../src/membership.js";
@@ -381,13 +380,24 @@ async function fetchLineContent(messageId, preview) {
 // スマホの写真はそのままだとAIに送れる大きさ（5MB）を超えることがあるので、
 // 向きを直して長辺1568pxのJPEGに縮める（AIが読み取れる上限の大きさ）
 async function toJpeg(buf, maxSide, quality) {
+  // sharp は写真を受け取ったときだけ読み込む（読み込めない環境でも Webhook 全体は止めない）
+  const sharp = (await import("sharp")).default;
   const out = await sharp(buf).rotate().resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true }).jpeg({ quality }).toBuffer();
   return { mediaType: "image/jpeg", data: out.toString("base64") };
 }
 
 export async function fetchLineImage(messageId) {
   const buf = await fetchLineContent(messageId, false);
-  const full = await toJpeg(buf, 1568, 85);
+  let full;
+  try {
+    full = await toJpeg(buf, 1568, 85);
+  } catch (e) {
+    // 縮められなかったら元の写真のまま送る（4MBを超えるときは LINE の小さいプレビューを使う）
+    full = buf.length < 4_000_000
+      ? { mediaType: "image/jpeg", data: buf.toString("base64") }
+      : { mediaType: "image/jpeg", data: (await fetchLineContent(messageId, true)).toString("base64") };
+    return { full, thumb: full };
+  }
   // ダッシュボードに出す小さい写真
   const thumb = await toJpeg(buf, 480, 78).catch(() => full);
   return { full, thumb };

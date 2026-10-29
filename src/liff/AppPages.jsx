@@ -16,7 +16,7 @@ import { Header, Toast } from "./ui.jsx";
 import { publishedRecipes, recipeImage } from "../recipes.js";
 import { STORE_CHAINS, STORE_MENU } from "../storeMenu.js";
 import { AGING_NUTRIENTS } from "../careData.js";
-import { STORES } from "./content/stores.js";
+import { STORES, STORES_COVER } from "./content/stores.js";
 import foodProgram from "./content/foodProgram.json";
 import trainingProgram from "./content/trainingProgram.json";
 
@@ -266,12 +266,20 @@ function chainPicks(chain) {
 
 function Shops() {
   const [added, setAdded] = useState([]);
+  const [area, setArea] = useState("すべて");
   const [chain, setChain] = useState(STORE_CHAINS[0]);
+  const all = [...STORES, ...added];
+  const areas = [...new Set(all.map(s => s.area).filter(Boolean))];
+  const shown = area === "すべて" ? all : all.filter(s => s.area === area);
   useEffect(() => { loadGlobalList("global:recommendedStores", []).then(setAdded); }, []);
   return (
     <>
-      <div className="lf-sec" style={{ marginTop: 0 }}><h2>おすすめのお店</h2><span className="meta">{STORES.length + added.length}店</span></div>
-      {[...STORES, ...added].map(s => <StoreCard key={s.id} s={s} />)}
+      <img className="lf-store-cover" src={STORES_COVER.image} alt={`${STORES_COVER.title}　${STORES_COVER.text}`} />
+      <div className="lf-sec"><h2>おすすめのお店</h2><span className="meta">{shown.length}店</span></div>
+      <div className="lf-tabs" style={{ marginTop: 0 }}>
+        {["すべて", ...areas].map(a => <button key={a} className={`lf-tab${a === area ? " on" : ""}`} onClick={() => setArea(a)}>{a}</button>)}
+      </div>
+      {shown.map(s => <StoreCard key={s.id} s={s} />)}
 
       <div className="lf-sec"><h2>外食のおすすめメニュー</h2></div>
       <div className="lf-tabs" style={{ marginTop: 0 }}>

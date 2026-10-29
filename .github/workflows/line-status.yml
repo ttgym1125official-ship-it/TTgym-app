@@ -1,0 +1,43 @@
+# 公式LINE連携の状態を確認する（読むだけ。何も変更しない）。
+#  - 本番の Webhook（/api/line-webhook）が読み込めるか（GET で "OK" が返るか）
+#  - リッチメニュー画像が配信されているか
+#  - サーバーが登録したリッチメニューのバージョンと、失敗したときの理由（kv_store の line_richmenu:*）
+#  - LINE の Webhook が最後に届いた時刻と、署名が合っていたか（line_webhook:last）
+# 「Run workflow」で実行するか、このファイルを変えて push すると動く。
+
+name: LINE status
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/line-status.yml
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check
+        env:
+          # src/supabaseClient.js と同じ公開用のキー（読み取りのみに使う）
+          SUPABASE_URL: https://udfbnjatqjdswokuoqoo.supabase.co
+          SUPABASE_KEY: sb_publishable__rOCDCsWxALHCdQbYfGcBg_7TPateU2
+        run: |
+          site="https://t-tgym-app.vercel.app"
+          echo "== webhook (GET) =="
+          curl -sS --max-time 30 -w '\nHTTP %{http_code}\n' "$site/api/line-webhook" | tail -c 400
+          echo "== rich menu images =="
+          for f in richmenu-main.png richmenu-sub.png; do
+            curl -sS --max-time 30 -o /dev/null -w "$f HTTP %{http_code} %{content_type} %{size_download} bytes\n" "$site/liff/$f"
+          done
+          echo "== stored rich menu state =="
+          curl -sS --max-time 30 "$SUPABASE_URL/rest/v1/kv_store?select=key,value,updated_at&key=in.(line_richmenu:links,line_richmenu:lock,line_richmenu:error,line_webhook:last)" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY"
+          echo
+          echo "== last LINE activity seen by this server (timestamps only) =="
+          curl -sS --max-time 30 "$SUPABASE_URL/rest/v1/kv_store?select=updated_at&key=like.line_log:*&order=updated_at.desc&limit=3" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY"
+          echo
+          echo "LINE users with records:"
+          curl -sS --max-time 30 -o /dev/null -D - "$SUPABASE_URL/rest/v1/kv_store?select=key&key=like.nutri:*" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" -H "Prefer: count=exact" -H "Range: 0-0" | grep -i content-range

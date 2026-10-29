@@ -27,6 +27,7 @@ import {
   loadGoal, saveGoal, savePhoto, PHOTO_SLOTS, computeMembership, appProfileHints, createAppLoginToken,
 } from "./_lib/nutri.js";
 import { LINE_LOGIN_CHANNEL_ID } from "../src/lineConfig.js";
+import { ensureRichMenu } from "./_lib/richmenuAuto.js";
 
 const APP_TABS = ["status", "condition", "meal", "training", "growth", "report", "comments", "recipe", "live"];
 
@@ -90,6 +91,8 @@ export default async function handler(req, res) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
+  // リッチメニューが古ければ入れ替える（ダッシュボードや各ページを開いたときにも。Webhook が届かない場合のため）
+  if (req.method === "GET") await ensureRichMenu(`https://${req.headers["x-forwarded-host"] || req.headers.host}`);
 
   if (req.method === "GET") {
     const action = req.query?.action || "data";

@@ -322,7 +322,13 @@ export default async function handler(req, res) {
 
   const rawBody = await readRawBody(req);
   const signature = req.headers["x-line-signature"];
-  if (!verifySignature(rawBody, signature, process.env.LINE_CHANNEL_SECRET)) {
+  const signed = verifySignature(rawBody, signature, process.env.LINE_CHANNEL_SECRET);
+  // LINE から届いたかどうかを残す（中身は残さない。.github/workflows/line-status.yml で確認できる）
+  await nutriKvSet("line_webhook:last", JSON.stringify({
+    at: new Date().toISOString(), signature: signed ? "ok" : signature ? "mismatch" : "missing",
+    secretSet: !!process.env.LINE_CHANNEL_SECRET, bytes: rawBody.length,
+  })).catch(() => {});
+  if (!signed) {
     res.status(401).send("invalid signature");
     return;
   }
