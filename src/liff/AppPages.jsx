@@ -26,7 +26,7 @@ const Care = lazy(() => import("./Care.jsx"));
 export const PAGES = {
   condition: { eb: "CONDITION & TRAINING", title: "体調・トレーニング\n自己管理", sub: "毎日の体調と、トレーニングの記録をここで。トレーナーも同じ記録を見てサポートします。", Icon: Activity, tabs: [["condition", "体調管理"], ["training", "トレーニング"]] },
   items: { eb: "TTGYM RECOMMEND", title: "TTGYMオススメ\n健康アイテム", sub: "トレーナーが実際に選んでいる、からだづくりに役立つアイテムとサプリメントの目安。", Icon: Sparkles, tabs: null },
-  online: { eb: "ONLINE SUPPORT", title: "オンライントレーニングサポート", sub: "ライブ配信・2週間食事プログラム・目的別トレーニングプログラムで、ジムの外でも一緒に。", Icon: Play, tabs: [["live", "配信"], ["food", "食事プログラム"], ["training", "トレーニング"]] },
+  online: { eb: "ONLINE SUPPORT", title: "オンライントレーニング\nサービス", sub: "ライブ配信・2週間食事プログラム・目的別トレーニングプログラムで、ジムの外でも一緒に。", Icon: Play, tabs: [["live", "配信"], ["food", "食事プログラム"], ["training", "トレーニング"]] },
   recipe: { eb: "RECIPE & SHOPS", title: "レシピ・おすすめ店", sub: "毎週土曜に届くボディメイクレシピと、TTGYMおすすめのお店・外食メニュー。", Icon: ChefHat, tabs: [["recipe", "レシピ"], ["shops", "おすすめ店"]] },
 };
 

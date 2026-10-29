@@ -8,7 +8,7 @@ import { kvGet, kvSet } from "./nutri.js";
 import { setupRichMenu } from "./richmenu.js";
 import { LIFF_ID } from "../../src/lineConfig.js";
 
-export const RICHMENU_VERSION = "2026-10-29-textbook-kickboxing";
+export const RICHMENU_VERSION = "2026-10-29-beforeafter-one-line";
 
 const parse = raw => { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
 const clean = v => (/^https?:\/\/\S+$/.test(String(v || "").trim()) ? String(v).trim() : "");
