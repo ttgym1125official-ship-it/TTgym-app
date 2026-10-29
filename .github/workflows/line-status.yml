@@ -33,3 +33,10 @@ jobs:
           curl -sS --max-time 30 "$SUPABASE_URL/rest/v1/kv_store?select=key,value,updated_at&key=in.(line_richmenu:links,line_richmenu:lock,line_richmenu:error)" \
             -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY"
           echo
+          echo "== last LINE activity seen by this server (timestamps only) =="
+          curl -sS --max-time 30 "$SUPABASE_URL/rest/v1/kv_store?select=updated_at&key=like.line_log:*&order=updated_at.desc&limit=3" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY"
+          echo
+          echo "LINE users with records:"
+          curl -sS --max-time 30 -o /dev/null -D - "$SUPABASE_URL/rest/v1/kv_store?select=key&key=like.nutri:*" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" -H "Prefer: count=exact" -H "Range: 0-0" | grep -i content-range
