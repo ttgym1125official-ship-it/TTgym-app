@@ -42,11 +42,11 @@ const ICONS = {
   team: '<circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M15.5 14.5c3 0 6 1.6 6 5"/>',
 };
 
-const tile = ({ key, eyebrow, label, sub = "", span = 2, dark = false, size = 84 }) => `
+const tile = ({ key, eyebrow, label, sub = "", span = 2, dark = false, size = 84, tight = false }) => `
   <div class="tile${dark ? " dark" : ""}" style="grid-column: span ${span}">
     <div class="ic">${icon(ICONS[key], dark ? "#E2BB66" : "#111814")}</div>
     <div class="eb">${eyebrow}</div>
-    <div class="lb" style="font-size:${size}px">${label}</div>
+    <div class="lb" style="font-size:${size}px${tight ? "; letter-spacing: -0.06em; white-space: nowrap" : ""}">${label}</div>
     ${sub ? `<div class="sub">${sub}</div>` : ""}
   </div>`;
 
@@ -112,7 +112,7 @@ const MAIN = page(0, `
 const SUB = page(1, `
   ${tile({ key: "recipe", eyebrow: "RECIPE & RESTAURANT", label: "レシピ・おすすめ店", span: 3, size: 112 })}
   ${tile({ key: "items", eyebrow: "TTGYM RECOMMEND", label: "TTGYMオススメ<br>健康アイテム", span: 3, size: 108 })}
-  ${tile({ key: "beforeafter", eyebrow: "BEFORE / AFTER", label: "ビフォー<br>アフター", size: 104 })}
+  ${tile({ key: "beforeafter", eyebrow: "BEFORE / AFTER", label: "ビフォーアフター", size: 98, tight: true })}
   ${tile({ key: "textbook", eyebrow: "TTGYM TEXTBOOK", label: "TTGYM<br>教科書", size: 104 })}
   <div class="split" style="grid-column: span 2">
     ${half({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", dark: true })}
