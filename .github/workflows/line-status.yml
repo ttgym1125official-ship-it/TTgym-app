@@ -2,6 +2,7 @@
 #  - 本番の Webhook（/api/line-webhook）が読み込めるか（GET で "OK" が返るか）
 #  - リッチメニュー画像が配信されているか
 #  - サーバーが登録したリッチメニューのバージョンと、失敗したときの理由（kv_store の line_richmenu:*）
+#  - LINE の Webhook が最後に届いた時刻と、署名が合っていたか（line_webhook:last）
 # 「Run workflow」で実行するか、このファイルを変えて push すると動く。
 
 name: LINE status
@@ -30,7 +31,7 @@ jobs:
             curl -sS --max-time 30 -o /dev/null -w "$f HTTP %{http_code} %{content_type} %{size_download} bytes\n" "$site/liff/$f"
           done
           echo "== stored rich menu state =="
-          curl -sS --max-time 30 "$SUPABASE_URL/rest/v1/kv_store?select=key,value,updated_at&key=in.(line_richmenu:links,line_richmenu:lock,line_richmenu:error)" \
+          curl -sS --max-time 30 "$SUPABASE_URL/rest/v1/kv_store?select=key,value,updated_at&key=in.(line_richmenu:links,line_richmenu:lock,line_richmenu:error,line_webhook:last)" \
             -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY"
           echo
           echo "== last LINE activity seen by this server (timestamps only) =="
