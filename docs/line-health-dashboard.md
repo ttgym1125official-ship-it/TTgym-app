@@ -65,7 +65,7 @@ LIFF ID（`2012240533-jEmcXBvp`）とチャネルID（`2012240533`）は `src/li
 | サポート | オススメ健康ショップ | リンク |
 | サポート | TEAM TOPメンバー参加申込み | リンク |
 
-おすすめのお店は `src/liff/content/stores.js`（麻布十番の5店、写真は `public/liff/stores/`）と、管理画面の「公式LINE」→「おすすめのお店」で追加したお店（`global:recommendedStores`）。
+おすすめのお店は `src/liff/content/stores.js`（①〜⑨と表紙、写真は `public/liff/stores/`）と、管理画面の「公式LINE」→「おすすめのお店」で追加したお店（`global:recommendedStores`）。
 健康アイテムは管理画面の「公式LINE」→「TTGYMオススメ健康アイテム」で追加します（`global:recommendedItems`）。
 体調・トレーニング・成長・レポート・コメントの画面は `src/liff/Care.jsx`（アプリと同じ項目・判定を `src/careData.js` で共有し、見た目はダッシュボードに合わせて作り直したもの）。アプリと同じ記録（`data:<会員ID>:<項目>`）を読み書きします。アプリ未連携の人は `data:line_<LINEユーザーID>:<項目>` に保存し、アプリと連携した時点で会員側へ移します。
 食事プログラム・トレーニングプログラムの内容は `src/liff/content/` にあります。

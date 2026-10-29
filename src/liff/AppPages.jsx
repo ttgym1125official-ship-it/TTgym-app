@@ -16,7 +16,7 @@ import { Header, Toast } from "./ui.jsx";
 import { publishedRecipes, recipeImage } from "../recipes.js";
 import { STORE_CHAINS, STORE_MENU } from "../storeMenu.js";
 import { AGING_NUTRIENTS } from "../careData.js";
-import { STORES } from "./content/stores.js";
+import { STORES, STORES_COVER } from "./content/stores.js";
 import foodProgram from "./content/foodProgram.json";
 import trainingProgram from "./content/trainingProgram.json";
 
@@ -270,7 +270,8 @@ function Shops() {
   useEffect(() => { loadGlobalList("global:recommendedStores", []).then(setAdded); }, []);
   return (
     <>
-      <div className="lf-sec" style={{ marginTop: 0 }}><h2>おすすめのお店</h2><span className="meta">{STORES.length + added.length}店</span></div>
+      <img className="lf-store-cover" src={STORES_COVER.image} alt={`${STORES_COVER.title}　${STORES_COVER.text}`} />
+      <div className="lf-sec"><h2>おすすめのお店</h2><span className="meta">{STORES.length + added.length}店</span></div>
       {[...STORES, ...added].map(s => <StoreCard key={s.id} s={s} />)}
 
       <div className="lf-sec"><h2>外食のおすすめメニュー</h2></div>
