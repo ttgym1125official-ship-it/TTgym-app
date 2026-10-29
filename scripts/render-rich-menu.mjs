@@ -68,10 +68,10 @@ const STYLE = `
   .desc { font-size: 40px; margin-top: 18px; color: #333; }
   .cta { display: inline-flex; align-items: center; gap: 22px; margin-top: 46px; background: #111814; color: #fff; border-radius: 999px; padding: 26px 54px; font-size: 44px; font-weight: 700; }
   .logo img { width: 520px; height: 520px; }
-  .ic { width: 150px; height: 150px; border-radius: 50%; background: #F3F1EC; display: grid; place-items: center; }
-  .eb { font-size: 30px; letter-spacing: 0.28em; margin-top: 30px; color: #555; font-weight: 600; }
-  .lb { font-weight: 800; margin-top: 10px; line-height: 1.25; }
-  .sub { font-size: 34px; color: #777; margin-top: 12px; }
+  .ic { width: 128px; height: 128px; border-radius: 50%; background: #F3F1EC; display: grid; place-items: center; }
+  .eb { font-size: 32px; letter-spacing: 0.24em; margin-top: 22px; color: #555; font-weight: 600; }
+  .lb { font-weight: 800; margin-top: 8px; line-height: 1.22; }
+  .sub { font-size: 38px; color: #666; margin-top: 14px; }
   .tile.dark .sub { color: #B9B4A8; }
 `;
 
@@ -87,18 +87,18 @@ const MAIN = page(0, `
     </div>
     <div class="logo"><img src="data:image/png;base64,${logo}"></div>
   </div>
-  ${tile({ key: "goal", eyebrow: "GOAL & MY GROWTH", label: "目標設定<br>MY成長・測定結果", size: 64, sub: "目標・成長・レポート・会員ランク" })}
-  ${tile({ key: "reserve", eyebrow: "RESERVATION", label: "予約" })}
-  ${tile({ key: "condition", eyebrow: "CONDITION & TRAINING", label: "体調・トレーニング<br>自己管理", size: 68 })}
-  ${tile({ key: "online", eyebrow: "ONLINE SUPPORT", label: "オンライン<br>トレーニングサポート", size: 64 })}
+  ${tile({ key: "goal", eyebrow: "GOAL & MY GROWTH", label: "目標設定<br>MY成長・測定結果", size: 84, sub: "目標・成長・レポート・会員ランク" })}
+  ${tile({ key: "reserve", eyebrow: "RESERVATION", label: "予約", size: 128 })}
+  ${tile({ key: "condition", eyebrow: "CONDITION & TRAINING", label: "体調・トレーニング<br>自己管理", size: 84 })}
+  ${tile({ key: "online", eyebrow: "ONLINE SUPPORT", label: "オンライン<br>トレーニングサポート", size: 78 })}
 `);
 
 const SUB = page(1, `
-  ${tile({ key: "recipe", eyebrow: "RECIPE & RESTAURANT", label: "レシピ・おすすめ店", span: 3 })}
-  ${tile({ key: "items", eyebrow: "TTGYM RECOMMEND", label: "TTGYMオススメ<br>健康アイテム", span: 3 })}
-  ${tile({ key: "beforeafter", eyebrow: "BEFORE / AFTER", label: "ビフォーアフター", size: 76 })}
-  ${tile({ key: "shop", eyebrow: "HEALTH SHOP", label: "オススメ<br>健康ショップ", size: 72 })}
-  ${tile({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", size: 64, dark: true })}
+  ${tile({ key: "recipe", eyebrow: "RECIPE & RESTAURANT", label: "レシピ・おすすめ店", span: 3, size: 112 })}
+  ${tile({ key: "items", eyebrow: "TTGYM RECOMMEND", label: "TTGYMオススメ<br>健康アイテム", span: 3, size: 108 })}
+  ${tile({ key: "beforeafter", eyebrow: "BEFORE / AFTER", label: "ビフォー<br>アフター", size: 104 })}
+  ${tile({ key: "shop", eyebrow: "HEALTH SHOP", label: "オススメ<br>健康ショップ", size: 96 })}
+  ${tile({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", size: 82, dark: true })}
 `);
 
 const chromium = await loadChromium();
