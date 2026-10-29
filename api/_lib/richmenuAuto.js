@@ -45,5 +45,7 @@ export async function ensureRichMenu(origin) {
     await registerRichMenu({ origin });
   } catch (e) {
     console.error("rich menu update failed:", e?.message || e);
+    // 原因を残す（.github/workflows/line-status.yml で確認できる）
+    await kvSet("line_richmenu:error", JSON.stringify({ at: new Date().toISOString(), version: RICHMENU_VERSION, message: String(e?.message || e).slice(0, 500) })).catch(() => {});
   }
 }
