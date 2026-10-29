@@ -116,7 +116,7 @@ const SUB = page(1, `
   ${tile({ key: "textbook", eyebrow: "TTGYM TEXTBOOK", label: "TTGYM<br>教科書", size: 104 })}
   <div class="split" style="grid-column: span 2">
     ${half({ key: "team", eyebrow: "TEAM TOP", label: "TEAM TOP<br>メンバー参加申込み", dark: true })}
-    ${half({ key: "kick", eyebrow: "KICKBOXING", label: "キックボクシング<br>体験申込み" })}
+    ${half({ key: "kick", eyebrow: "KICKBOXING", label: "キックボクシング<br>体験申込み", dark: true })}
   </div>
 `);
 
