@@ -71,7 +71,7 @@ LIFF ID（`2012240533-jEmcXBvp`）とチャネルID（`2012240533`）は `src/li
 食事プログラム・トレーニングプログラムの内容は `src/liff/content/` にあります。
 レポート（`src/liff/Report.jsx`）は「目標設定・MY成長・測定結果」のレポートタブに出ます。LINEで送った食事・水分・体重と、体調・トレーニング・成長・月次測定・パーソナルの記録を1週間／1ヶ月でまとめてグラフにします。
 
-画像を変えたいときは `scripts/render-rich-menu.mjs` を編集して `node scripts/render-rich-menu.mjs` で作り直し、もう一度登録します。
+画像を変えたいときは `scripts/render-rich-menu.mjs` を編集して `node scripts/render-rich-menu.mjs` で作り直し、`api/_lib/richmenuAuto.js` の `RICHMENU_VERSION` を上げます。本番に反映されたあと、公式LINEに最初のメッセージが届いたときに、サーバーが自動で新しいメニューに入れ替えます（管理画面のボタンで今すぐ入れ替えることもできます）。
 
 ### 4. LINE Official Account Manager の設定
 

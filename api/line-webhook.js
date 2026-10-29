@@ -30,6 +30,7 @@ import {
   normalizeItems, buildMealReply, dashboardButton, liffUrl, calcTargets, kvSet as nutriKvSet,
   appendLog, refreshLineProfile, fetchLineProfile,
 } from "./_lib/nutri.js";
+import { ensureRichMenu } from "./_lib/richmenuAuto.js";
 
 // Same public project URL/publishable key already embedded in the client
 // bundle (src/supabaseClient.js) — this one is meant to be public, so
@@ -333,6 +334,9 @@ export default async function handler(req, res) {
     res.status(200).send("OK");
     return;
   }
+
+  // リッチメニューの画像・リンクを変えたあとは、最初に届いたメッセージのときに新しいメニューへ入れ替える
+  await ensureRichMenu(`https://${req.headers["x-forwarded-host"] || req.headers.host}`);
 
   const events = body.events || [];
   for (const event of events) {

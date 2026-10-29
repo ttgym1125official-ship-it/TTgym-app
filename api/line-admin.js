@@ -13,8 +13,7 @@
 //     （"Authorization: Bearer <CRON_SECRET>" でも可。links を省略すると前回登録したリンクを使う）
 
 import { loadUser, saveUser, kvGet, kvSet, kvDelete, push, appendLog, liffUrl } from "./_lib/nutri.js";
-import { setupRichMenu } from "./_lib/richmenu.js";
-import { LIFF_ID } from "../src/lineConfig.js";
+import { registerRichMenu } from "./_lib/richmenuAuto.js";
 import crypto from "node:crypto";
 
 const same = (key, given) => {
@@ -48,24 +47,10 @@ export default async function handler(req, res) {
   }
   const lineUserId = String(body.lineUserId || "");
   if (body.action === "richmenu") {
-    const clean = v => (/^https?:\/\/\S+$/.test(String(v || "").trim()) ? String(v).trim() : "");
-    // links を省略したとき（GitHub Actions から）は、管理画面で前回登録したリンクを使う
-    const src = body.links || parse(await kvGet("line_richmenu:links")) || {};
-    const links = Object.fromEntries(["reserve", "shop", "teamtop"].map(k => [k, clean(src[k])]));
-    // 画像は同じサイトの public/liff から取る
+    // 画像は同じサイトの public/liff から取る。links を省略したときは前回登録したリンクを使う
     const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
     try {
-      const created = await setupRichMenu({
-        token: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-        liffId: process.env.LIFF_ID || process.env.VITE_LIFF_ID || LIFF_ID,
-        links,
-        loadImage: async name => {
-          const r = await fetch(`${origin}/liff/${name}`);
-          if (!r.ok) throw new Error(`画像を読み込めませんでした (${name})`);
-          return Buffer.from(await r.arrayBuffer());
-        },
-      });
-      await kvSet("line_richmenu:links", JSON.stringify({ ...links, updatedAt: new Date().toISOString() }));
+      const created = await registerRichMenu({ origin, links: body.links });
       res.status(200).json({ ok: true, created, dashboard: liffUrl("") });
     } catch (e) {
       res.status(502).json({ error: `リッチメニューを登録できませんでした: ${e.message}` });
