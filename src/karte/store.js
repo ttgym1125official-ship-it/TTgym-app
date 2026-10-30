@@ -97,12 +97,14 @@ async function syncSheet(cached) {
     const rows = parseCsv(await fetchSheetCsv(url));
     const det = detectColumns(rows);
     // 見出しが前回と同じなら、設定で選び直した列の対応をそのまま使う
-    const sameHeaders = cached?.rows && cached.url === url && JSON.stringify(cached.rows[cached.headerIdx]) === JSON.stringify(rows[det.headerIdx]);
+    // 設定画面で手で選び直した列の対応だけを引き継ぐ（自動判定の結果は毎回やり直す）
+    const sameHeaders = cached?.manual && cached?.rows && cached.url === url && JSON.stringify(cached.rows[cached.headerIdx]) === JSON.stringify(rows[det.headerIdx]);
     const sheet = {
       url, fetchedAt: new Date().toISOString(), rows,
       headerIdx: sameHeaders ? cached.headerIdx : det.headerIdx, columns: sameHeaders ? cached.columns : det.columns,
     };
     if (JSON.stringify(cached?.rows) !== JSON.stringify(rows) || cached?.url !== url) await kvSet("global:karteSheet", sheet).catch(() => {});
+    if (rows.length > 1 && sheet.columns.name == null) return { sheet, error: "名前の列が見つかりませんでした。右上「設定」で「名前」の列を選んで保存してください" };
     return { sheet, error: null };
   } catch (e) {
     return { sheet: cached, error: e.message };

@@ -1023,7 +1023,7 @@ function SettingsPanel({ state, onClose, onSaved }) {
     applyRows(parseCsv(text), `ファイル: ${file.name}`);
   }
   async function saveSheet() {
-    await saveGlobal("karteSheet", draft);
+    await saveGlobal("karteSheet", { ...draft, manual: true });
     onSaved("スプレッドシートを保存しました");
   }
 
