@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { Check, ChevronLeft, Dumbbell, Monitor, MoveHorizontal, PersonStanding, TrendingDown, TrendingUp, Zap } from "lucide-react";
 import { ACTIVITY, GOALS, calcTargets } from "./nutrients.js";
 import { comma } from "./ui.jsx";
+import { NameField, validName } from "./MyGoal.jsx";
 
 const ACTIVITY_ICON = { low: Monitor, normal: PersonStanding, high: Dumbbell, veryHigh: Zap };
 const GOAL_ICON = { lose: TrendingDown, keep: MoveHorizontal, gain: TrendingUp };
 
 const STEPS = [
-  { eyebrow: "STEP 1 · ABOUT YOU", title: "あなたについて\n教えてください", lead: "性別と年齢から、基礎代謝を計算します。" },
+  { eyebrow: "STEP 1 · ABOUT YOU", title: "あなたについて\n教えてください", lead: "お名前は、記録が誰のものかトレーナーが確認するために使います。性別と年齢から基礎代謝を計算します。" },
   { eyebrow: "STEP 2 · BODY", title: "いまの体の数値を\n入力してください", lead: "体脂肪率と基礎代謝は任意です。体組成計の値があれば入れると、目標値がより正確になります（基礎代謝は空欄なら自動計算）。" },
   { eyebrow: "STEP 3 · ACTIVITY", title: "ふだんの活動量は\nどれに近いですか？", lead: "1日の消費カロリーの計算に使います。" },
   { eyebrow: "STEP 4 · GOAL", title: "目指すゴールを\n選んでください", lead: "カロリーとタンパク質の目標が変わります。" },
@@ -29,12 +30,13 @@ function NumField({ label, unit, value, onChange, optional }) {
   );
 }
 
-export default function Onboarding({ initial, onSave, onDone }) {
+export default function Onboarding({ initial, initialName = "", askName = true, onSave, onDone }) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(null);
   const [p, setP] = useState(() => ({
+    fullName: initialName,
     sex: initial?.sex || "male",
     age: initial?.age ?? "",
     height: initial?.height ?? "",
@@ -48,7 +50,7 @@ export default function Onboarding({ initial, onSave, onDone }) {
   const set = (k, v) => setP(prev => ({ ...prev, [k]: v }));
 
   const valid = [
-    Number(p.age) >= 10 && Number(p.age) <= 100,
+    Number(p.age) >= 10 && Number(p.age) <= 100 && (!askName || validName(p.fullName)),
     Number(p.height) >= 100 && Number(p.weight) >= 25,
     !!p.activity,
     !!p.goal,
@@ -60,6 +62,7 @@ export default function Onboarding({ initial, onSave, onDone }) {
     try {
       const profile = {
         ...p,
+        fullName: askName ? p.fullName.trim() : undefined,
         age: Number(p.age), height: Number(p.height), weight: Number(p.weight),
         bodyFat: p.bodyFat ? Number(p.bodyFat) : null, bmr: p.bmr ? Number(p.bmr) : null,
         targetWeight: p.targetWeight ? Number(p.targetWeight) : null,
@@ -108,6 +111,7 @@ export default function Onboarding({ initial, onSave, onDone }) {
 
       {step === 0 && (
         <>
+          {askName && <div style={{ marginBottom: 18 }}><NameField value={p.fullName} onChange={v => set("fullName", v)} /></div>}
           <div className="glab">性別</div>
           <div className="lf-sex">
             {[["male", "男性"], ["female", "女性"]].map(([v, l]) => (
@@ -164,7 +168,7 @@ export default function Onboarding({ initial, onSave, onDone }) {
         <button className="lf-primary" disabled={!valid || saving} onClick={() => (step < 3 ? setStep(step + 1) : submit())}>
           {step < 3 ? "次へ" : saving ? "計算中…" : "目標を計算する"}
         </button>
-        <p>入力内容は栄養目標の計算にのみ使用します</p>
+        <p>入力内容は栄養目標の計算と、トレーナーの記録確認にのみ使用します</p>
       </div>
     </div></div>
   );
