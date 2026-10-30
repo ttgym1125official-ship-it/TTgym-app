@@ -11,7 +11,7 @@ import {
 import "./karte.css";
 import {
   loadCustomers, loadDetail, saveSession, deleteSession, saveMeasurement, saveGoal, savePhoto, adjustTickets, updateKarte,
-  loadGlobal, saveGlobal, linkSheetRow, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS,
+  loadGlobal, saveGlobal, linkSheetRow, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, DEFAULT_SHEET_URL,
 } from "./store.js";
 import { MENU_CATEGORIES, DEFAULT_MENUS, DAY_CONDITIONS, BODY_PARTS } from "./menus.js";
 import { SHEET_FIELDS, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
@@ -128,6 +128,9 @@ export default function KarteApp() {
 
       {error && <div className="kt-welcome"><h2>読み込めませんでした</h2><p>{error}</p><button className="kt-btn" onClick={refresh}>もう一度</button></div>}
       {!state && !error && <div className="kt-loading">読み込み中…</div>}
+      {state?.sheetError && (
+        <div className="kt-banner"><FileSpreadsheet size={15} />スプレッドシートを読み込めませんでした（前回読んだ内容で表示しています）: {state.sheetError}</div>
+      )}
       {state && (
         <div className={`kt-body${current ? " has-sel" : ""}${listHidden ? " list-hidden" : ""}`}>
           {!listHidden && <CustomerList customers={state.customers} selected={selected} onSelect={setSelected} />}
@@ -259,7 +262,7 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) 
         <div className="kt-id">
           <Avatar c={c} lg />
           <div style={{ minWidth: 0 }}>
-            {c.furigana && <div className="kana">{c.furigana}</div>}
+            {c.furigana && <div className="kana">{c.furigana}{c.appName && c.appName !== c.name ? `　（アプリ・LINE: ${c.appName}）` : ""}</div>}
             <h1>{c.name} <span style={{ fontSize: 15, fontWeight: 500, color: "var(--sub)" }}>様</span></h1>
             <div className="facts">
               <span><b className="num">{c.age ?? "—"}</b> 歳</span>
@@ -634,10 +637,12 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
       }));
       const { karte } = await saveSession(c, { id: newId(), date, staff, condition, parts, items: clean, comment: comment.trim(), memo: memo.trim(), ticketUsed });
       let msg = "記録しました";
-      if (sendLine && comment.trim() && c.lineUserId) {
+      const menu = menuSummary(clean);
+      if (sendLine && c.lineUserId && (comment.trim() || menu)) {
         try {
-          await notifyLine(c.lineUserId, `【TTGYM】本日のトレーニングお疲れさまでした！\n\n${comment.trim()}${staff ? `\n\nトレーナー：${staff}` : ""}`);
-          msg = "記録して、LINEにもコメントを送りました";
+          const say = comment.trim() ? `\n\n■ トレーナーより\n${comment.trim()}${staff ? `（${staff}）` : ""}` : "";
+          await notifyLine(c.lineUserId, `【TTGYM】本日のトレーニングお疲れさまでした！${menu ? `\n\n■ 本日のメニュー\n${menu}` : ""}${say}\n\nリッチメニューの「目標設定・MY成長・測定結果」のレポート・コメントでも見られます。`);
+          msg = "記録して、公式LINEにも送りました";
         } catch (e) {
           msg = `記録しました（LINEは送れませんでした: ${e.message}）`;
         }
@@ -763,7 +768,7 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
           )}
           {c.lineUserId && (
             <label className="kt-check"><input type="checkbox" checked={sendLine} onChange={e => setSendLine(e.target.checked)} disabled={isDemo} />
-              <div>コメントを公式LINEでも送る<small>{lsGet(LINE_KEY_STORAGE) || isDemo ? "お客様のLINEにメッセージが届きます" : "設定で「LINE操作キー」を入れると送れます"}</small></div>
+              <div>メニューとコメントを公式LINEでも送る<small>{lsGet(LINE_KEY_STORAGE) || isDemo ? "お客様のLINEにメッセージが届きます" : "設定で「LINE操作キー」を入れると送れます"}</small></div>
             </label>
           )}
           <button className="kt-btn gold full" onClick={save} disabled={!canSave || saving} style={{ marginTop: 6 }}>{saving ? "保存中…" : "この内容で記録する"}</button>
@@ -986,7 +991,7 @@ function HistoryTab({ d, onDelete }) {
 
 // ───────────────────────── 設定 ─────────────────────────
 function SettingsPanel({ state, onClose, onSaved }) {
-  const [url, setUrl] = useState(state.sheet?.url || "");
+  const [url, setUrl] = useState(state.sheet?.url || DEFAULT_SHEET_URL);
   const [draft, setDraft] = useState(state.sheet || null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");

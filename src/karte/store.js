@@ -16,7 +16,10 @@
 //   global:karteMenus             → 追加したメニュー
 //   global:karteStaff             → スタッフの名前
 import { supabase } from "../supabaseClient.js";
-import { sheetRecords, normName, normPhone } from "./sheet.js";
+import { sheetRecords, normName, normPhone, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
+
+// TTGYM の顧客スプレッドシート。設定で別のURLを保存したらそちらを使う
+export const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1QRSPuzpMT3gRgXyuxZbjNHyNeSxHUddZw9_4LSERQEs/edit";
 
 const parse = (raw, fb) => { try { return raw ? JSON.parse(raw) : fb; } catch (e) { return fb; } };
 
@@ -82,12 +85,34 @@ export function calcAge(birthdate) {
 
 const sheetDataId = rowKey => `sheet_${rowKey.replace(/[^\w぀-ヿ一-鿿#-]/g, "_")}`;
 
+// カルテを開くたびにスプレッドシートを読み直す（シートで名前や回数を直したら、そのままカルテに出る）。
+// 読めなかったときは前回読んだ内容を使う
+async function syncSheet(cached) {
+  if (demo) return { sheet: cached, error: null };
+  const url = cached?.url?.startsWith("https://") ? cached.url : DEFAULT_SHEET_URL;
+  try {
+    const rows = parseCsv(await fetchSheetCsv(url));
+    const det = detectColumns(rows);
+    // 見出しが前回と同じなら、設定で選び直した列の対応をそのまま使う
+    const sameHeaders = cached?.rows && JSON.stringify(cached.rows[cached.headerIdx]) === JSON.stringify(rows[det.headerIdx]);
+    const sheet = {
+      url, fetchedAt: new Date().toISOString(), rows,
+      headerIdx: sameHeaders ? cached.headerIdx : det.headerIdx, columns: sameHeaders ? cached.columns : det.columns,
+    };
+    if (JSON.stringify(cached?.rows) !== JSON.stringify(rows) || cached?.url !== url) await kvSet("global:karteSheet", sheet).catch(() => {});
+    return { sheet, error: null };
+  } catch (e) {
+    return { sheet: cached, error: e.message };
+  }
+}
+
 // ── 一覧 ──
 export async function loadCustomers() {
-  const [profiles, nutris, lineLinks, kartes, sheet, sheetLinks] = await Promise.all([
+  const [profiles, nutris, lineLinks, kartes, cachedSheet, sheetLinks] = await Promise.all([
     kvPrefix("profile:"), kvPrefix("nutri:"), kvPrefix("line_user:"), kvPrefix("karte:"),
     kvGet("global:karteSheet", null).catch(() => null), kvGet("global:karteSheetLinks", {}).catch(() => ({})),
   ]);
+  const { sheet, error: sheetError } = await syncSheet(cachedSheet);
   const karteBy = Object.fromEntries(kartes.map(r => [r.key.slice("karte:".length), parse(r.value, {})]));
   const pidByLine = Object.fromEntries(lineLinks.map(r => [r.key.slice("line_user:".length), r.value]));
   const lineByPid = Object.fromEntries(Object.entries(pidByLine).map(([l, p]) => [p, l]));
@@ -151,13 +176,21 @@ export async function loadCustomers() {
     if (!c.goal && c.sheet?.goal) c.goal = c.sheet.goal;
     if (!c.birthdate && c.sheet?.birthdate) c.birthdate = c.sheet.birthdate;
     c.age = calcAge(c.birthdate) ?? c.age ?? c.sheet?.age ?? null;
+    // 名前・フリガナはスプレッドシートの表記を使う（アプリ・LINEの名前は appName に残す）
+    if (c.sheet && c.kind !== "sheet") {
+      c.appName = c.name;
+      c.name = c.sheet.name;
+      if (c.sheet.furigana) c.furigana = c.sheet.furigana;
+    }
     if (!c.furigana && c.sheet?.furigana) c.furigana = c.sheet.furigana;
-    // 残り回数: カルテで増減したらその値、まだならシートの値
-    c.tickets = k.tickets ?? c.sheet?.tickets ?? null;
+    // 残り回数: シートの値が基準。カルテで使った・足した分はシートの値が変わるまでカルテの値を使い、
+    // シートの値が書き換わったら（回数券の購入など）シートの値に合わせ直す
+    const sheetTickets = c.sheet?.tickets ?? null;
+    c.tickets = k.tickets != null && (sheetTickets == null || k.sheetTickets === sheetTickets) ? k.tickets : sheetTickets ?? k.tickets ?? null;
     c.lastVisit = k.lastVisit || null;
   }
   list.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || "") || a.name.localeCompare(b.name, "ja"));
-  return { customers: list, sheet, sheetRows: rows, sheetLinks };
+  return { customers: list, sheet, sheetError, sheetRows: rows, sheetLinks };
 }
 
 // ── 1人分の記録 ──
@@ -221,10 +254,10 @@ export async function saveGoal(c, { goal, targetWeight, targetBodyFat }) {
 
 export async function adjustTickets(c, delta, reason, setTo) {
   return updateKarte(c, k => {
-    const before = k.tickets ?? c.sheet?.tickets ?? 0;
+    const before = c.tickets ?? 0;
     const after = setTo != null ? setTo : Math.max(0, before + delta);
     const log = [{ at: new Date().toISOString(), before, after, reason }, ...(k.ticketLog || [])].slice(0, 100);
-    return { ...k, tickets: after, ticketLog: log };
+    return { ...k, tickets: after, sheetTickets: c.sheet?.tickets ?? null, ticketLog: log };
   });
 }
 

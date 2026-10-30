@@ -295,3 +295,5 @@
 .kt-live-prev { background: rgba(255,255,255,.6); border-radius: 12px; padding: 10px 12px; font-size: 13px; max-height: 190px; overflow-y: auto; }
 .kt-live-prev small { display: block; font-size: 11px; font-weight: 700; color: var(--gold-text); margin-bottom: 4px; }
 @media (max-width: 900px) { .kt-live-grid { grid-template-columns: 1fr; } }
+
+.kt-banner { display: flex; align-items: center; gap: 8px; padding: 10px 20px; background: var(--red-soft); color: var(--red-text); font-size: 13px; font-weight: 600; }
