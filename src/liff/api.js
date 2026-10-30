@@ -49,11 +49,28 @@ async function call(method, params) {
     body: method === "POST" ? JSON.stringify(params) : undefined,
   });
   if (!res.ok) {
-    let msg = `通信エラー (${res.status})`;
-    try { msg = (await res.json()).error || msg; } catch (e) { /* JSON以外のエラー */ }
-    throw new Error(msg);
+    let msg = `通信エラー (${res.status})`, blocked = false;
+    try {
+      const j = await res.json();
+      msg = j.error || msg;
+      blocked = !!j.blocked;
+    } catch (e) { /* JSON以外のエラー */ }
+    const err = new Error(msg);
+    err.blocked = blocked; // 管理画面で利用停止中
+    throw err;
   }
   return res;
+}
+
+// 利用停止中かどうかだけ確認する（レシピ・オンラインなど、記録を読まないページ用）
+export async function checkAccess() {
+  if (isDemo) return true;
+  try {
+    await call("GET", { action: "status" });
+    return true;
+  } catch (e) {
+    return !e.blocked;
+  }
 }
 
 function demo() {

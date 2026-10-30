@@ -158,6 +158,26 @@ function LineUserDetail({ u, members, onChanged, hasKey }) {
 
   return (
     <div style={{ padding: "4px 4px 8px" }}>
+      <SubLabel>公式LINEの利用</SubLabel>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "8px 10px", borderRadius: 4,
+        border: `1px solid ${u.blocked ? C.danger : C.cardBorder}`, background: u.blocked ? `${C.danger}22` : "transparent",
+      }}>
+        <span style={{ fontSize: 11.5, color: u.blocked ? C.danger : C.dim, lineHeight: 1.6 }}>
+          {u.blocked ? "利用を停止しています（ダッシュボード・各ページ・トークでの記録が使えません）" : "利用できます"}
+        </span>
+        {u.blocked ? (
+          <button style={btn(true)} disabled={!hasKey || !!busy} onClick={() => act("unblock", { lineUserId: u.id }, "unblock")}>{busy === "unblock" ? "処理中…" : "利用を再開する"}</button>
+        ) : (
+          <button style={{ ...btn(false), color: C.danger, borderColor: C.danger }} disabled={!hasKey || !!busy}
+            onClick={() => window.confirm(`「${u.data.profile?.fullName || u.data.line?.displayName || "この人"}」の公式LINEの利用を停止しますか？\n（ダッシュボード・各ページが開けなくなり、トークで写真を送っても記録されません。あとで再開できます）`) && act("block", { lineUserId: u.id }, "block")}>
+            {busy === "block" ? "処理中…" : "利用を停止する"}
+          </button>
+        )}
+      </div>
+      {!hasKey && <div style={{ ...small, marginTop: 4 }}>停止・再開には、上の「LINE操作キー」の入力が必要です。</div>}
+      {member?.blocked && <div style={{ fontSize: 11, color: C.danger, marginTop: 4 }}>連携先のアプリ会員が「強制停止」中のため、公式LINEも使えません。</div>}
+
       <SubLabel>アプリ会員との連携</SubLabel>
       {u.pid ? (
         <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
@@ -371,13 +391,14 @@ export function LinePanel({ members }) {
     const out = [];
     for (const k of list.keys || []) {
       const id = k.slice("nutri:".length);
-      const [d, link, log] = await Promise.all([
+      const [d, link, log, blocked] = await Promise.all([
         window.storage.get(k, true).catch(() => null),
         window.storage.get(`line_user:${id}`, true).catch(() => null),
         window.storage.get(`line_log:${id}`, true).catch(() => null),
+        window.storage.get(`line_blocked:${id}`, true).catch(() => null),
       ]);
       const lastLog = parse(log?.value, []).filter(x => x.from === "user").slice(-1)[0];
-      out.push({ id, data: parse(d?.value, {}), pid: link?.value || null, lastAt: lastLog?.at || null });
+      out.push({ id, data: parse(d?.value, {}), pid: link?.value || null, lastAt: lastLog?.at || null, blocked: !!blocked?.value });
     }
     out.sort((a, b) => (b.lastAt || "").localeCompare(a.lastAt || ""));
     setUsers(out);
@@ -447,6 +468,7 @@ export function LinePanel({ members }) {
                   {!fullName && <span style={{ fontSize: 10, color: C.danger }}> ・フルネーム未登録</span>}
                   {member && <span style={{ fontSize: 10.5, color: C.line }}> ・会員: {member.name}</span>}
                   {u.data.unfollowedAt && <span style={{ fontSize: 10, color: C.danger }}> ・ブロック中</span>}
+                  {u.blocked && <span style={{ fontSize: 10, color: "#fff", background: C.danger, borderRadius: 3, padding: "1px 5px", marginLeft: 6 }}>利用停止中</span>}
                 </div>
                 <div style={small}>
                   {u.lastAt ? `最終 ${jstTime(u.lastAt)}` : "メッセージなし"}

@@ -9,6 +9,7 @@
 // GET  /api/nutrition?action=data             → { profile, meals, weights, water, targets }
 // GET  /api/nutrition?action=image&meal=<id>  → 食事写真
 // GET  /api/nutrition?action=goal             → { goal, photos, linked, points }（目標設定ページ）
+// GET  /api/nutrition?action=status                       利用できるか（停止中は 403 { blocked: true }）
 // POST /api/nutrition { action: "profile", profile }      profile.fullName（フルネーム）も受け付ける
 // POST /api/nutrition { action: "name", fullName }         フルネームだけ登録・変更
 // POST /api/nutrition { action: "deleteItem", mealId, itemId }
@@ -26,6 +27,7 @@
 import {
   loadUser, saveUser, kvGet, kvDelete, newId, calcTargets, normalizeItems, estimateNutrients,
   loadGoal, saveGoal, savePhoto, PHOTO_SLOTS, computeMembership, appProfileHints, createAppLoginToken,
+  isLineBlocked, BLOCKED_MESSAGE,
 } from "./_lib/nutri.js";
 import { LINE_LOGIN_CHANNEL_ID } from "../src/lineConfig.js";
 import { ensureRichMenu } from "./_lib/richmenuAuto.js";
@@ -107,11 +109,20 @@ export default async function handler(req, res) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
+  // 管理画面で利用を停止した人は、ダッシュボードも各ページも使えない
+  if (await isLineBlocked(userId)) {
+    res.status(403).json({ error: BLOCKED_MESSAGE, blocked: true });
+    return;
+  }
   // リッチメニューが古ければ入れ替える（ダッシュボードや各ページを開いたときにも。Webhook が届かない場合のため）
   if (req.method === "GET") await ensureRichMenu(`https://${req.headers["x-forwarded-host"] || req.headers.host}`);
 
   if (req.method === "GET") {
     const action = req.query?.action || "data";
+    if (action === "status") {
+      res.status(200).json({ ok: true });
+      return;
+    }
     if (action === "image") {
       const value = await kvGet(`nutri_img:${userId}:${req.query.meal}`);
       const m = /^data:([^;]+);base64,(.+)$/.exec(value || "");

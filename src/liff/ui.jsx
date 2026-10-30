@@ -136,3 +136,16 @@ export function NutrientSection({ totals, targets, subtitle, countCards = true }
 export function Toast({ text }) {
   return text ? <div className="lf-toast">{text}</div> : null;
 }
+
+// 管理画面で利用を停止された人に出す画面
+export function BlockedScreen({ message }) {
+  return (
+    <div className="lf"><div className="lf-wrap">
+      <div className="lf-center" style={{ flexDirection: "column", gap: 14, textAlign: "center", lineHeight: 1.8 }}>
+        <img src="/liff/logo.png" alt="TTGYM" style={{ width: 64, height: 64 }} />
+        <div style={{ fontSize: 17, fontWeight: 800 }}>ご利用を停止しています</div>
+        <div style={{ fontSize: 14, color: "var(--sub)" }}>{message || "TTGYMスタッフまでお問い合わせください。"}</div>
+      </div>
+    </div></div>
+  );
+}

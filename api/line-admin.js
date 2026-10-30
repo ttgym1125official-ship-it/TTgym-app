@@ -9,6 +9,7 @@
 //   { action: "push", lineUserId, text }                 → お客様のLINEにメッセージを送る
 //   { action: "link", lineUserId, profileId }            → LINEの人とアプリ会員を連携（記録も同期）
 //   { action: "unlink", lineUserId }                     → 連携を外す（体重・水分はLINE側にも残す）
+//   { action: "block" | "unblock", lineUserId }          → 公式LINEの利用を停止・再開
 //   { action: "richmenu", links?: { reserve, textbook, teamtop, kickboxing } } → リッチメニューを作り直す
 //     （"Authorization: Bearer <CRON_SECRET>" でも可。links を省略すると前回登録したリンクを使う）
 
@@ -95,6 +96,19 @@ export default async function handler(req, res) {
       // LINEだけで付けていた記録をアプリ側へ移す（初回同期）
       await saveUser(lineUserId, await loadUser(lineUserId));
       await appendLog(lineUserId, [{ from: "system", text: `スタッフがアプリ会員「${profile.name || profileId}」と連携` }]);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // 利用停止・再開（公式LINEのダッシュボード・各ページ・トークでの記録を止める）
+    case "block":
+    case "unblock": {
+      if (body.action === "block") {
+        await kvSet(`line_blocked:${lineUserId}`, JSON.stringify({ at: new Date().toISOString() }));
+      } else {
+        await kvDelete(`line_blocked:${lineUserId}`);
+      }
+      await appendLog(lineUserId, [{ from: "system", text: body.action === "block" ? "スタッフが利用を停止" : "スタッフが利用を再開" }]);
       res.status(200).json({ ok: true });
       return;
     }

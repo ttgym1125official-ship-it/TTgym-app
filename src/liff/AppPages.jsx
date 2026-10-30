@@ -11,8 +11,8 @@ import {
   Activity, ArrowLeft, Camera, ChefHat, ChevronDown, ChevronRight, LoaderCircle,
   MapPin, Phone, Play, Sparkles, Utensils,
 } from "lucide-react";
-import { isDemo, openDashboard, closeOrBack } from "./api.js";
-import { Header, Toast } from "./ui.jsx";
+import { isDemo, openDashboard, closeOrBack, checkAccess } from "./api.js";
+import { Header, Toast, BlockedScreen } from "./ui.jsx";
 import { publishedRecipes, recipeImage } from "../recipes.js";
 import { STORE_CHAINS, STORE_MENU } from "../storeMenu.js";
 import { AGING_NUTRIENTS } from "../careData.js";
@@ -67,6 +67,9 @@ export default function AppPage({ page }) {
   const [toast, setToast] = useState("");
   const flash = msg => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   useEffect(() => { document.title = p.title; }, [p]);
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => { checkAccess().then(ok => setBlocked(!ok)); }, []);
+  if (blocked) return <BlockedScreen />;
 
   let body;
   if (page === "items") {

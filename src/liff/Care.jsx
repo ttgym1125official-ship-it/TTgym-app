@@ -83,7 +83,7 @@ function useCareData(toast) {
         }
       }));
       setState({ id, linked: !!info.linked, data: Object.fromEntries(KEYS.map((k, i) => [k, values[i]])) });
-    })().catch(e => setError(e.message || "読み込めませんでした"));
+    })().catch(e => setError(e.blocked ? "ご利用を停止しています。TTGYMスタッフまでお問い合わせください。" : `${e.message || "読み込めませんでした"}　LINEアプリから開き直してください。`));
   }, []);
 
   const mutate = async (key, fn, msg) => {
@@ -121,7 +121,7 @@ export default function Care({ page, tab, toast }) {
     if (state && ["growth", "report", "comments"].includes(tab)) refresh(["growth", "comments", "personalLogs"]).catch(() => {});
   }, [tab, !!state]);
 
-  if (error) return <Empty text={`${error}　LINEアプリから開き直してください。`} />;
+  if (error) return <Empty text={error} />;
   if (!state) return <div className="lf-center" style={{ minHeight: "30vh" }}><LoaderCircle className="lf-spin" size={26} /></div>;
   const d = state.data;
   if (page === "condition") {
