@@ -11,7 +11,7 @@ import {
 import "./karte.css";
 import {
   loadCustomers, loadDetail, saveSession, deleteSession, saveMeasurement, saveGoal, savePhoto, adjustTickets, updateKarte,
-  loadGlobal, saveGlobal, linkSheetRow, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, DEFAULT_SHEET_URL,
+  loadGlobal, saveGlobal, linkSheetRow, sortCustomers, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, DEFAULT_SHEET_URL,
 } from "./store.js";
 import { MENU_CATEGORIES, DEFAULT_MENUS, DAY_CONDITIONS, BODY_PARTS } from "./menus.js";
 import { SHEET_FIELDS, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
@@ -108,7 +108,11 @@ export default function KarteApp() {
     setRefreshing(false);
   }
 
-  const patchCustomer = (cid, patch) => setState(s => ({ ...s, customers: s.customers.map(c => (c.cid === cid ? { ...c, ...patch } : c)) }));
+  // 保存のたびに呼ばれる。更新したお客様を一覧の一番上へ
+  const patchCustomer = (cid, patch) => setState(s => ({
+    ...s,
+    customers: sortCustomers(s.customers.map(c => (c.cid === cid ? { ...c, ...patch, touchedAt: new Date().toISOString() } : c))),
+  }));
   const current = state?.customers.find(c => c.cid === selected) || null;
 
   return (
@@ -290,8 +294,8 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) 
             <RecordTab c={c} d={d} state={state} setMenus={setMenus} flash={flash}
               onSaved={async karte => { onPatch({ tickets: karte.tickets ?? c.tickets, lastVisit: karte.lastVisit, karte }); await reload(); setTab("history"); }} />
           )}
-          {tab === "growth" && <GrowthTab c={c} d={d} flash={flash} onSaved={reload} />}
-          {tab === "photos" && <PhotosTab c={c} d={d} flash={flash} onSaved={reload} />}
+          {tab === "growth" && <GrowthTab c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await reload(); }} />}
+          {tab === "photos" && <PhotosTab c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await reload(); }} />}
           {tab === "history" && (
             <HistoryTab d={d} onDelete={async s => {
               if (!window.confirm(`${ymd(s.date)} の記録を削除しますか？${s.ticketUsed ? "\n（使った回数券は1回戻します）" : ""}`)) return;

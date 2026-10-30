@@ -153,6 +153,7 @@ export function sheetRecords(sheet) {
     if (n > 1) rowKey += `#${n}`;
     out.push({
       rowKey,
+      order: out.length, // シートでの並び順
       name,
       furigana: at(r, "furigana"),
       memberNo: at(r, "memberNo"),
