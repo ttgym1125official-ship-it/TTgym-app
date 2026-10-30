@@ -178,6 +178,7 @@ function LineUserDetail({ u, members, onChanged, hasKey }) {
       <SubLabel>プロフィール・目標</SubLabel>
       {p ? (
         <div style={{ fontSize: 12, lineHeight: 1.9 }}>
+          {p.fullName && <><span style={{ color: C.ivory, fontSize: 13 }}>{p.fullName} 様</span><br /></>}
           {p.sex === "female" ? "女性" : "男性"}・{p.age}歳・{p.height}cm・{p.weight}kg{p.bodyFat ? `・体脂肪${p.bodyFat}%` : ""}
           <br /><span style={{ color: C.gold }}>目標 {targets?.kcal?.toLocaleString()}kcal（P{targets?.p} F{targets?.f} C{targets?.c}g）</span>
           {u.data.goal?.goal && <div style={{ whiteSpace: "pre-wrap", color: C.ivory, marginTop: 4, fontSize: 11.5 }}>「{u.data.goal.goal}」</div>}
@@ -428,7 +429,9 @@ export function LinePanel({ members }) {
       ) : shown.map(u => {
         const member = members.find(m => m.id === u.pid);
         const isOpen = open === u.id;
-        const name = u.data.line?.displayName || "（名前未取得）";
+        const fullName = u.data.profile?.fullName || member?.name || "";
+        const lineName = u.data.line?.displayName || "";
+        const name = fullName || lineName || "（名前未取得）";
         const todayKcal = sumMeals((u.data.meals || []).filter(m => m.date === today)).kcal;
         return (
           <div key={u.id} style={{ marginBottom: 6 }}>
@@ -440,6 +443,8 @@ export function LinePanel({ members }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5 }}>
                   {name}
+                  {fullName && lineName && <span style={{ fontSize: 10.5, color: C.dim }}> （LINE: {lineName}）</span>}
+                  {!fullName && <span style={{ fontSize: 10, color: C.danger }}> ・フルネーム未登録</span>}
                   {member && <span style={{ fontSize: 10.5, color: C.line }}> ・会員: {member.name}</span>}
                   {u.data.unfollowedAt && <span style={{ fontSize: 10, color: C.danger }}> ・ブロック中</span>}
                 </div>

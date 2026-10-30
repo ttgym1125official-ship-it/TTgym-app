@@ -76,6 +76,8 @@ export async function post(action, payload) {
     const d = demo();
     if (action === "profile") {
       d.profile = { ...payload.profile };
+    } else if (action === "name") {
+      d.profile = { ...d.profile, fullName: payload.fullName };
     } else if (action === "deleteItem") {
       d.meals = d.meals
         .map(m => (m.id === payload.mealId ? { ...m, items: m.items.filter(i => i.id !== payload.itemId) } : m))

@@ -8,6 +8,7 @@ import Today from "./Today.jsx";
 import History, { dailyTotals } from "./History.jsx";
 import Onboarding from "./Onboarding.jsx";
 import Goal from "./Goal.jsx";
+import { NameGate, MyGoalCard, needsName, displayName } from "./MyGoal.jsx";
 
 // リッチメニューの各タイルから開くページ（/liff/condition など）。必要なときだけ読み込む
 const AppPage = lazy(() => import("./AppPages.jsx"));
@@ -90,6 +91,7 @@ function Dashboard({ path }) {
   });
   const [selected, setSelected] = useState(jstToday());
   const [toast, setToast] = useState("");
+  const [editingName, setEditingName] = useState(false);
   const today = jstToday();
 
   useEffect(() => {
@@ -116,8 +118,25 @@ function Dashboard({ path }) {
     return (
       <Onboarding
         initial={data.profile || data.hints}
+        initialName={displayName(data) || data.hints?.name || ""}
+        askName={!data.member?.name}
         onSave={async profile => setData(await post("profile", { profile }))}
         onDone={() => (isProfilePage ? openDashboard() : setView("today"))}
+      />
+    );
+  }
+
+  // 誰の記録か分かるように、名前がまだの人は最初に登録してもらう
+  if (needsName(data) || editingName) {
+    return (
+      <NameGate
+        initial={data.profile?.fullName || ""}
+        onCancel={editingName ? () => setEditingName(false) : null}
+        onSave={async fullName => {
+          setData(await post("name", { fullName }));
+          setEditingName(false);
+          flash("お名前を登録しました");
+        }}
       />
     );
   }
@@ -144,12 +163,14 @@ function Dashboard({ path }) {
               {GOAL_TABS.map(([k, l]) => <button key={k} className={goalTab === k ? "on" : ""} onClick={() => { setGoalTab(k); window.scrollTo(0, 0); }}>{l}</button>)}
             </div>
             <Suspense fallback={<div className="lf-center" style={{ minHeight: "30vh" }}><LoaderCircle className="lf-spin" size={26} /></div>}>
-              {goalTab === "goal" ? <Goal data={data} toast={flash} />
+              {goalTab === "goal" ? <><MyGoalCard data={data} showText={false} onEditName={() => setEditingName(true)} /><Goal data={data} toast={flash} /></>
                 : goalTab === "report" ? <ReportPanel compact />
                   : <Care page="growth" tab={goalTab} toast={flash} />}
             </Suspense>
           </>
         ) : view === "today" ? (
+          <>
+          {selected === today && <MyGoalCard data={data} onEditName={() => setEditingName(true)} onEditGoal={() => { setGoalTab("goal"); go("goal"); }} />}
           <Today
             data={data} today={today} selected={selected} onSelect={setSelected}
             onDeleteItem={(meal, item) => window.confirm(`「${item.name}」を削除しますか？`) && act("deleteItem", { mealId: meal.id, itemId: item.id }, "削除しました")}
@@ -157,6 +178,7 @@ function Dashboard({ path }) {
             onAddMeal={async payload => { setData(await post("addMeal", payload)); flash("記録しました"); }}
             onWater={(date, ml) => act("water", { date, ml })}
           />
+          </>
         ) : (
           <History
             data={data}

@@ -9,7 +9,8 @@
 // GET  /api/nutrition?action=data             → { profile, meals, weights, water, targets }
 // GET  /api/nutrition?action=image&meal=<id>  → 食事写真
 // GET  /api/nutrition?action=goal             → { goal, photos, linked, points }（目標設定ページ）
-// POST /api/nutrition { action: "profile", profile }
+// POST /api/nutrition { action: "profile", profile }      profile.fullName（フルネーム）も受け付ける
+// POST /api/nutrition { action: "name", fullName }         フルネームだけ登録・変更
 // POST /api/nutrition { action: "deleteItem", mealId, itemId }
 // POST /api/nutrition { action: "deleteMeal", mealId }
 // POST /api/nutrition { action: "addWeight", date, weight, bodyFat }
@@ -36,6 +37,21 @@ function view(user) {
   const { profile, meals, weights, water, goal, pid } = user;
   // memberId: アプリと同じ形の記録（体調・トレーニングなど）の置き場（未連携なら line_<LINE userId>）
   return { profile, meals, weights, water, goal, linked: !!pid, memberId: user.appId, targets: calcTargets(profile) };
+}
+
+// 連携済みなら、アプリ会員の名前と目標も返す（LINEのページの「わたしの目標」と名前の表示に使う）
+async function fullView(user) {
+  const v = view(user);
+  if (!user.pid) return { ...v, member: null };
+  let p = {};
+  try { p = JSON.parse((await kvGet(`profile:${user.pid}`)) || "{}"); } catch (e) {}
+  return { ...v, member: { name: p.name || null, goal: p.goal || "", targetWeight: p.targetWeight ?? null } };
+}
+
+// フルネーム（スペースは1つにまとめる）。短すぎ・長すぎは無効
+function cleanName(v) {
+  const s = String(v || "").replace(/[\s\u3000]+/g, " ").trim().slice(0, 40);
+  return s.length >= 2 ? s : null;
 }
 
 async function verifyLineUser(req) {
@@ -115,7 +131,7 @@ export default async function handler(req, res) {
       res.status(200).json({ ...goal, points: membership.points });
       return;
     }
-    res.status(200).json({ ...view(user), hints: user.profile ? null : await appProfileHints(user.pid) });
+    res.status(200).json({ ...(await fullView(user)), hints: user.profile ? null : await appProfileHints(user.pid) });
     return;
   }
 
@@ -166,6 +182,7 @@ export default async function handler(req, res) {
         res.status(400).json({ error: "年齢・身長・体重を入力してください" });
         return;
       }
+      profile.fullName = cleanName(body.profile?.fullName) || user.profile?.fullName || null;
       user.profile = profile;
       // 登録時の体重・体脂肪率をその日の体組成記録にも残す
       const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -224,6 +241,15 @@ export default async function handler(req, res) {
       if (next) user.water[date] = next; else delete user.water[date];
       break;
     }
+    case "name": {
+      const fullName = cleanName(body.fullName);
+      if (!fullName || !user.profile) {
+        res.status(400).json({ error: "お名前（フルネーム）を入力してください" });
+        return;
+      }
+      user.profile = { ...user.profile, fullName };
+      break;
+    }
     case "goal": {
       const g = body.goal || {};
       const patch = {};
@@ -252,5 +278,5 @@ export default async function handler(req, res) {
   }
 
   await saveUser(userId, user);
-  res.status(200).json(view(user));
+  res.status(200).json(await fullView(user));
 }
