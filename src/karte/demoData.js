@@ -60,7 +60,7 @@ export function demoEntries() {
       { id: "w3", date: day(-5), exercise: "ランジ", reps: 12, unit: "reps", weight: 0 },
     ],
     [`data:${sato}:karteSessions`]: satoSessions,
-    [`karte:${sato}`]: { tickets: 6, lastVisit: day(-3), note: "左膝に古傷あり（高校の部活）。ジャンプ系は控えめに。\n甘いものが好き。週末の外食が多い。" },
+    [`karte:${sato}`]: { tickets: 6, sheetTickets: 8, lastVisit: day(-3), note: "左膝に古傷あり（高校の部活）。ジャンプ系は控えめに。\n甘いものが好き。週末の外食が多い。" },
     [`profile_photo:${sato}:before_side`]: silhouette(110, "#B8C5B4", "BEFORE"),
     [`profile_photo:${sato}:after_side`]: silhouette(88, "#8DA88E", "AFTER"),
 
@@ -73,7 +73,7 @@ export function demoEntries() {
     [`data:${suzuki}:karteSessions`]: [
       session(1, day(-9), [{ name: "ベンチプレス", cat: "upper", weight: 80, reps: 5, sets: 5 }, { name: "ダンベルプレス", cat: "upper", weight: 26, reps: 10, sets: 3 }], "MAX更新に向けて順調です！", "右肩の可動域やや狭い。ストレッチ追加。", 4, "山本"),
     ],
-    [`karte:${suzuki}`]: { tickets: 1, lastVisit: day(-9), note: "右肩に注意。" },
+    [`karte:${suzuki}`]: { tickets: 1, sheetTickets: 2, lastVisit: day(-9), note: "右肩に注意。" },
 
     [`nutri:Udemo2`]: {
       line: { displayName: "ゆか🌸", pictureUrl: null }, profile: { fullName: "高橋 由佳", age: 34, targetWeight: 50 }, goal: { goal: "産後太りを解消して、昔のジーンズを履きたい", targetWeight: 50 },

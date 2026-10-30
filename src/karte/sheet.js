@@ -3,12 +3,12 @@
 // （設定画面で手動で選び直せる）。
 
 export const SHEET_FIELDS = [
-  { key: "name", label: "名前", words: ["氏名", "お名前", "名前", "顧客名", "会員名", "name"] },
+  { key: "name", label: "名前", words: ["氏名", "お名前", "名前", "顧客名", "会員名", "お客様名", "お客様氏名", "name"] },
   { key: "furigana", label: "フリガナ", words: ["フリガナ", "ふりがな", "カナ", "よみ"] },
   { key: "memberNo", label: "会員番号", words: ["会員番号", "顧客番号", "会員no", "会員id", "no.", "id"] },
   { key: "age", label: "年齢", words: ["年齢", "歳", "age"] },
   { key: "birthdate", label: "生年月日", words: ["生年月日", "誕生日", "birthday"] },
-  { key: "tickets", label: "残り回数券", words: ["残り回数", "残回数", "残り", "回数券", "チケット", "残数"] },
+  { key: "tickets", label: "残り回数券", words: ["残り回数", "残回数", "残り", "回数券", "チケット", "残数", "残"] },
   { key: "goal", label: "目標", words: ["目標", "目的", "ゴール", "goal"] },
   { key: "phone", label: "電話番号", words: ["電話", "携帯", "tel", "phone"] },
   { key: "plan", label: "プラン", words: ["プラン", "コース", "契約", "メニュー"] },
