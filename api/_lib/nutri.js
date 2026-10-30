@@ -37,6 +37,16 @@ export async function kvDelete(key) {
   await supabase.from("kv_store").delete().eq("key", key);
 }
 
+// ── 利用停止（管理画面の「利用を停止」）──
+// line_blocked:<LINE userId> があるか、連携先のアプリ会員が「強制停止」なら、公式LINEの機能を使えない
+export const BLOCKED_MESSAGE = "現在、ご利用を停止しています。TTGYMスタッフまでお問い合わせください。";
+export async function isLineBlocked(lineUserId, pid) {
+  if (await kvGet(`line_blocked:${lineUserId}`)) return true;
+  const id = pid === undefined ? await kvGet(`line_user:${lineUserId}`) : pid;
+  if (!id) return false;
+  try { return !!JSON.parse((await kvGet(`profile:${id}`)) || "{}").blocked; } catch (e) { return false; }
+}
+
 // ── アプリ連携（line_user:<LINE userId> → アプリのプロフィールID）──
 // 連携済みの人は、体重（成長タブの growth）と水分（water）はアプリのデータを正として読み書きし、
 // 食事は LINE で記録したものをアプリの meals にも "line-" 付きのIDで書き写す。

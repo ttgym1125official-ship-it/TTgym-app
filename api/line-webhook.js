@@ -28,7 +28,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   loadUser, saveUser, jstNow, newId, reply, showLoading, fetchLineImage, analyzeMessage,
   normalizeItems, buildMealReply, dashboardButton, liffUrl, calcTargets, kvSet as nutriKvSet,
-  appendLog, refreshLineProfile, fetchLineProfile,
+  appendLog, refreshLineProfile, fetchLineProfile, isLineBlocked, BLOCKED_MESSAGE,
 } from "./_lib/nutri.js";
 import { ensureRichMenu } from "./_lib/richmenuAuto.js";
 
@@ -373,6 +373,11 @@ export default async function handler(req, res) {
 
       const linkedProfileId = await kvGet(`line_user:${lineUserId}`);
       await logIncoming(lineUserId, msgType === "image" ? "［写真］" : text, linkedProfileId);
+      // 利用停止中の人には、写真の解析や返答をしない（停止中であることだけ返す）
+      if (await isLineBlocked(lineUserId, linkedProfileId)) {
+        await replyToLine(replyToken, BLOCKED_MESSAGE, lineUserId);
+        continue;
+      }
       const normalized = text.normalize("NFKC").toUpperCase().replace(/\s/g, "");
       const isLinkCode = !linkedProfileId && /^[A-Z0-9]{6}$/.test(normalized);
       const asksLink = !linkedProfileId && /連携/.test(text);

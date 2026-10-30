@@ -3,7 +3,7 @@ import { ChartNoAxesColumn, Download, Flag, House, LoaderCircle } from "lucide-r
 import "./liff.css";
 import { NUTRIENTS } from "./nutrients.js";
 import { fetchData, post, isDemo, openDashboard } from "./api.js";
-import { Header, Toast, jstToday, jpDate } from "./ui.jsx";
+import { Header, Toast, jstToday, jpDate, BlockedScreen } from "./ui.jsx";
 import Today from "./Today.jsx";
 import History, { dailyTotals } from "./History.jsx";
 import Onboarding from "./Onboarding.jsx";
@@ -92,10 +92,11 @@ function Dashboard({ path }) {
   const [selected, setSelected] = useState(jstToday());
   const [toast, setToast] = useState("");
   const [editingName, setEditingName] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const today = jstToday();
 
   useEffect(() => {
-    fetchData().then(setData).catch(e => setError(e.message || "読み込めませんでした"));
+    fetchData().then(setData).catch(e => (e.blocked ? setBlocked(true) : setError(e.message || "読み込めませんでした")));
   }, []);
 
   const flash = msg => {
@@ -111,6 +112,7 @@ function Dashboard({ path }) {
     }
   }, []);
 
+  if (blocked) return <BlockedScreen />;
   if (error) return <div className="lf"><div className="lf-center">{error}<br />LINEアプリから開き直してください。</div></div>;
   if (!data) return <div className="lf"><div className="lf-center"><LoaderCircle className="lf-spin" size={28} /></div></div>;
 
