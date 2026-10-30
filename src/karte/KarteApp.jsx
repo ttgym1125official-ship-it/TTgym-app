@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import {
   Search, Settings, RefreshCw, ChevronLeft, Minus, Plus, Check, X, Pencil, Trash2, Camera,
-  ArrowDownRight, ArrowUpRight, ClipboardList, History, TrendingUp, Image as ImageIcon, UserRound, RotateCcw, FileSpreadsheet,
+  ArrowDownRight, ArrowUpRight, ClipboardList, History, TrendingUp, Image as ImageIcon, UserRound, RotateCcw, FileSpreadsheet, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import "./karte.css";
 import {
@@ -21,6 +21,8 @@ import { SLEEP_LEVELS, FATIGUE_LEVELS, MENTAL_LEVELS, BOWEL_OPTIONS } from "../c
 const LOW_TICKETS = 2;
 const STAFF_STORAGE = "ttgym_karte_staff";
 const LINE_KEY_STORAGE = "ttgym_line_admin_key"; // 管理画面の「LINE操作キー」と同じ
+const LIST_HIDDEN_STORAGE = "ttgym_karte_list_hidden";
+const DRAFT_STORAGE = cid => `ttgym_karte_draft:${cid}`; // 記録する前のメモ（タブを移っても・再読み込みしても消えないように）
 const lsGet = k => { try { return window.localStorage.getItem(k) || ""; } catch (e) { return ""; } };
 const lsSet = (k, v) => { try { window.localStorage.setItem(k, v); } catch (e) {} };
 
@@ -69,6 +71,9 @@ export default function KarteApp() {
   const [selected, setSelected] = useState(() => new URLSearchParams(window.location.search).get("c") || null);
   const [showSettings, setShowSettings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // お客様の名前が並ぶ左の一覧を、ボタン1つで隠す（画面を見られても名前が並ばないように）
+  const [listHidden, setListHidden] = useState(() => lsGet(LIST_HIDDEN_STORAGE) === "1");
+  const toggleList = () => setListHidden(v => { lsSet(LIST_HIDDEN_STORAGE, v ? "" : "1"); return !v; });
   const [toast, setToast] = useState("");
   const toastTimer = useRef(null);
   const flash = msg => { setToast(msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(""), 2400); };
@@ -112,6 +117,9 @@ export default function KarteApp() {
         <div className="kt-brand"><img src="/liff/logo.png" alt="" /><b>TTGYM</b><span>顧客カルテ</span></div>
         {isDemo && <span className="kt-demo">デモ表示</span>}
         <div className="sp" />
+        <button className="kt-head-btn" onClick={toggleList} aria-pressed={listHidden} title="お客様の一覧を隠す／表示する">
+          {listHidden ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}<span className="hide-sm">{listHidden ? "一覧を表示" : "一覧を隠す"}</span>
+        </button>
         <button className="kt-head-btn" onClick={refresh} disabled={refreshing} aria-label="最新にする">
           <RefreshCw size={15} className={refreshing ? "spin" : ""} /><span className="hide-sm">{refreshing ? "更新中…" : "更新"}</span>
         </button>
@@ -121,8 +129,8 @@ export default function KarteApp() {
       {error && <div className="kt-welcome"><h2>読み込めませんでした</h2><p>{error}</p><button className="kt-btn" onClick={refresh}>もう一度</button></div>}
       {!state && !error && <div className="kt-loading">読み込み中…</div>}
       {state && (
-        <div className={`kt-body${current ? " has-sel" : ""}`}>
-          <CustomerList customers={state.customers} selected={selected} onSelect={setSelected} />
+        <div className={`kt-body${current ? " has-sel" : ""}${listHidden ? " list-hidden" : ""}`}>
+          {!listHidden && <CustomerList customers={state.customers} selected={selected} onSelect={setSelected} />}
           <main className="kt-main">
             {current ? (
               <CustomerView
@@ -133,7 +141,7 @@ export default function KarteApp() {
                 setMenus={menus => setState(s => ({ ...s, menus }))}
               />
             ) : (
-              <Welcome state={state} onSettings={() => setShowSettings(true)} />
+              <Welcome state={state} onSettings={() => setShowSettings(true)} listHidden={listHidden} onShowList={toggleList} />
             )}
           </main>
         </div>
@@ -146,7 +154,7 @@ export default function KarteApp() {
   );
 }
 
-function Welcome({ state, onSettings }) {
+function Welcome({ state, onSettings, listHidden, onShowList }) {
   const cs = state.customers;
   return (
     <div className="kt-welcome">
@@ -158,6 +166,7 @@ function Welcome({ state, onSettings }) {
         <div><b className="num">{cs.filter(c => c.tickets != null && c.tickets <= LOW_TICKETS).length}</b>回数券わずか</div>
         <div><b className="num">{cs.filter(c => c.lineUserId).length}</b>LINE連携</div>
       </div>
+      {listHidden && <button className="kt-btn" onClick={onShowList} style={{ marginBottom: 10 }}><PanelLeftOpen size={16} />一覧を表示</button>}
       {!state.sheet && (
         <button className="kt-btn gold" onClick={onSettings}><FileSpreadsheet size={16} />顧客スプレッドシートをつなぐ</button>
       )}
@@ -221,6 +230,7 @@ function CustomerList({ customers, selected, onSelect }) {
 
 // ───────────────────────── 1人のカルテ ─────────────────────────
 const TABS = [
+  { key: "record", label: "今日の記録", icon: Pencil },
   { key: "overview", label: "カルテ", icon: ClipboardList },
   { key: "growth", label: "成長・測定", icon: TrendingUp },
   { key: "photos", label: "ビフォーアフター", icon: ImageIcon },
@@ -229,7 +239,8 @@ const TABS = [
 
 function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) {
   const [d, setD] = useState(null);
-  const [tab, setTab] = useState("overview");
+  // 開いたらまず今日の記録（メモ）。トレーニング中にそのまま書き始められるように
+  const [tab, setTab] = useState("record");
   const reload = async () => setD(await loadDetail(c));
   useEffect(() => { setD(null); reload(); }, [c.cid]);
 
@@ -264,9 +275,8 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) 
 
       <nav className="kt-tabs">
         {TABS.map(t => (
-          <button key={t.key} className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)}><t.icon size={15} />{t.label}</button>
+          <button key={t.key} className={`${tab === t.key ? "on" : ""}${t.key === "record" ? " rec" : ""}`} onClick={() => setTab(t.key)}><t.icon size={15} />{t.label}</button>
         ))}
-        <button className={`rec${tab === "record" ? " on" : ""}`} onClick={() => setTab("record")}><Pencil size={14} />今日の記録</button>
       </nav>
 
       {!d ? <div className="kt-loading" style={{ minHeight: 200 }}>読み込み中…</div> : (
@@ -558,20 +568,34 @@ function SheetCard({ c, state, flash, onReload }) {
 // ───────────────────────── 今日の記録 ─────────────────────────
 function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
   const allMenus = useMemo(() => [...DEFAULT_MENUS, ...(state.menus || [])], [state.menus]);
-  const [date, setDate] = useState(jstToday());
+  const draft = useMemo(() => { try { return JSON.parse(lsGet(DRAFT_STORAGE(c.cid)) || "null") || {}; } catch (e) { return {}; } }, [c.cid]);
+  const [date, setDate] = useState(draft.date || jstToday());
   const [staff, setStaff] = useState(() => lsGet(STAFF_STORAGE));
   const [cat, setCat] = useState("lower");
-  const [items, setItems] = useState([]);
-  const [condition, setCondition] = useState(null);
-  const [parts, setParts] = useState([]);
-  const [comment, setComment] = useState("");
-  const [memo, setMemo] = useState("");
+  const [items, setItems] = useState(draft.items || []);
+  const [condition, setCondition] = useState(draft.condition ?? null);
+  const [parts, setParts] = useState(draft.parts || []);
+  const [comment, setComment] = useState(draft.comment || "");
+  const [memo, setMemo] = useState(draft.memo || "");
+  const [draftAt, setDraftAt] = useState(draft.at || null);
   const [ticketUsed, setTicketUsed] = useState(c.tickets != null);
   const [sendLine, setSendLine] = useState(!!c.lineUserId && !isDemo);
   const [custom, setCustom] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const last = [...d.karteSessions].sort((a, b) => b.date.localeCompare(a.date))[0];
+
+  // 書いている途中の内容をこの端末に自動で残す（記録したら消す）
+  useEffect(() => {
+    const empty = !items.length && !comment && !memo && condition == null && !parts.length;
+    if (empty) { lsSet(DRAFT_STORAGE(c.cid), ""); return; }
+    const t = setTimeout(() => {
+      const at = new Date().toISOString();
+      lsSet(DRAFT_STORAGE(c.cid), JSON.stringify({ date, items, condition, parts, comment, memo, at }));
+      setDraftAt(at);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [date, items, condition, parts, comment, memo]);
 
   // 種目ごとの前回の数字（選んだときに入れておく）
   const lastOf = name => {
@@ -618,6 +642,7 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
           msg = `記録しました（LINEは送れませんでした: ${e.message}）`;
         }
       }
+      lsSet(DRAFT_STORAGE(c.cid), "");
       flash(msg);
       await onSaved(karte);
     } catch (e) {
@@ -630,6 +655,22 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
   const canSave = items.length > 0 || comment.trim() || memo.trim();
 
   return (
+    <>
+    <div className="kt-card kt-memo kt-live" style={{ marginBottom: 16 }}>
+      <div className="kt-card-h">
+        <div className="kt-eb">TODAY'S MEMO · トレーニング中のメモ<em>スタッフだけが見られます</em></div>
+        <span className="kt-muted">{draftAt ? `自動で下書き保存 ${new Date(draftAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}` : "書いた内容は自動で下書き保存されます"}</span>
+      </div>
+      <div className="kt-live-grid">
+        <textarea className="kt-ta memo" rows={6} value={memo} onChange={e => setMemo(e.target.value)} autoFocus
+          placeholder="気づいたことをそのまま書いていけます（フォームの癖・会話の内容・次回やることなど）" />
+        <div className="kt-live-prev">
+          <small>前回のメモ{last ? `（${ymd(last.date)}）` : ""}</small>
+          <div className="kt-pre">{last?.memo || c.karte?.note || "—"}</div>
+          {last?.memo && c.karte?.note && <><small style={{ marginTop: 10 }}>注意事項</small><div className="kt-pre">{c.karte.note}</div></>}
+        </div>
+      </div>
+    </div>
     <div className="kt-form-grid">
       <div>
         <div className="kt-card" style={{ marginBottom: 16 }}>
@@ -715,9 +756,6 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
           <label className="kt-field"><span>お客様へのコメント<em>アプリ・LINEの「コメント」に届きます</em></span>
             <textarea className="kt-ta" rows={4} value={comment} onChange={e => setComment(e.target.value)} placeholder="今日の良かった点、次回までの宿題など" />
           </label>
-          <label className="kt-field"><span>スタッフメモ<em>スタッフだけが見られます</em></span>
-            <textarea className="kt-ta memo" rows={3} value={memo} onChange={e => setMemo(e.target.value)} placeholder="フォームの癖、次回やること、会話の内容など" />
-          </label>
           {c.tickets != null && (
             <label className="kt-check"><input type="checkbox" checked={ticketUsed} onChange={e => setTicketUsed(e.target.checked)} />
               <div>回数券を1回使う<small>残り {c.tickets}回 → {ticketUsed ? Math.max(0, c.tickets - 1) : c.tickets}回</small></div>
@@ -733,6 +771,7 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

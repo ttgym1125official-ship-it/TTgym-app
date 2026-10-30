@@ -109,7 +109,7 @@
 .kt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line2); margin-bottom: 20px; overflow-x: auto; scrollbar-width: none; }
 .kt-tabs button { height: 44px; padding: 0 16px; font-weight: 700; font-size: 14px; color: var(--sub); border-bottom: 2.5px solid transparent !important; margin-bottom: -1px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .kt-tabs button.on { color: var(--ink); border-bottom-color: var(--ink) !important; }
-.kt-tabs .rec { background: var(--gold); color: var(--dark); border-radius: 999px; height: 34px; margin: 5px 0 0 6px; padding: 0 16px; border: none !important; }
+.kt-tabs .rec { background: var(--gold); color: var(--dark); border-radius: 999px; height: 34px; margin: 5px 8px 0 0; padding: 0 16px; border: none !important; }
 .kt-tabs .rec.on { background: var(--dark); color: #fff; }
 
 /* ── カード ── */
@@ -282,3 +282,16 @@
 @keyframes kt-spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .kt .hide-sm { display: none; } }
 @media (prefers-reduced-motion: reduce) { .kt .spin { animation: none; } }
+
+/* 一覧を隠したとき */
+.kt-body.list-hidden { grid-template-columns: 1fr; }
+.kt-body.list-hidden .kt-main { display: block; }
+.kt-body.list-hidden .kt-back { display: none; }
+
+/* トレーニング中のメモ（今日の記録の一番上） */
+.kt-live .kt-eb em { font-style: normal; font-weight: 500; letter-spacing: 0; color: var(--sub); margin-left: 8px; }
+.kt-live-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; }
+.kt-live .kt-ta.memo { min-height: 150px; font-size: 15px; background: #fff; }
+.kt-live-prev { background: rgba(255,255,255,.6); border-radius: 12px; padding: 10px 12px; font-size: 13px; max-height: 190px; overflow-y: auto; }
+.kt-live-prev small { display: block; font-size: 11px; font-weight: 700; color: var(--gold-text); margin-bottom: 4px; }
+@media (max-width: 900px) { .kt-live-grid { grid-template-columns: 1fr; } }
