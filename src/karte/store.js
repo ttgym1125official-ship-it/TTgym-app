@@ -19,7 +19,10 @@ import { supabase } from "../supabaseClient.js";
 import { sheetRecords, normName, normPhone, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
 
 // TTGYM の顧客スプレッドシート。設定で別のURLを保存したらそちらを使う
-export const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1QRSPuzpMT3gRgXyuxZbjNHyNeSxHUddZw9_4LSERQEs/edit";
+// 「回数券顧客情報」タブ（gid=1425518766）
+export const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1QRSPuzpMT3gRgXyuxZbjNHyNeSxHUddZw9_4LSERQEs/edit#gid=1425518766";
+// 以前の既定（タブ指定なし＝先頭の「顧客データ」タブ）。自動で保存されていたら新しい既定に切り替える
+const OLD_DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1QRSPuzpMT3gRgXyuxZbjNHyNeSxHUddZw9_4LSERQEs/edit";
 
 const parse = (raw, fb) => { try { return raw ? JSON.parse(raw) : fb; } catch (e) { return fb; } };
 
@@ -89,12 +92,12 @@ const sheetDataId = rowKey => `sheet_${rowKey.replace(/[^\w぀-ヿ一-鿿#-]/g, 
 // 読めなかったときは前回読んだ内容を使う
 async function syncSheet(cached) {
   if (demo) return { sheet: cached, error: null };
-  const url = cached?.url?.startsWith("https://") ? cached.url : DEFAULT_SHEET_URL;
+  const url = cached?.url?.startsWith("https://") && cached.url !== OLD_DEFAULT_SHEET_URL ? cached.url : DEFAULT_SHEET_URL;
   try {
     const rows = parseCsv(await fetchSheetCsv(url));
     const det = detectColumns(rows);
     // 見出しが前回と同じなら、設定で選び直した列の対応をそのまま使う
-    const sameHeaders = cached?.rows && JSON.stringify(cached.rows[cached.headerIdx]) === JSON.stringify(rows[det.headerIdx]);
+    const sameHeaders = cached?.rows && cached.url === url && JSON.stringify(cached.rows[cached.headerIdx]) === JSON.stringify(rows[det.headerIdx]);
     const sheet = {
       url, fetchedAt: new Date().toISOString(), rows,
       headerIdx: sameHeaders ? cached.headerIdx : det.headerIdx, columns: sameHeaders ? cached.columns : det.columns,
@@ -187,7 +190,8 @@ export async function loadCustomers() {
     // シートの値が書き換わったら（回数券の購入など）シートの値に合わせ直す
     const sheetTickets = c.sheet?.tickets ?? null;
     c.tickets = k.tickets != null && (sheetTickets == null || k.sheetTickets === sheetTickets) ? k.tickets : sheetTickets ?? k.tickets ?? null;
-    c.lastVisit = k.lastVisit || null;
+    // 最終来店日: カルテの記録とシートの「最後来店日」の新しいほう
+    c.lastVisit = [k.lastVisit || "", c.sheet?.lastVisit || ""].sort().pop() || null;
   }
   list.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || "") || a.name.localeCompare(b.name, "ja"));
   return { customers: list, sheet, sheetError, sheetRows: rows, sheetLinks };

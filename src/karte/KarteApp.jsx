@@ -267,6 +267,7 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) 
             <div className="facts">
               <span><b className="num">{c.age ?? "—"}</b> 歳</span>
               {c.sheet?.plan && <span>{c.sheet.plan}</span>}
+              {c.sheet?.nextReserve && <span>次の予約 <b>{c.sheet.nextReserve}</b></span>}
               <span>来店 <b className="num">{visits ?? "…"}</b> 回</span>
               <span>前回 <b>{c.lastVisit ? `${md(c.lastVisit)}（${ago(c.lastVisit)}）` : "—"}</b></span>
               <Sources c={c} />
