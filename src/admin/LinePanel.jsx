@@ -12,6 +12,7 @@ import { ChevronDown, ChevronRight, Send } from "lucide-react";
 import { calcTargets, sumMeals, buildAdvice, fmt } from "../liff/nutrients.js";
 import { RECIPES } from "../recipes.js";
 import { fileToCompressedDataUrl } from "../imageUtils.js";
+import { MemberRecords } from "./MemberRecords.jsx";
 
 // AdminDashboard.jsx と同じ配色
 const C = {
@@ -216,6 +217,13 @@ function LineUserDetail({ u, members, onChanged, hasKey }) {
             {weights.map(w => <span key={w.id} style={{ marginRight: 12 }}>{w.date.slice(5).replace("-", "/")} {w.weight ? `${w.weight}kg` : ""}{w.bodyFat ? `・${w.bodyFat}%` : ""}</span>)}
           </div>
         </>
+      )}
+
+      <SubLabel>体調・トレーニング・成長・写真・レポート</SubLabel>
+      {u.pid ? (
+        <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.7 }}>アプリ会員と連携済みです。体調・トレーニング・成長・写真・レポートは、下の会員一覧の「{member?.name || "会員"}」の詳細に表示されます。</div>
+      ) : (
+        <MemberRecords memberId={`line_${u.id}`} lineUserId={u.id} profile={p ? { targetCalories: targets?.kcal } : null} showWorkouts />
       )}
 
       <SubLabel>LINEのやりとり</SubLabel>

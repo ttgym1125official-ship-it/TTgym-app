@@ -5,6 +5,7 @@ import { Logo } from "./logo.jsx";
 import { supabase, supabaseConfigured } from "./supabaseClient.js";
 import { fileToCompressedDataUrl } from "./imageUtils.js";
 import { LinePanel, MemberLineBox, RecipeBroadcastStatus, notifyLine } from "./admin/LinePanel.jsx";
+import { MemberRecords } from "./admin/MemberRecords.jsx";
 
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');`;
 
@@ -819,6 +820,10 @@ function MemberDetail({ member, onMemberUpdated }) {
         <KPI label="トレーニング記録" value={data.workouts.length} unit="件" />
         <KPI label="月次測定" value={data.monthly.length} unit="件" />
       </div>
+
+      <Section title="記録・レポート（アプリ・公式LINE）">
+        <MemberRecords memberId={member.id} pid={member.id} lineUserId={profile.lineUserId} profile={profile} />
+      </Section>
 
       <MealLogEditor
         memberId={member.id} meals={data.meals}
