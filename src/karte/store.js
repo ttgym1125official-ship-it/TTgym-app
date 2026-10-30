@@ -195,7 +195,8 @@ export async function loadCustomers() {
     // 最終来店日: カルテの記録とシートの「最後来店日」の新しいほう
     c.lastVisit = [k.lastVisit || "", c.sheet?.lastVisit || ""].sort().pop() || null;
   }
-  list.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || "") || a.name.localeCompare(b.name, "ja"));
+  for (const c of list) c.touchedAt = c.karte.touchedAt || null;
+  sortCustomers(list);
   return { customers: list, sheet, sheetError, sheetRows: rows, sheetLinks };
 }
 
@@ -248,7 +249,17 @@ export async function savePhoto(c, slot, dataUrl) {
   await updateKarte(c, k => ({ ...k, photoDates: { ...(k.photoDates || {}), [slot]: jstToday() } }));
 }
 
-export const updateKarte = (c, fn) => kvUpdate(`karte:${c.dataId}`, {}, fn);
+// カルテで何か更新したら touchedAt を付ける（一覧で一番上に来る）
+export const updateKarte = (c, fn) => kvUpdate(`karte:${c.dataId}`, {}, k => ({ ...fn(k), touchedAt: new Date().toISOString() }));
+
+// 一覧の並び: カルテで更新した人が新しい順に上、そのあとはスプレッドシートの並び順、
+// シートにいない人（アプリ・LINEだけ）は最後に名前順
+export function sortCustomers(list) {
+  return list.sort((a, b) =>
+    (b.touchedAt || "").localeCompare(a.touchedAt || "")
+    || (a.sheet?.order ?? Infinity) - (b.sheet?.order ?? Infinity)
+    || a.name.localeCompare(b.name, "ja"));
+}
 
 // 目標: アプリ会員は会員プロフィール、LINEだけの人は nutri: の goal（LINEの「わたしの目標」と共通）
 export async function saveGoal(c, { goal, targetWeight, targetBodyFat }) {
@@ -256,6 +267,7 @@ export async function saveGoal(c, { goal, targetWeight, targetBodyFat }) {
   if (c.pid) await kvUpdate(`profile:${c.pid}`, { id: c.pid }, p => ({ ...p, ...patch }));
   else if (c.lineUserId) await kvUpdate(`nutri:${c.lineUserId}`, {}, n => ({ ...n, goal: { ...(n.goal || {}), ...patch } }));
   else await updateKarte(c, k => ({ ...k, ...patch }));
+  if (c.pid || c.lineUserId) await updateKarte(c, k => k);
 }
 
 export async function adjustTickets(c, delta, reason, setTo) {
@@ -324,6 +336,7 @@ export async function saveMeasurement(c, m) {
   if (tests.some(k => t[k] != null) || m.note) {
     await kvUpdate(`data:${c.dataId}:monthly`, [], list => [...list, { id: newId(), date: m.date, ...t, note: m.note || "", bridge: false, photoSubmitted: false, source: "karte" }]);
   }
+  await updateKarte(c, k => k);
 }
 
 // ── 共通の設定 ──
