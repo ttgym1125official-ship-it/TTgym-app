@@ -13,6 +13,8 @@ export const SHEET_FIELDS = [
   { key: "phone", label: "電話番号", words: ["電話", "携帯", "tel", "phone"] },
   { key: "plan", label: "プラン", words: ["プラン", "コース", "契約", "メニュー"] },
   { key: "startDate", label: "入会日", words: ["入会日", "開始日", "契約日", "入会"] },
+  { key: "nextReserve", label: "次の予約", words: ["次の予約", "次回予約", "次回"] },
+  { key: "lastVisit", label: "最終来店日", words: ["最後来店日", "最終来店日", "最終来店", "前回来店", "来店日"] },
 ];
 
 // RFC 4180 の CSV（ダブルクォート・改行入りのセルに対応）
@@ -38,6 +40,9 @@ export function parseCsv(text) {
 }
 
 const norm = s => String(s || "").normalize("NFKC").toLowerCase().replace(/[\s　]+/g, "");
+const MEMBER_NO = /^(no\.?|#|会員)?\d{1,5}$/;
+// 漢字・かな・カナだけの2〜12文字（「*井上久良々」のような印つきも）
+const looksLikeName = v => /^[*＊※☆★]?[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー々・ 　]{2,12}$/u.test(v) && !/[0-9０-９]/.test(v);
 
 // 見出しの行（上から5行のうち、名前らしい列がある最初の行）と、各項目の列番号を見つける
 export function detectColumns(rows) {
@@ -53,10 +58,29 @@ export function detectColumns(rows) {
     if (idx < 0) idx = headers.findIndex((h, i) => !used.has(i) && f.words.some(w => norm(h).includes(w)));
     if (idx >= 0) { columns[f.key] = idx; used.add(idx); }
   }
+  // 見出しが「16/60/250」のように名前と分からない列でも、中身から見つける
+  const body = rows.slice(headerIdx + 1);
+  const bestColumn = test => {
+    let best = -1, bestN = 0;
+    for (let i = 0; i < headers.length || i < (body[0] || []).length; i++) {
+      if (used.has(i)) continue;
+      const n = body.filter(r => test(String(r[i] ?? "").trim())).length;
+      if (n > bestN) { best = i; bestN = n; }
+    }
+    return bestN >= Math.max(2, body.length * 0.3) ? best : -1;
+  };
+  if (columns.memberNo == null) {
+    const i = bestColumn(v => MEMBER_NO.test(norm(v)));
+    if (i >= 0) { columns.memberNo = i; used.add(i); }
+  }
+  if (columns.name == null) {
+    const i = bestColumn(looksLikeName);
+    if (i >= 0) { columns.name = i; used.add(i); }
+  }
   return { headerIdx, headers, columns };
 }
 
-export const normName = s => String(s || "").normalize("NFKC").replace(/[\s　・]+/g, "").toLowerCase();
+export const normName = s => String(s || "").normalize("NFKC").replace(/[\s　・*※☆★]+/g, "").toLowerCase();
 export const normPhone = s => String(s || "").replace(/\D/g, "");
 
 const toNumber = v => {
@@ -70,17 +94,46 @@ export function toIsoDate(v) {
   return m ? `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}` : null;
 }
 
+// 「10/30」のような年なしの日付 → 近いほうの年で補う（未来すぎれば去年、過去すぎれば来年）
+function toIsoDateLoose(v) {
+  const full = toIsoDate(v);
+  if (full) return full;
+  const m = String(v || "").normalize("NFKC").match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (!m) return null;
+  const now = new Date();
+  let y = now.getFullYear();
+  const t = Date.UTC(y, Number(m[1]) - 1, Number(m[2]));
+  if (t - now.getTime() > 200 * 86400000) y--;
+  else if (now.getTime() - t > 200 * 86400000) y++;
+  return `${y}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+}
+
 // シートの1行 → { rowKey, name, furigana, age, birthdate, tickets, goal, phone, plan, startDate, raw }
 export function sheetRecords(sheet) {
   if (!sheet?.rows?.length) return [];
   const { headerIdx = 0, columns = {} } = sheet;
-  const headers = sheet.rows[headerIdx] || [];
+  // 見出しが空・名前と分からない列は、カルテでの表示名に置き換える
+  const label = Object.fromEntries(SHEET_FIELDS.map(f => [columns[f.key], f.label]));
+  const headers = (sheet.rows[headerIdx] || []).map((h, i) => {
+    const t = String(h || "").trim();
+    if (i === columns.name || i === columns.memberNo || !t) return label[i] || t;
+    return t;
+  });
   const at = (r, key) => (columns[key] != null ? String(r[columns[key]] ?? "").trim() : "");
   const seen = new Map();
   const out = [];
+  // 会員番号の列があるときは、番号のない行（「VIP 週1回」のような区切りの行）はお客様ではなく、
+  // その下のお客様の会員種別として使う
+  const hasNo = columns.memberNo != null;
+  let section = "";
   for (const r of sheet.rows.slice(headerIdx + 1)) {
     const name = at(r, "name");
     if (!name) continue;
+    if (hasNo && !at(r, "memberNo")) {
+      // 「VIP　週1回　4 /30」「A会員　月1~2回　( 4 /40)」「不定期VIP　4名」→ 人数の部分を外す
+      section = name.normalize("NFKC").replace(/\s*\(?\s*\d+\s*\/\s*\d+\s*\)?\s*$/, "").replace(/\s*\d+名$/, "").replace(/\s+/g, " ").trim();
+      continue;
+    }
     // 行を見分けるキー: 会員番号があればそれ、なければ名前（同じ名前が続いたら連番）
     let rowKey = at(r, "memberNo") ? `no:${at(r, "memberNo")}` : `name:${normName(name)}`;
     const n = (seen.get(rowKey) || 0) + 1;
@@ -96,9 +149,13 @@ export function sheetRecords(sheet) {
       tickets: at(r, "tickets") ? toNumber(at(r, "tickets")) : null,
       goal: at(r, "goal"),
       phone: at(r, "phone"),
-      plan: at(r, "plan"),
+      plan: at(r, "plan") || section,
       startDate: toIsoDate(at(r, "startDate")),
-      raw: Object.fromEntries(headers.map((h, i) => [String(h || `列${i + 1}`).trim(), String(r[i] ?? "").trim()]).filter(([, v]) => v)),
+      nextReserve: at(r, "nextReserve"),
+      lastVisit: toIsoDateLoose(at(r, "lastVisit")),
+      // チェックボックスは ✓ に、空・未チェックは出さない
+      raw: Object.fromEntries(headers.map((h, i) => [String(h || `列${i + 1}`).trim(), String(r[i] ?? "").trim()])
+        .filter(([, v]) => v && v.toUpperCase() !== "FALSE").map(([k, v]) => [k, v.toUpperCase() === "TRUE" ? "✓" : v])),
     });
   }
   return out;
