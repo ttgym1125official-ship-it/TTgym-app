@@ -242,12 +242,15 @@ export function MemberRecords({ memberId, pid = null, lineUserId = null, profile
         <>
           <Label>月次測定</Label>
           {monthly.map(m => (
-            <div key={m.id || m.date} style={row}>
+            <React.Fragment key={m.id || m.date}>
+            <div style={row}>
               <span>{md(m.date)}</span>
               <span style={mono}>
                 {m.situps != null ? `腹筋${m.situps}回 ` : ""}{m.benchMax != null ? `ベンチ${m.benchMax}kg ` : ""}{m.hipThrust != null ? `ヒップ${m.hipThrust}kg ` : ""}{m.bridge ? "ブリッジ○ " : ""}{m.photoSubmitted ? "写真提出○" : ""}
               </span>
             </div>
+            {m.note && <div style={{ fontSize: 11, color: C.ivory, whiteSpace: "pre-wrap", lineHeight: 1.6, padding: "4px 0 6px", borderBottom: `1px solid ${C.cardBorder}` }}>メモ：{m.note}</div>}
+            </React.Fragment>
           ))}
         </>
       )}

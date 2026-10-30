@@ -351,7 +351,7 @@ export default function ReportPanel({ compact = false }) {
             {r.monthly.map(x => (
               <div key={x.id} className="lf-row">
                 <span className="n">{md(x.date)}</span>
-                <span className="v">{[x.situps != null && `腹筋 ${x.situps}回`, x.benchMax != null && `BP ${x.benchMax}kg`, x.hipThrust != null && `HT ${x.hipThrust}kg`, x.bridge && "ブリッジ／倒立◎", x.photoSubmitted && "写真提出済"].filter(Boolean).join(" ・ ")}</span>
+                <span className="v">{[x.situps != null && `腹筋 ${x.situps}回`, x.benchMax != null && `BP ${x.benchMax}kg`, x.hipThrust != null && `HT ${x.hipThrust}kg`, x.bridge && "ブリッジ／倒立◎", x.photoSubmitted && "写真提出済", x.note && `メモ：${x.note}`].filter(Boolean).join(" ・ ")}</span>
               </div>
             ))}
           </div>
