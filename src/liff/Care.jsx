@@ -348,7 +348,7 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
 function GrowthView({ growth, monthly, mutate, toast }) {
   const [goal, setGoal] = useState(null);
   const [v, setV] = useState({ weight: "", bodyFat: "", muscle: "" });
-  const [m, setM] = useState({ situps: "", benchMax: "", hipThrust: "", bridge: false, photoSubmitted: false });
+  const [m, setM] = useState({ situps: "", benchMax: "", hipThrust: "", bridge: false, photoSubmitted: false, note: "" });
   const [reading, setReading] = useState(false);
   const fileRef = useRef(null);
   useEffect(() => { fetchGoal().then(g => setGoal(g.goal)).catch(() => {}); }, []);
@@ -365,9 +365,10 @@ function GrowthView({ growth, monthly, mutate, toast }) {
     setV({ weight: "", bodyFat: "", muscle: "" });
   };
   const saveMonthly = () => {
-    if (!m.situps && !m.benchMax && !m.hipThrust && !m.bridge && !m.photoSubmitted) return;
-    mutate("monthly", p => [{ id: uid(), date: today, situps: num(m.situps), benchMax: num(m.benchMax), hipThrust: num(m.hipThrust), bridge: m.bridge, photoSubmitted: m.photoSubmitted }, ...p], "月次測定を記録しました");
-    setM({ situps: "", benchMax: "", hipThrust: "", bridge: false, photoSubmitted: false });
+    const note = m.note.trim();
+    if (!m.situps && !m.benchMax && !m.hipThrust && !m.bridge && !m.photoSubmitted && !note) return;
+    mutate("monthly", p => [{ id: uid(), date: today, situps: num(m.situps), benchMax: num(m.benchMax), hipThrust: num(m.hipThrust), bridge: m.bridge, photoSubmitted: m.photoSubmitted, note }, ...p], "月次測定を記録しました");
+    setM({ situps: "", benchMax: "", hipThrust: "", bridge: false, photoSubmitted: false, note: "" });
   };
 
   return (
@@ -443,7 +444,9 @@ function GrowthView({ growth, monthly, mutate, toast }) {
           <CheckRow label="ブリッジ／倒立ができるようになった" on={m.bridge} onClick={() => setM({ ...m, bridge: !m.bridge })} />
           <CheckRow label="ボディ写真をトレーナーに提出済み" on={m.photoSubmitted} onClick={() => setM({ ...m, photoSubmitted: !m.photoSubmitted })} />
         </div>
-        <button className="lf-primary" style={{ marginTop: 8 }} onClick={saveMonthly}>月次測定を記録</button>
+        <div style={{ margin: "12px 0 6px", fontSize: 13, fontWeight: 700, color: "var(--sub)" }}>メモ</div>
+        <textarea className="lf-textarea" rows={3} placeholder="例：フォームが安定してきた。姿勢・柔軟性・気づいたことなど" value={m.note} onChange={e => setM({ ...m, note: e.target.value })} />
+        <button className="lf-primary" style={{ marginTop: 12 }} onClick={saveMonthly}>月次測定を記録</button>
       </div>
       {[...monthly].sort((a, b) => b.date.localeCompare(a.date)).map(x => (
         <div key={x.id} className="lf-card" style={{ marginTop: 12 }}>

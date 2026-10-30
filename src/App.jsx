@@ -2222,19 +2222,21 @@ function GrowthTab({ growth, onAdd, onDelete, monthly, onAddMonthly, onDeleteMon
   const [hipThrust, setHipThrust] = useState("");
   const [bridge, setBridge] = useState(false);
   const [photoSubmitted, setPhotoSubmitted] = useState(false);
+  const [monthlyNote, setMonthlyNote] = useState("");
 
   const sortedMonthly = useMemo(() => [...(monthly || [])].sort((a, b) => b.date.localeCompare(a.date)), [monthly]);
 
   function handleSaveMonthly() {
-    if (!situps && !benchMax && !hipThrust && !bridge && !photoSubmitted) return;
+    const note = monthlyNote.trim();
+    if (!situps && !benchMax && !hipThrust && !bridge && !photoSubmitted && !note) return;
     onAddMonthly({
       id: uid(), date: todayISO(),
       situps: situps ? Number(situps) : null,
       benchMax: benchMax ? Number(benchMax) : null,
       hipThrust: hipThrust ? Number(hipThrust) : null,
-      bridge, photoSubmitted,
+      bridge, photoSubmitted, note,
     });
-    setSitups(""); setBenchMax(""); setHipThrust(""); setBridge(false); setPhotoSubmitted(false);
+    setSitups(""); setBenchMax(""); setHipThrust(""); setBridge(false); setPhotoSubmitted(false); setMonthlyNote("");
   }
 
   const sorted = useMemo(() => [...growth].sort((a, b) => a.date.localeCompare(b.date)), [growth]);
@@ -2410,6 +2412,11 @@ JSON以外は一切含めず、次の形式のみを返してください: {"wei
         <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 12, lineHeight: 1.5 }}>
           ※写真データ自体の保存には対応していません。トレーナーへの提出有無のみ記録します。
         </div>
+        <div style={{ fontSize: 10.5, color: CARD_C.dim, marginBottom: 6 }}>メモ</div>
+        <textarea rows={3} placeholder="姿勢・柔軟性・気づいたことなど" value={monthlyNote} onChange={e => setMonthlyNote(e.target.value)} style={{
+          width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.cardBorder}`, background: C.bg, color: C.ivory,
+          fontSize: 13, lineHeight: 1.6, marginBottom: 12, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit",
+        }} />
         <GoldButton onClick={handleSaveMonthly}>月次測定を記録</GoldButton>
       </Card>
 
