@@ -42,7 +42,9 @@ export function parseCsv(text) {
 const norm = s => String(s || "").normalize("NFKC").toLowerCase().replace(/[\s　]+/g, "");
 const MEMBER_NO = /^(no\.?|#|会員)?\d{1,5}$/;
 // 漢字・かな・カナだけの2〜12文字（「*井上久良々」のような印つきも）
-const looksLikeName = v => /^[*＊※☆★◎○●]?[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}A-Za-zＡ-Ｚａ-ｚー々・ 　]{2,16}[*＊※☆★]?$/u.test(v) && !/[0-9０-９]/.test(v) && !/^(true|false)$/i.test(v);
+const looksLikeName = v => /^[*＊※☆★◎○●]?[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}A-Za-zＡ-Ｚａ-ｚー々・ 　]{2,16}[*＊※☆★]?$/u.test(v) && !/[0-9０-９]/.test(v) && !/^(true|false)$/i.test(v) && !NOT_NAMES.test(v.normalize("NFKC").replace(/\s/g, ""));
+// 名前と同じ「漢字2〜3文字」になりやすい、名前ではない値
+const NOT_NAMES = /^(男性?|女性?|未|済|有|無|あり|なし|新規|継続|退会|休会|会員|VIP|.+[区市都県])$/i;
 
 // 見出しの行（上から5行のうち、名前らしい列がある最初の行）と、各項目の列番号を見つける
 export function detectColumns(rows) {
@@ -61,18 +63,25 @@ export function detectColumns(rows) {
   // 見出しが「16/60/250」のように名前と分からない列でも、中身から見つける
   // チェックボックスの列はシートの下までずっと FALSE が入っているので、TRUE/FALSE しかない行は数えない
   const body = rows.slice(headerIdx + 1).filter(r => r.some(c => { const v = String(c).trim().toUpperCase(); return v && v !== "TRUE" && v !== "FALSE"; }));
+  // 当てはまる値の「種類の数」で比べる（「女性」「男性」や「港区」のように同じ値が並ぶ列を名前と間違えないように）
+  const distinct = (i, test) => new Set(body.map(r => String(r[i] ?? "").trim()).filter(test)).size;
+  const minN = Math.min(3, Math.max(1, body.length));
   const bestColumn = test => {
     let best = -1, bestN = 0;
     for (let i = 0; i < headers.length || i < (body[0] || []).length; i++) {
       if (used.has(i)) continue;
-      const n = body.filter(r => test(String(r[i] ?? "").trim())).length;
+      const n = distinct(i, test);
       if (n > bestN) { best = i; bestN = n; }
     }
-    return bestN >= Math.min(3, Math.max(1, body.length)) ? best : -1;
+    return bestN >= minN ? best : -1;
   };
   if (columns.memberNo == null) {
     const i = bestColumn(v => MEMBER_NO.test(norm(v)));
     if (i >= 0) { columns.memberNo = i; used.add(i); }
+  }
+  // 名前は No. のすぐ右にあることが多いので、そこが名前らしければ優先する
+  if (columns.name == null && columns.memberNo != null && !used.has(columns.memberNo + 1) && distinct(columns.memberNo + 1, looksLikeName) >= minN) {
+    columns.name = columns.memberNo + 1; used.add(columns.name);
   }
   if (columns.name == null) {
     const i = bestColumn(looksLikeName);
