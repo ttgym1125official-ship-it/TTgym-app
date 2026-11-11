@@ -178,7 +178,7 @@ export default function KarteApp() {
                 setMenus={menus => setState(s => ({ ...s, menus }))}
               />
             ) : (
-              <Welcome state={state} onSettings={() => setShowSettings(true)} listHidden={listHidden} onShowList={toggleList} />
+              <Welcome state={state} onSettings={() => setShowSettings(true)} listHidden={listHidden} onShowList={toggleList} onSaved={async msg => { flash(msg); await load(); }} />
             )}
           </main>
         </div>
@@ -191,14 +191,163 @@ export default function KarteApp() {
   );
 }
 
-function Welcome({ state, onSettings, listHidden, onShowList }) {
+function Welcome({ state, onSettings, listHidden, onShowList, onSaved }) {
   return (
     <div className="kt-welcome">
       <UserRound size={34} />
       <h2>お客様を選んでください</h2>
       <p>左の一覧から選ぶと、今日のメモ・回数券・目標・成長の記録がひと目で分かります。</p>
       {listHidden && <button className="kt-btn" onClick={onShowList} style={{ marginBottom: 14 }}><PanelLeftOpen size={16} />一覧を表示</button>}
+      <SetupGuide state={state} onSaved={onSaved} onSettings={onSettings} />
       <LinkStatus state={state} onSettings={onSettings} />
+    </div>
+  );
+}
+
+// ───────────────────────── はじめにやること（3つ） ─────────────────────────
+// 全部終わったら表示しない。それぞれその場で終わるようにする（設定画面を探さなくていいように）
+async function checkLineKey(key) {
+  const res = await fetch("/api/line-admin", {
+    method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: "check" }),
+  });
+  return res.ok;
+}
+
+// 名簿の人と公式LINE・アプリの人の組み合わせの候補（似た名前の上位、1人に1つ・名簿の行もかぶらない）
+function linkCandidates(state) {
+  const taken = new Set(state.customers.filter(x => x.kind !== "sheet" && x.sheet).map(x => x.sheet.rowKey));
+  const free = state.sheetRows.filter(r => !taken.has(r.rowKey));
+  const pairs = [];
+  for (const c of state.customers.filter(x => x.group === "other")) {
+    const scored = free.map(r => ({ r, score: Math.max(nameScore(r.name, c.name), nameScore(r.name, c.lineName), nameScore(r.name, c.appName)) }))
+      .filter(x => x.score >= 2).sort((a, b) => b.score - a.score);
+    // 一番似ている候補が1つに決まるときだけ
+    if (scored.length && (scored.length === 1 || scored[0].score > scored[1].score)) pairs.push({ c, r: scored[0].r, score: scored[0].score });
+  }
+  // 同じ名簿の行に2人が当たったら、どちらも外す（取り違えを防ぐ）
+  const count = {};
+  for (const p of pairs) count[p.r.rowKey] = (count[p.r.rowKey] || 0) + 1;
+  return pairs.filter(p => count[p.r.rowKey] === 1);
+}
+
+function SetupGuide({ state, onSaved, onSettings }) {
+  const [open, setOpen] = useState(null);
+  const [calUrl, setCalUrl] = useState(state.calendar?.url || "");
+  const [calMsg, setCalMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [key, setKey] = useState("");
+  const [keyOk, setKeyOk] = useState(null);
+  const [keyMsg, setKeyMsg] = useState("");
+  const candidates = useMemo(() => linkCandidates(state), [state]);
+  const [checked, setChecked] = useState(() => Object.fromEntries(candidates.map(p => [p.c.cid, p.score >= 3])));
+  const unlinked = state.customers.filter(c => c.group === "other").length;
+
+  // この端末に保存してある LINE操作キー（管理画面で入れたものも同じ）が使えるか
+  useEffect(() => {
+    const saved = lsGet(LINE_KEY_STORAGE);
+    if (!saved || isDemo) { setKeyOk(isDemo ? true : false); return; }
+    checkLineKey(saved).then(setKeyOk).catch(() => setKeyOk(false));
+  }, []);
+
+  const calDone = !!state.calendar?.url && !state.calError;
+  const steps = [
+    { key: "cal", done: calDone || isDemo, title: "Googleカレンダーをつなぐ", sub: calDone ? "つながっています" : "今日の予約が自動で出るようになります（2分）" },
+    { key: "line", done: unlinked === 0, title: "公式LINEのお客様を名簿とつなぐ", sub: unlinked ? `あと${unlinked}人（候補が分かる人 ${candidates.length}人）` : "全員つながっています" },
+    { key: "key", done: keyOk === true, title: "LINEにメッセージを送れるようにする", sub: keyOk ? "この端末から送れます" : keyOk === false ? "LINE操作キーを入れる（1回だけ）" : "確認中…" },
+  ];
+  if (steps.every(x => x.done)) return null;
+
+  async function saveCal() {
+    setBusy(true); setCalMsg("");
+    try {
+      const events = await fetchCalendar(calUrl.trim(), state.todayDate);
+      await saveGlobal("karteCalendar", { url: calUrl.trim() });
+      setBusy(false);
+      onSaved(`Googleカレンダーをつなぎました（今日の予定 ${events.length}件）`);
+    } catch (e) {
+      setCalMsg(e.message); setBusy(false);
+    }
+  }
+  async function linkChecked() {
+    setBusy(true);
+    const list = candidates.filter(p => checked[p.c.cid]);
+    for (const p of list) await connectToSheet(p.c, p.r);
+    setBusy(false);
+    onSaved(`${list.length}人を名簿とつなぎました`);
+  }
+  async function saveKey() {
+    setBusy(true); setKeyMsg("");
+    const ok = await checkLineKey(key.trim()).catch(() => false);
+    setBusy(false);
+    if (ok) { lsSet(LINE_KEY_STORAGE, key.trim()); setKeyOk(true); setKey(""); onSaved("LINE操作キーを保存しました。この端末からLINEに送れます"); }
+    else setKeyMsg("キーが違うようです。Vercel の環境変数 ADMIN_API_KEY と同じ文字列を入れてください");
+  }
+
+  return (
+    <div className="kt-card kt-guide" style={{ textAlign: "left" }}>
+      <div className="kt-card-h"><h3>はじめにやること <small>{steps.filter(x => x.done).length}/3 完了</small></h3></div>
+      {steps.map((st, i) => (
+        <div key={st.key} className={`kt-step${st.done ? " done" : ""}`}>
+          <button className="kt-step-h" onClick={() => setOpen(open === st.key ? null : st.key)} disabled={st.done}>
+            <i>{st.done ? <Check size={14} /> : i + 1}</i>
+            <div><b>{st.title}</b><span>{st.sub}</span></div>
+            {!st.done && <span className="kt-link">{open === st.key ? "閉じる" : "やる"}</span>}
+          </button>
+
+          {open === "cal" && st.key === "cal" && (
+            <div className="kt-step-body">
+              <ol className="kt-steps-help">
+                <li><a href="https://calendar.google.com/calendar/u/0/r/settings" target="_blank" rel="noreferrer">Googleカレンダーの設定を開く</a>（予約を入れているアカウントで）</li>
+                <li>左の「マイカレンダーの設定」から予約用のカレンダーを選ぶ</li>
+                <li>下の方の「カレンダーの統合」→「<b>iCal 形式の非公開URL</b>」の横のコピーを押す</li>
+                <li>下に貼り付けて「つないで確認」</li>
+              </ol>
+              <div className="kt-custom" style={{ marginTop: 0 }}>
+                <input className="kt-in" value={calUrl} onChange={e => setCalUrl(e.target.value)} placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" />
+                <button className="kt-btn sm" onClick={saveCal} disabled={busy || !calUrl.trim()}>{busy ? "確認中…" : "つないで確認"}</button>
+              </div>
+              {calMsg && <div className="kt-err">{calMsg}</div>}
+            </div>
+          )}
+
+          {open === "line" && st.key === "line" && (
+            <div className="kt-step-body">
+              {candidates.length > 0 ? (
+                <>
+                  <p className="kt-muted" style={{ marginTop: 0 }}>名前が似ている組み合わせです。合っているものにチェックを付けて「つなぐ」を押してください（よく似ているものは最初からチェック済み）。</p>
+                  {candidates.map(p => (
+                    <label key={p.c.cid} className="kt-pair">
+                      <input type="checkbox" checked={!!checked[p.c.cid]} onChange={e => setChecked({ ...checked, [p.c.cid]: e.target.checked })} />
+                      <span><b>{p.c.lineName || p.c.name}</b><small>{p.c.lineUserId ? "公式LINE" : "アプリ"}{p.c.lineName && p.c.name !== p.c.lineName ? `・${p.c.name}` : ""}</small></span>
+                      <em>→</em>
+                      <span><b>{p.r.memberNo} {p.r.name}</b><small>{p.r.tabLabel}{p.r.section ? `・${p.r.section}` : ""}</small></span>
+                    </label>
+                  ))}
+                  <button className="kt-btn gold" style={{ marginTop: 10 }} onClick={linkChecked} disabled={busy || !candidates.some(p => checked[p.c.cid])}>
+                    {busy ? "つないでいます…" : `チェックした${candidates.filter(p => checked[p.c.cid]).length}人をつなぐ`}
+                  </button>
+                </>
+              ) : <p className="kt-muted" style={{ marginTop: 0 }}>名前から候補が分かる人はいませんでした。</p>}
+              {unlinked > candidates.length && (
+                <p className="kt-muted">残りの人（LINEの名前がニックネームの人など）は <button className="kt-link" onClick={onSettings}>設定の「公式LINEのお客様を名簿とつなぐ」</button> で1人ずつ No. を選んでください。</p>
+              )}
+            </div>
+          )}
+
+          {open === "key" && st.key === "key" && (
+            <div className="kt-step-body">
+              <p className="kt-muted" style={{ marginTop: 0 }}>
+                管理画面（/admin）の「LINE操作キー」と同じものです（Vercel の環境変数 <b>ADMIN_API_KEY</b> に入れた文字列）。この端末に1回入れれば、カルテの記録をLINEに送れます。
+              </p>
+              <div className="kt-custom" style={{ marginTop: 0 }}>
+                <input className="kt-in" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder="LINE操作キー" />
+                <button className="kt-btn sm" onClick={saveKey} disabled={busy || !key.trim()}>{busy ? "確認中…" : "確認して保存"}</button>
+              </div>
+              {keyMsg && <div className="kt-err">{keyMsg}</div>}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
