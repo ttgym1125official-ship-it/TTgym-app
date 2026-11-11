@@ -81,7 +81,7 @@ export function demoEntries() {
     },
     [`data:line_Udemo2:conditions`]: conditions(4),
     // LINEの名前がニックネームで、名簿と合わない人（設定・一覧の「名簿にいない人」からつなぐ）
-    [`nutri:Udemo3`]: { line: { displayName: "まお🍑", pictureUrl: null }, profile: { age: 29 }, meals: [], weights: [], water: {}, followedAt: `${day(-5)}T09:00:00Z` },
+    [`nutri:Udemo3`]: { line: { displayName: "まお🍑", pictureUrl: null }, profile: { age: 29, fullName: "小林まお" }, meals: [], weights: [], water: {}, followedAt: `${day(-5)}T09:00:00Z` },
     [`nutri:Udemo4`]: { line: { displayName: "中村ひな", pictureUrl: null }, profile: { fullName: "中村 陽菜" }, meals: [], weights: [], water: {}, followedAt: `${day(-2)}T09:00:00Z` },
     [`nutri_photo:Udemo2:before`]: silhouette(112, "#D8C3A5", "BEFORE"),
 
