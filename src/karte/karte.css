@@ -297,3 +297,45 @@
 @media (max-width: 900px) { .kt-live-grid { grid-template-columns: 1fr; } }
 
 .kt-banner { display: flex; align-items: center; gap: 8px; padding: 10px 20px; background: var(--red-soft); color: var(--red-text); font-size: 13px; font-weight: 600; }
+
+/* ── 一覧: 本日の予約・回数券・月額 ── */
+.kt-groups { display: flex; gap: 4px; padding: 0 12px 10px; }
+.kt-groups button { flex: 1; min-width: 0; height: 40px; border-radius: 10px; background: #fff; border: 1px solid var(--line2) !important; font-size: 13px; font-weight: 700; color: var(--sub); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; white-space: nowrap; }
+.kt-groups button .n { font-size: 10.5px; font-weight: 600; opacity: .75; }
+.kt-groups button.on { background: var(--dark); border-color: var(--dark) !important; color: #fff; }
+.kt-sec { position: sticky; top: 0; z-index: 2; margin: 10px 2px 4px; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--sec) 26%, #FAF8F4); border-left: 5px solid var(--sec); color: var(--ink); }
+.kt-row { padding: 0; display: flex; align-items: center; gap: 0; }
+.kt-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 10px; text-align: left; border-radius: 12px; }
+.kt-no { width: 46px; flex-shrink: 0; font-size: 11.5px; font-weight: 800; color: var(--gold-text); font-variant-numeric: tabular-nums; }
+.kt-time { width: 46px; flex-shrink: 0; font-size: 13px; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; }
+.kt-row-x { color: var(--dim); padding: 8px; display: flex; }
+.kt-row-x:hover { color: var(--red-text); }
+.kt .kt-row { flex-wrap: wrap; }
+.kt-ev-note { width: 100%; display: flex; align-items: center; gap: 4px; padding: 0 12px 8px 66px; margin-top: -6px; font-size: 11px; color: var(--sub); }
+.kt-ev-note button { color: var(--green); font-weight: 700; margin-left: auto; }
+.kt-ev-unknown { padding: 9px 10px; gap: 10px; flex-wrap: nowrap; background: #FFFBEF; margin-bottom: 4px; }
+.kt-ev-unknown .who { flex: 1; min-width: 0; }
+.kt-today-h { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 10px; font-size: 13px; font-weight: 700; color: var(--sub); }
+.kt-today-h span { display: inline-flex; align-items: center; gap: 6px; }
+.kt-picker { background: #fff; border: 1px solid var(--line2); border-radius: 12px; padding: 8px; margin: 0 0 10px; }
+.kt-picker .kt-search label button { color: var(--dim); display: flex; }
+.kt-search label button { color: var(--dim); display: flex; }
+.kt-picker-list { max-height: 280px; overflow-y: auto; margin-top: 6px; }
+.kt-picker-list button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-radius: 8px; text-align: left; font-size: 14px; font-weight: 600; }
+.kt-picker-list button:hover { background: var(--bg); }
+.kt-picker-list small { margin-left: auto; font-size: 11px; color: var(--sub); font-weight: 500; }
+.kt-list-note { font-size: 12px; color: var(--sub); background: #FFFBEF; border-radius: 10px; padding: 8px 10px; margin: 0 2px 8px; line-height: 1.6; }
+.kt-hero-no { background: var(--dark); color: #fff; border-radius: 6px; padding: 1px 8px; margin-right: 8px; letter-spacing: 0; }
+.kt-id .kana span { margin-right: 8px; }
+
+/* 連携状況 */
+.kt-status { margin-top: 18px; }
+.kt-status-row { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.kt-status-row:first-of-type { border-top: none; }
+.kt-status-row i { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; font-size: 13px; background: var(--gold-soft); color: var(--gold-text); }
+.kt-status-row.ok i { background: var(--green-soft); color: var(--green); }
+.kt-status-row b { display: block; font-size: 14px; }
+.kt-status-row span { font-size: 12.5px; color: var(--sub); line-height: 1.6; }
+.kt-linkrow { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.3fr); gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.kt-linkrow .who b { display: block; font-size: 14px; }
+.kt-linkrow .who small { font-size: 11.5px; color: var(--sub); }

@@ -80,19 +80,55 @@ export function demoEntries() {
       weights: [{ id: "lw1", date: day(-20), weight: 54.8 }, { id: "lw2", date: day(-10), weight: 54.1 }, { id: "lw3", date: day(-1), weight: 53.5 }], meals: [], water: {}, followedAt: `${day(-21)}T09:00:00Z`,
     },
     [`data:line_Udemo2:conditions`]: conditions(4),
+    // LINEの名前がニックネームで、名簿と合わない人（設定・一覧の「名簿にいない人」からつなぐ）
+    [`nutri:Udemo3`]: { line: { displayName: "まお🍑", pictureUrl: null }, profile: { age: 29 }, meals: [], weights: [], water: {}, followedAt: `${day(-5)}T09:00:00Z` },
+    [`nutri:Udemo4`]: { line: { displayName: "中村ひな", pictureUrl: null }, profile: { fullName: "中村 陽菜" }, meals: [], weights: [], water: {}, followedAt: `${day(-2)}T09:00:00Z` },
     [`nutri_photo:Udemo2:before`]: silhouette(112, "#D8C3A5", "BEFORE"),
 
+    // 本物の名簿と同じ形（No.・名前・残り回数、区切りの行、案件の行）
     "global:karteSheet": {
-      url: "https://docs.google.com/spreadsheets/d/DEMO/edit#gid=0", fetchedAt: new Date().toISOString(), headerIdx: 0,
-      columns: { memberNo: 0, name: 1, furigana: 2, age: 3, plan: 4, tickets: 5, goal: 6, phone: 7, startDate: 8 },
-      rows: [
-        ["会員番号", "氏名", "フリガナ", "年齢", "プラン", "残り回数", "目標", "電話番号", "入会日"],
-        ["1001", "佐藤 美咲", "サトウ ミサキ", "34", "16回券", "8", "ダイエット", "090-1111-2222", "2026/08/20"],
-        ["1002", "鈴木 健太", "スズキ ケンタ", "40", "8回券", "2", "筋力アップ", "080-3333-4444", "2026/07/01"],
-        ["1003", "高橋 由佳", "タカハシ ユカ", "34", "8回券", "5", "産後ダイエット", "070-5555-6666", "2026/10/01"],
-        ["1004", "伊藤 誠", "イトウ マコト", "52", "回数券24回", "14", "腰痛改善・姿勢改善", "090-7777-8888", "2026/05/12"],
+      tabs: [
+        {
+          kind: "ticket", label: "回数券", url: "https://docs.google.com/spreadsheets/d/DEMO/edit#gid=1", fetchedAt: new Date().toISOString(), headerIdx: 0,
+          columns: { memberNo: 0, name: 1, tickets: 2, nextReserve: 3, lastVisit: 4, age: 5, phone: 6 },
+          rows: [
+            ["", "16/60/250", "残り回数", "次の予約", "最後来た日", "年齢", "電話番号"],
+            ["", "VVIP  週2回以上　5 /20", "", "", "", "", ""],
+            ["No.1", "佐藤美咲", "8", "11/13", "11/10", "34", "090-1111-2222"],
+            ["No.2", "鈴木健太", "2", "", "11/2", "40", "080-3333-4444"],
+            ["", "VIP　週1回　4 /30", "", "", "", "", ""],
+            ["No.6", "伊藤誠", "14", "11/12", "11/5", "52", "090-7777-8888"],
+            ["No.7", "⭐︎小林真央", "6", "", "10/29", "29", ""],
+            ["", " A会員  月1~2回（  4　/40 ）", "", "", "", "", ""],
+            ["No.12", "高橋由佳", "5", "", "10/20", "34", "070-5555-6666"],
+            ["No.13", "中村陽菜", "21", "", "8/25", "26", ""],
+            ["", "案件", "", "", "", "", ""],
+            ["", "山本花子(案件)", "30", "", "案件", "", ""],
+          ],
+        },
+        {
+          kind: "monthly", label: "月額", url: "https://docs.google.com/spreadsheets/d/DEMO/edit#gid=2", fetchedAt: new Date().toISOString(), headerIdx: 0,
+          columns: { memberNo: 0, name: 1, age: 3 },
+          rows: [
+            ["", " ", "週何回", "年齢"],
+            ["", "通い放題　10 /200", "", ""],
+            ["No.1", "甲田千尋", "2", "31"],
+            ["No.2", "山田美花", "3", "28"],
+            ["", "解約", "", ""],
+            ["", "星野りま", "", "35"],
+          ],
+        },
       ],
     },
     "global:karteStaff": ["田中", "山本", "佐々木"],
   };
+}
+
+// デモの Google カレンダー（今日の予定）
+export function demoCalendar() {
+  return [
+    { summary: "佐藤美咲様 パーソナル", start: "10:00", end: "11:00", allDay: false },
+    { summary: "No.6 伊藤", start: "13:00", end: "14:00", allDay: false },
+    { summary: "体験 田中さん", start: "18:00", end: "19:00", allDay: false },
+  ];
 }
