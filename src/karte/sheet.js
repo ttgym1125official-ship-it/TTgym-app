@@ -123,7 +123,8 @@ export function toIsoDate(v) {
 }
 
 // 「10/30」のような年なしの日付 → 近いほうの年で補う（未来すぎれば去年、過去すぎれば来年）
-function toIsoDateLoose(v) {
+// past: 来店日のように必ず過去の日付（今日より後になるなら去年）
+function toIsoDateLoose(v, { past = false } = {}) {
   const full = toIsoDate(v);
   if (full) return full;
   const m = String(v || "").normalize("NFKC").match(/^(\d{1,2})\/(\d{1,2})$/);
@@ -135,8 +136,8 @@ function toIsoDateLoose(v) {
   const now = new Date();
   let y = now.getFullYear();
   const t = Date.UTC(y, Number(m[1]) - 1, Number(m[2]));
-  if (t - now.getTime() > 200 * 86400000) y--;
-  else if (now.getTime() - t > 200 * 86400000) y++;
+  if (past ? t > now.getTime() + 86400000 : t - now.getTime() > 200 * 86400000) y--;
+  else if (!past && now.getTime() - t > 200 * 86400000) y++;
   return `${y}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
 }
 
@@ -192,7 +193,7 @@ export function sheetRecords(sheet, tab = { kind: "ticket", label: "回数券" }
       plan: at(r, "plan") || section,
       startDate: toIsoDate(at(r, "startDate")),
       nextReserve: at(r, "nextReserve"),
-      lastVisit: toIsoDateLoose(at(r, "lastVisit")),
+      lastVisit: toIsoDateLoose(at(r, "lastVisit"), { past: true }),
       // チェックボックスは ✓ に、空・未チェックは出さない
       raw: Object.fromEntries(headers.map((h, i) => [String(h || `列${i + 1}`).trim(), String(r[i] ?? "").trim()])
         .filter(([, v]) => v && v.toUpperCase() !== "FALSE").map(([k, v]) => [k, v.toUpperCase() === "TRUE" ? "✓" : v])),
