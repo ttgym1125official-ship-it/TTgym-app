@@ -6,12 +6,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import {
   Search, Settings, RefreshCw, ChevronLeft, Minus, Plus, Check, X, Pencil, Trash2, Camera,
-  ArrowDownRight, ArrowUpRight, ClipboardList, History, TrendingUp, Image as ImageIcon, UserRound, RotateCcw, FileSpreadsheet, PanelLeftClose, PanelLeftOpen,
+  ArrowDownRight, ArrowUpRight, ClipboardList, History, TrendingUp, Image as ImageIcon, UserRound, RotateCcw, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, CalendarDays, Link2,
 } from "lucide-react";
 import "./karte.css";
 import {
   loadCustomers, loadDetail, saveSession, deleteSession, saveMeasurement, saveGoal, savePhoto, adjustTickets, updateKarte,
-  loadGlobal, saveGlobal, linkSheetRow, sortCustomers, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, DEFAULT_SHEET_URL,
+  loadGlobal, saveGlobal, linkSheetRow, sortCustomers, sheetTabs, nameScore, connectToSheet,
+  loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary,
 } from "./store.js";
 import { MENU_CATEGORIES, DEFAULT_MENUS, DAY_CONDITIONS, BODY_PARTS } from "./menus.js";
 import { SHEET_FIELDS, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
@@ -44,7 +45,7 @@ async function notifyLine(lineUserId, text) {
 function Avatar({ c, lg }) {
   return (
     <div className={`kt-av${lg ? " lg" : ""}`} style={{ background: c.avatarColor || undefined }}>
-      {c.avatar ? <img src={c.avatar} alt="" /> : (c.name || "?").charAt(0)}
+      {c.avatar ? <img src={c.avatar} alt="" /> : (String(c.name || "").match(/\p{L}/u) || ["?"])[0]}
     </div>
   );
 }
@@ -80,13 +81,27 @@ export default function KarteApp() {
 
   async function load() {
     try {
-      const [base, menus, staff] = await Promise.all([loadCustomers(), loadGlobal("karteMenus", []), loadGlobal("karteStaff", [])]);
-      setState({ ...base, menus, staff });
+      const today = jstToday();
+      const [base, menus, staff, calendar, calMap, todayList] = await Promise.all([
+        loadCustomers(), loadGlobal("karteMenus", []), loadGlobal("karteStaff", []),
+        loadGlobal("karteCalendar", {}), loadGlobal("karteCalendarMap", {}), loadToday(today),
+      ]);
+      // Google カレンダーの今日の予定（設定でURLを入れたときだけ）
+      let events = [], calError = "";
+      if (calendar?.url || isDemo) {
+        try { events = await fetchCalendar(calendar?.url || "", today); } catch (e) { calError = e.message; }
+      }
+      setState({ ...base, menus, staff, calendar: calendar || {}, calMap: calMap || {}, today: todayList, todayDate: today, events, calError });
       setError("");
     } catch (e) {
       setError(`読み込めませんでした: ${e.message}`);
     }
   }
+  // シート・LINE・カレンダーを5分ごとに読み直す（画面を開いているときだけ）
+  useEffect(() => {
+    const t = setInterval(() => { if (document.visibilityState === "visible") load(); }, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => {
     (async () => {
       if (isDemo) seedDemo((await import("./demoData.js")).demoEntries());
@@ -115,6 +130,21 @@ export default function KarteApp() {
   }));
   const current = state?.customers.find(c => c.cid === selected) || null;
 
+  // 本日の予約: 手で追加・外す、カレンダーの予定にお客様を割り当てる（次からは同じ予定名で自動）
+  async function addToday(cid, time = "") {
+    const next = await updateToday(state.todayDate, t => ({ items: [...(t.items || []).filter(x => x.cid !== cid), { cid, time }] }));
+    setState(s => ({ ...s, today: next }));
+  }
+  async function removeToday(cid) {
+    const next = await updateToday(state.todayDate, t => ({ items: (t.items || []).filter(x => x.cid !== cid) }));
+    setState(s => ({ ...s, today: next }));
+  }
+  async function assignEvent(ev, cid) {
+    const map = { ...state.calMap, [calendarKey(ev.summary)]: cid || undefined };
+    await saveGlobal("karteCalendarMap", map);
+    setState(s => ({ ...s, calMap: map }));
+  }
+
   return (
     <div className="kt">
       <header className="kt-head">
@@ -137,14 +167,14 @@ export default function KarteApp() {
       )}
       {state && (
         <div className={`kt-body${current ? " has-sel" : ""}${listHidden ? " list-hidden" : ""}`}>
-          {!listHidden && <CustomerList customers={state.customers} selected={selected} onSelect={setSelected} />}
+          {!listHidden && <CustomerList state={state} selected={selected} onSelect={setSelected} onAddToday={addToday} onRemoveToday={removeToday} onAssignEvent={assignEvent} />}
           <main className="kt-main">
             {current ? (
               <CustomerView
                 key={current.cid} c={current} state={state}
                 onBack={() => setSelected(null)}
                 onPatch={patch => patchCustomer(current.cid, patch)}
-                onReload={refresh} flash={flash}
+                onReload={refresh} flash={flash} onSelect={setSelected}
                 setMenus={menus => setState(s => ({ ...s, menus }))}
               />
             ) : (
@@ -162,74 +192,195 @@ export default function KarteApp() {
 }
 
 function Welcome({ state, onSettings, listHidden, onShowList }) {
-  const cs = state.customers;
   return (
     <div className="kt-welcome">
       <UserRound size={34} />
       <h2>お客様を選んでください</h2>
-      <p>左の一覧から選ぶと、目標・回数券・成長の記録・前回のメニューがひと目で分かります。</p>
-      <div className="stats">
-        <div><b className="num">{cs.length}</b>お客様</div>
-        <div><b className="num">{cs.filter(c => c.tickets != null && c.tickets <= LOW_TICKETS).length}</b>回数券わずか</div>
-        <div><b className="num">{cs.filter(c => c.lineUserId).length}</b>LINE連携</div>
-      </div>
-      {listHidden && <button className="kt-btn" onClick={onShowList} style={{ marginBottom: 10 }}><PanelLeftOpen size={16} />一覧を表示</button>}
-      {!state.sheet && (
-        <button className="kt-btn gold" onClick={onSettings}><FileSpreadsheet size={16} />顧客スプレッドシートをつなぐ</button>
-      )}
+      <p>左の一覧から選ぶと、今日のメモ・回数券・目標・成長の記録がひと目で分かります。</p>
+      {listHidden && <button className="kt-btn" onClick={onShowList} style={{ marginBottom: 14 }}><PanelLeftOpen size={16} />一覧を表示</button>}
+      <LinkStatus state={state} onSettings={onSettings} />
+    </div>
+  );
+}
+
+// 連携状況（スプレッドシート・公式LINE・アプリ・Googleカレンダーがどこまでつながっているか）
+function LinkStatus({ state, onSettings }) {
+  const cs = state.customers;
+  const tabs = sheetTabs(state.sheet);
+  const inSheet = cs.filter(c => c.group !== "other");
+  const lineAll = cs.filter(c => c.lineUserId);
+  const lineLinked = lineAll.filter(c => c.group !== "other");
+  const appAll = cs.filter(c => c.pid);
+  const events = state.events || [];
+  const matched = events.filter(ev => matchEvent(ev, cs, state.calMap));
+  const Row = ({ ok, title, children }) => (
+    <div className={`kt-status-row${ok ? " ok" : ""}`}><i>{ok ? <Check size={14} /> : "!"}</i><div><b>{title}</b><span>{children}</span></div></div>
+  );
+  return (
+    <div className="kt-card kt-status" style={{ textAlign: "left" }}>
+      <div className="kt-card-h"><h3>連携状況</h3><button className="kt-link" onClick={onSettings}><Settings size={13} />設定</button></div>
+      <Row ok={!state.sheetError && inSheet.length > 0} title="スプレッドシート">
+        {tabs.map(t => `${t.label} ${inSheet.filter(c => c.group === t.kind).length}人`).join("・")}
+        {tabs[0]?.fetchedAt ? `（${new Date(tabs[0].fetchedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} 読み込み・5分ごとに自動で読み直し）` : ""}
+        {state.sheetError ? ` ／ ${state.sheetError}` : ""}
+      </Row>
+      <Row ok={lineAll.length > 0 && lineLinked.length === lineAll.length} title="公式LINE">
+        {lineAll.length}人のうち {lineLinked.length}人が名簿（No.）とつながっています
+        {lineAll.length > lineLinked.length ? `。残り${lineAll.length - lineLinked.length}人は設定の「公式LINEのお客様を名簿とつなぐ」か一覧の「名簿にいない人」から選べます` : ""}
+      </Row>
+      <Row ok={appAll.length === 0 || appAll.every(c => c.group !== "other")} title="TTGYMアプリ">
+        会員 {appAll.length}人（名簿とつながっている人 {appAll.filter(c => c.group !== "other").length}人）
+      </Row>
+      <Row ok={!!(state.calendar?.url || isDemo) && !state.calError} title="Googleカレンダー">
+        {!(state.calendar?.url || isDemo) ? "まだつながっていません。設定で「iCal形式の非公開URL」を入れると、今日の予定が「本日の予約」に出ます"
+          : state.calError ? state.calError : `今日の予定 ${events.length}件（お客様と分かったもの ${matched.length}件）`}
+      </Row>
     </div>
   );
 }
 
 // ───────────────────────── 一覧 ─────────────────────────
-const FILTERS = [
-  { key: "all", label: "すべて", test: () => true },
-  { key: "low", label: "回数券わずか", test: c => c.tickets != null && c.tickets <= LOW_TICKETS },
-  { key: "line", label: "LINE", test: c => !!c.lineUserId },
-  { key: "sheet", label: "シートのみ", test: c => c.kind === "sheet" },
-];
+const LIST_TAB_STORAGE = "ttgym_karte_list_tab";
+const sectionColor = sec => /VVIP/i.test(sec) ? "#E5484D" : /VIP/i.test(sec) && /不定期/.test(sec) ? "#8BC48A" : /VIP/i.test(sec) ? "#F2C94C"
+  : /A会員/.test(sec) ? "#4CC35A" : /マーカー/.test(sec) ? "#D94BC8" : /通い放題/.test(sec) ? "#4A90D9" : /解約|幽霊/.test(sec) ? "#A8A59D" : "#C9C4B8";
+const normQ = s => String(s || "").normalize("NFKC").replace(/[\s　]+/g, "").toLowerCase();
 
-function CustomerList({ customers, selected, onSelect }) {
+function CustomerRow({ c, selected, onSelect, time, extra }) {
+  const low = c.tickets != null && c.tickets <= LOW_TICKETS;
+  return (
+    <div className={`kt-row${selected === c.cid ? " on" : ""}`}>
+      <button className="kt-row-main" onClick={() => onSelect(c.cid)}>
+        {time != null ? <span className="kt-time">{time || "—"}</span> : <span className="kt-no">{c.memberNo ? c.memberNo.replace(/^no\.?/i, "No.") : ""}</span>}
+        <div className="who">
+          <div className="nm">{c.name}<Sources c={c} /></div>
+          <div className="meta">
+            {[c.group === "other" ? "名簿にいない人" : time != null ? c.section : null, c.lastVisit ? `来店 ${ago(c.lastVisit)}` : null, c.sheet?.nextReserve ? `次 ${c.sheet.nextReserve}` : null].filter(Boolean).join(" ・ ")}
+          </div>
+        </div>
+        <div className={`kt-tk${low ? " low" : ""}`}>
+          <em>残り</em>
+          {c.tickets != null ? <><b className="num">{c.tickets}</b><small>回</small></> : <small>—</small>}
+        </div>
+      </button>
+      {extra}
+    </div>
+  );
+}
+
+// 名前を選ぶ（本日の予約への追加・カレンダーの予定への割り当て）
+function CustomerPicker({ customers, onPick, onCancel, placeholder = "名前・No.で探す" }) {
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState("all");
-  const norm = s => String(s || "").replace(/[\s　]+/g, "").toLowerCase();
-  const shown = useMemo(() => {
-    const f = FILTERS.find(x => x.key === filter);
-    const nq = norm(q);
-    return customers.filter(f.test).filter(c => !nq || [c.name, c.furigana, c.lineName, c.phone, c.sheet?.memberNo].some(v => norm(v).includes(nq)));
-  }, [customers, q, filter]);
+  const nq = normQ(q);
+  const hits = customers.filter(c => c.group !== "other" || c.lineUserId)
+    .filter(c => !nq || [c.name, c.memberNo, c.appName, c.lineName].some(v => normQ(v).includes(nq))).slice(0, 30);
+  return (
+    <div className="kt-picker">
+      <div className="kt-search" style={{ padding: 0 }}>
+        <label><Search size={16} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder} /><button onClick={onCancel} aria-label="閉じる"><X size={16} /></button></label>
+      </div>
+      <div className="kt-picker-list">
+        {hits.map(c => (
+          <button key={c.cid} onClick={() => onPick(c)}>
+            <span className="kt-no">{c.memberNo}</span>{c.name}<small>{c.group === "ticket" ? "回数券" : c.group === "monthly" ? "月額" : "LINE"}{c.section ? `・${c.section}` : ""}</small>
+          </button>
+        ))}
+        {hits.length === 0 && <div className="kt-list-empty">見つかりません</div>}
+      </div>
+    </div>
+  );
+}
+
+function TodayList({ state, selected, onSelect, onAddToday, onRemoveToday, onAssignEvent }) {
+  const [adding, setAdding] = useState(false);
+  const [assigning, setAssigning] = useState(null);
+  const byCid = Object.fromEntries(state.customers.map(c => [c.cid, c]));
+  const events = (state.events || []).map(ev => ({ ev, c: matchEvent(ev, state.customers, state.calMap) }));
+  const fromCal = new Set(events.filter(x => x.c).map(x => x.c.cid));
+  const manual = (state.today?.items || []).filter(x => byCid[x.cid] && !fromCal.has(x.cid));
+  return (
+    <div>
+      <div className="kt-today-h">
+        <span><CalendarDays size={14} />{state.todayDate?.replace(/-/g, "/")}</span>
+        {!adding && <button className="kt-btn sm" onClick={() => setAdding(true)}><Plus size={14} />予約を追加</button>}
+      </div>
+      {adding && <CustomerPicker customers={state.customers} onCancel={() => setAdding(false)} onPick={c => { onAddToday(c.cid); setAdding(false); }} placeholder="予約の人を名前・No.で探す" />}
+      {state.calError && <div className="kt-err" style={{ padding: "0 12px 8px" }}>カレンダー: {state.calError}</div>}
+      {events.map(({ ev, c }, i) => c ? (
+        <CustomerRow key={`ev${i}`} c={c} selected={selected} onSelect={onSelect} time={ev.allDay ? "終日" : ev.start}
+          extra={<div className="kt-ev-note"><CalendarDays size={11} />{ev.summary}<button onClick={() => setAssigning(i)}>変更</button></div>} />
+      ) : (
+        <div key={`ev${i}`} className="kt-row kt-ev-unknown">
+          <span className="kt-time">{ev.allDay ? "終日" : ev.start}</span>
+          <div className="who"><div className="nm">{ev.summary}</div><div className="meta">カレンダーの予定（お客様が分かりません）</div></div>
+          <button className="kt-btn ghost sm" onClick={() => setAssigning(i)}>名前を選ぶ</button>
+        </div>
+      ))}
+      {assigning != null && (
+        <CustomerPicker customers={state.customers} onCancel={() => setAssigning(null)}
+          onPick={c => { onAssignEvent(events[assigning].ev, c.cid); setAssigning(null); }} placeholder={`「${events[assigning].ev.summary}」は誰？`} />
+      )}
+      {manual.map(x => (
+        <CustomerRow key={x.cid} c={byCid[x.cid]} selected={selected} onSelect={onSelect} time={x.time}
+          extra={<button className="kt-row-x" onClick={() => onRemoveToday(x.cid)} aria-label="本日の予約から外す"><X size={15} /></button>} />
+      ))}
+      {events.length === 0 && manual.length === 0 && !adding && (
+        <div className="kt-list-empty">本日の予約はまだありません。<br />「予約を追加」で名前を選ぶか、設定でGoogleカレンダーをつなぐと自動で出ます</div>
+      )}
+    </div>
+  );
+}
+
+function CustomerList({ state, selected, onSelect, onAddToday, onRemoveToday, onAssignEvent }) {
+  const customers = state.customers;
+  const [q, setQ] = useState("");
+  const calCids = new Set((state.events || []).map(ev => matchEvent(ev, customers, state.calMap)?.cid).filter(Boolean));
+  const todayCount = (state.events || []).length + (state.today?.items || []).filter(x => !calCids.has(x.cid)).length;
+  const [tab, setTab] = useState(() => lsGet(LIST_TAB_STORAGE) || (todayCount ? "today" : "ticket"));
+  const choose = t => { setTab(t); lsSet(LIST_TAB_STORAGE, t); };
+  const others = customers.filter(c => c.group === "other");
+  const LIST_TABS = [
+    { key: "today", label: "本日の予約", n: todayCount },
+    { key: "ticket", label: "回数券", n: customers.filter(c => c.group === "ticket").length },
+    { key: "monthly", label: "月額", n: customers.filter(c => c.group === "monthly").length },
+    ...(others.length ? [{ key: "other", label: "未連携", n: others.length }] : []),
+  ];
+  const nq = normQ(q);
+  const searched = nq ? customers.filter(c => [c.name, c.memberNo, c.appName, c.lineName, c.phone].some(v => normQ(v).includes(nq))) : null;
+  const shown = searched || customers.filter(c => c.group === tab);
+  // 区切り（VVIP・VIP・A会員…）ごとに見出しを入れる
+  const rows = [];
+  let last = null;
+  for (const c of shown) {
+    const sec = searched ? null : c.group === "other" ? null : c.section || "";
+    if (sec != null && sec !== last) { rows.push({ sec }); last = sec; }
+    rows.push({ c });
+  }
   return (
     <aside className="kt-side">
       <div className="kt-search">
-        <label><Search size={17} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="名前・フリガナ・電話番号で検索" /></label>
+        <label><Search size={17} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="名前・No.で検索" />{q && <button onClick={() => setQ("")} aria-label="消す"><X size={15} /></button>}</label>
       </div>
-      <div className="kt-filters">
-        {FILTERS.map(f => (
-          <button key={f.key} className={`kt-chip${filter === f.key ? " on" : ""}`} onClick={() => setFilter(f.key)}>
-            {f.label}<span className="n">{customers.filter(f.test).length}</span>
-          </button>
-        ))}
-      </div>
+      {!searched && (
+        <div className="kt-groups">
+          {LIST_TABS.map(t => (
+            <button key={t.key} className={tab === t.key ? "on" : ""} onClick={() => choose(t.key)}>{t.label}<span className="n">{t.n}</span></button>
+          ))}
+        </div>
+      )}
       <div className="kt-list">
-        {shown.length === 0 && <div className="kt-list-empty">該当するお客様がいません</div>}
-        {shown.map(c => {
-          const low = c.tickets != null && c.tickets <= LOW_TICKETS;
-          return (
-            <button key={c.cid} className={`kt-row${selected === c.cid ? " on" : ""}`} onClick={() => onSelect(c.cid)}>
-              <Avatar c={c} />
-              <div className="who">
-                <div className="nm">{c.name}<Sources c={c} /></div>
-                <div className="meta">
-                  {[c.age != null ? `${c.age}歳` : null, c.lastVisit ? `来店 ${ago(c.lastVisit)}` : "来店記録なし", c.goal || null].filter(Boolean).join(" ・ ")}
-                </div>
-              </div>
-              <div className={`kt-tk${low ? " low" : ""}`}>
-                <em>残り</em>
-                {c.tickets != null ? <><b className="num">{c.tickets}</b><small>回</small></> : <small>—</small>}
-              </div>
-            </button>
-          );
-        })}
+        {!searched && tab === "today" ? (
+          <TodayList state={state} selected={selected} onSelect={onSelect} onAddToday={onAddToday} onRemoveToday={onRemoveToday} onAssignEvent={onAssignEvent} />
+        ) : (
+          <>
+            {tab === "other" && !searched && <div className="kt-list-note">公式LINE・アプリにいて、名簿の名前と合わなかった人です。選んでカルテの「名簿とつなぐ」（または設定）から No. の人を選ぶと、名簿の名前・No.で表示されます</div>}
+            {rows.length === 0 && <div className="kt-list-empty">該当するお客様がいません</div>}
+            {rows.map((r, i) => r.sec != null ? (
+              <div key={`s${i}`} className="kt-sec" style={{ "--sec": sectionColor(r.sec) }}>{r.sec || "（区切りなし）"}</div>
+            ) : (
+              <CustomerRow key={r.c.cid} c={r.c} selected={selected} onSelect={onSelect} />
+            ))}
+          </>
+        )}
       </div>
     </aside>
   );
@@ -244,7 +395,7 @@ const TABS = [
   { key: "history", label: "履歴", icon: History },
 ];
 
-function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) {
+function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, onSelect }) {
   const [d, setD] = useState(null);
   // 開いたらまず今日の記録（メモ）。トレーニング中にそのまま書き始められるように
   const [tab, setTab] = useState("record");
@@ -266,11 +417,15 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) 
         <div className="kt-id">
           <Avatar c={c} lg />
           <div style={{ minWidth: 0 }}>
-            {c.furigana && <div className="kana">{c.furigana}{c.appName && c.appName !== c.name ? `　（アプリ・LINE: ${c.appName}）` : ""}</div>}
+            <div className="kana">
+              {c.memberNo && <b className="kt-hero-no">{c.memberNo}</b>}
+              {c.group !== "other" && <span>{c.group === "monthly" ? "月額" : "回数券"}{c.section ? `・${c.section}` : ""}</span>}
+              {c.furigana && <span>{c.furigana}</span>}
+              {c.appName && c.appName !== c.name && <span>（アプリ・LINE: {c.appName}）</span>}
+            </div>
             <h1>{c.name} <span style={{ fontSize: 15, fontWeight: 500, color: "var(--sub)" }}>様</span></h1>
             <div className="facts">
               <span><b className="num">{c.age ?? "—"}</b> 歳</span>
-              {c.sheet?.plan && <span>{c.sheet.plan}</span>}
               {c.sheet?.nextReserve && <span>次の予約 <b>{c.sheet.nextReserve}</b></span>}
               <span>来店 <b className="num">{visits ?? "…"}</b> 回</span>
               <span>前回 <b>{c.lastVisit ? `${md(c.lastVisit)}（${ago(c.lastVisit)}）` : "—"}</b></span>
@@ -289,7 +444,7 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus }) 
 
       {!d ? <div className="kt-loading" style={{ minHeight: 200 }}>読み込み中…</div> : (
         <>
-          {tab === "overview" && <OverviewTab c={c} d={d} state={state} onPatch={onPatch} flash={flash} onReload={onReload} goRecord={() => setTab("record")} />}
+          {tab === "overview" && <OverviewTab c={c} d={d} state={state} onPatch={onPatch} flash={flash} onReload={onReload} onSelect={onSelect} goRecord={() => setTab("record")} />}
           {tab === "record" && (
             <RecordTab c={c} d={d} state={state} setMenus={setMenus} flash={flash}
               onSaved={async karte => { onPatch({ tickets: karte.tickets ?? c.tickets, lastVisit: karte.lastVisit, karte }); await reload(); setTab("history"); }} />
@@ -346,7 +501,7 @@ function TicketCard({ c, low, onChange }) {
 }
 
 // ───────────────────────── カルテ（概要） ─────────────────────────
-function OverviewTab({ c, d, state, onPatch, flash, onReload, goRecord }) {
+function OverviewTab({ c, d, state, onPatch, flash, onReload, onSelect, goRecord }) {
   const last = [...d.karteSessions].sort((a, b) => b.date.localeCompare(a.date))[0];
   return (
     <div className="kt-grid">
@@ -365,7 +520,7 @@ function OverviewTab({ c, d, state, onPatch, flash, onReload, goRecord }) {
       </div>
       <ConditionCard conditions={d.conditions} />
       <SelfTrainingCard workouts={d.workouts} />
-      <SheetCard c={c} state={state} flash={flash} onReload={onReload} />
+      <SheetCard c={c} state={state} flash={flash} onReload={onReload} onSelect={onSelect} />
     </div>
   );
 }
@@ -543,32 +698,76 @@ function SelfTrainingCard({ workouts }) {
   );
 }
 
-// スプレッドシートの行（元の顧客情報）。名前で自動で合わなかったときは、ここで手で紐付ける
-function SheetCard({ c, state, flash, onReload }) {
+// スプレッドシートの行（元の顧客情報）と、公式LINE・アプリとのつなぎ
+//   名簿の人 → 公式LINE・アプリのどの人か選ぶ（LINEの名前がニックネームでも、ここでつなげば名簿の名前・No.で動く）
+//   名簿にいない人 → 名簿のどの No. の人か選ぶ
+function SheetCard({ c, state, flash, onReload, onSelect }) {
   const [linking, setLinking] = useState(false);
-  const free = state.sheetRows.filter(r => !state.customers.some(x => x.sheet?.rowKey === r.rowKey && x.cid !== c.cid) || r.rowKey === c.sheet?.rowKey);
-  async function link(rowKey) {
-    await linkSheetRow(c.cid, rowKey || null);
-    setLinking(false);
-    flash(rowKey ? "シートの行と紐付けました" : "紐付けを外しました");
-    onReload();
+  const [busy, setBusy] = useState(false);
+  const takenRows = new Set(state.customers.filter(x => x.kind !== "sheet" && x.sheet && x.cid !== c.cid).map(x => x.sheet.rowKey));
+  const freeRows = state.sheetRows.filter(r => !takenRows.has(r.rowKey))
+    .map(r => ({ r, score: nameScore(r.name, c.appName || c.name) + nameScore(r.name, c.lineName) }))
+    .sort((a, b) => b.score - a.score || a.r.order - b.r.order);
+  const freePeople = state.customers.filter(x => x.group === "other")
+    .map(x => ({ x, score: Math.max(nameScore(x.name, c.name), nameScore(x.lineName, c.name)) }))
+    .sort((a, b) => b.score - a.score || a.x.name.localeCompare(b.x.name, "ja"));
+  const rowLabel = r => `${r.memberNo || "No.なし"} ${r.name}（${r.tabLabel}${r.section ? `・${r.section}` : ""}）`;
+
+  // 名簿にいない人 → 名簿の行を選ぶ
+  async function pickRow(rowKey) {
+    setBusy(true);
+    const row = state.sheetRows.find(r => r.rowKey === rowKey);
+    if (row) await connectToSheet(c, row); else await linkSheetRow(c.cid, null);
+    setLinking(false); setBusy(false);
+    flash(row ? `${row.memberNo || ""} ${row.name} とつなぎました` : "つなぎを外しました");
+    await onReload();
   }
-  if (!state.sheet) return null;
+  // 名簿の人 → 公式LINE・アプリの人を選ぶ（選んだ人のカルテに切り替わる）
+  async function pickPerson(cid) {
+    const person = state.customers.find(x => x.cid === cid);
+    if (!person || !c.sheet) return;
+    setBusy(true);
+    await connectToSheet(person, c.sheet);
+    setLinking(false); setBusy(false);
+    flash(`公式LINE・アプリの「${person.name}」とつなぎました`);
+    await onReload();
+    onSelect?.(person.cid);
+  }
+  async function unlink() {
+    setBusy(true);
+    await linkSheetRow(c.cid, null);
+    setBusy(false);
+    flash("名簿とのつなぎを外しました");
+    await onReload();
+  }
+
+  const lineInfo = c.lineUserId ? `公式LINE: ${c.lineName || c.appName || "つながっています"}` : c.pid ? "アプリ会員" : null;
   return (
     <div className="kt-card">
       <div className="kt-card-h">
-        <h3><FileSpreadsheet size={16} />顧客シート <small>{state.sheet.fetchedAt ? `${md(state.sheet.fetchedAt.slice(0, 10))} 読み込み` : ""}</small></h3>
-        {c.kind !== "sheet" && <button className="kt-link" onClick={() => setLinking(v => !v)}>{c.sheet ? "変更" : "紐付ける"}</button>}
+        <h3><FileSpreadsheet size={16} />名簿（スプレッドシート）</h3>
+        {c.kind === "sheet"
+          ? <button className="kt-link" onClick={() => setLinking(v => !v)}><Link2 size={13} />公式LINE・アプリとつなぐ</button>
+          : <button className="kt-link" onClick={() => setLinking(v => !v)}><Link2 size={13} />{c.sheet ? "名簿の人を変える" : "名簿とつなぐ"}</button>}
       </div>
-      {linking && (
-        <select className="kt-sel" style={{ marginBottom: 12 }} value={c.sheet?.rowKey || ""} onChange={e => link(e.target.value)}>
-          <option value="">（紐付けない）</option>
-          {free.map(r => <option key={r.rowKey} value={r.rowKey}>{r.name}{r.furigana ? `（${r.furigana}）` : ""}{r.memberNo ? ` #${r.memberNo}` : ""}</option>)}
+      {lineInfo && <div className="kt-muted" style={{ marginBottom: 10 }}>{lineInfo}{c.sheet && c.kind !== "sheet" && <button className="kt-link" style={{ marginLeft: 10 }} onClick={unlink} disabled={busy}>外す</button>}</div>}
+      {linking && c.kind === "sheet" && (
+        freePeople.length ? (
+          <select className="kt-sel" style={{ marginBottom: 12 }} defaultValue="" onChange={e => pickPerson(e.target.value)} disabled={busy}>
+            <option value="" disabled>公式LINE・アプリのお客様を選ぶ（似た名前が上）</option>
+            {freePeople.map(({ x, score }) => <option key={x.cid} value={x.cid}>{score >= 2 ? "◎ " : ""}{x.name}{x.lineName && x.lineName !== x.name ? `（LINE: ${x.lineName}）` : ""}{x.pid ? "・アプリ" : ""}</option>)}
+          </select>
+        ) : <div className="kt-empty">名簿とつながっていない公式LINE・アプリのお客様はいません</div>
+      )}
+      {linking && c.kind !== "sheet" && (
+        <select className="kt-sel" style={{ marginBottom: 12 }} value={c.sheet?.rowKey || ""} onChange={e => pickRow(e.target.value)} disabled={busy}>
+          <option value="">（名簿とつながない）</option>
+          {freeRows.map(({ r, score }) => <option key={r.rowKey} value={r.rowKey}>{score >= 2 ? "◎ " : ""}{rowLabel(r)}</option>)}
         </select>
       )}
       {c.sheet ? (
         <dl className="kt-kv">{Object.entries(c.sheet.raw).map(([k, v]) => <React.Fragment key={k}><dt>{k}</dt><dd>{v}</dd></React.Fragment>)}</dl>
-      ) : <div className="kt-empty">シートに同じ名前の行が見つかりませんでした。「紐付ける」から選べます</div>}
+      ) : <div className="kt-empty">名簿に同じ名前の人が見つかりませんでした。「名簿とつなぐ」から No. の人を選んでください（似た名前に◎）</div>}
     </div>
   );
 }
@@ -995,9 +1194,52 @@ function HistoryTab({ d, onDelete }) {
 }
 
 // ───────────────────────── 設定 ─────────────────────────
+// 公式LINE・アプリのお客様のうち、名簿の名前と合わなかった人を、まとめて名簿の No. の人とつなぐ
+function LineLinkCard({ state, onSaved }) {
+  const [busy, setBusy] = useState("");
+  const people = state.customers.filter(c => c.group === "other");
+  const taken = new Set(state.customers.filter(x => x.kind !== "sheet" && x.sheet).map(x => x.sheet.rowKey));
+  const free = state.sheetRows.filter(r => !taken.has(r.rowKey));
+  async function connect(c, rowKey) {
+    const row = free.find(r => r.rowKey === rowKey);
+    if (!row) return;
+    setBusy(c.cid);
+    await connectToSheet(c, row);
+    setBusy("");
+    onSaved(`${c.name} を ${row.memberNo} ${row.name} とつなぎました`);
+  }
+  return (
+    <div className="kt-card">
+      <div className="kt-card-h"><h3><Link2 size={16} />公式LINEのお客様を名簿とつなぐ</h3><small className="kt-muted">{people.length}人</small></div>
+      <p className="kt-muted" style={{ marginTop: 0 }}>
+        LINEの名前（ニックネーム）と名簿の名前が違う人です。名簿の No. の人を選ぶと、それからは名簿の名前・No.で表示され、記録やLINEへの送信もその人として動きます。◎は似た名前の候補です。
+      </p>
+      {people.length === 0 && <div className="kt-empty">全員つながっています</div>}
+      {people.map(c => {
+        const opts = free.map(r => ({ r, score: Math.max(nameScore(r.name, c.name), nameScore(r.name, c.lineName)) })).sort((a, b) => b.score - a.score || a.r.order - b.r.order);
+        return (
+          <div key={c.cid} className="kt-linkrow">
+            <Avatar c={c} />
+            <div className="who"><b>{c.name}</b><small>{c.lineName && c.lineName !== c.name ? `LINE: ${c.lineName}` : c.lineUserId ? "公式LINE" : "アプリ"}</small></div>
+            <select className="kt-sel" defaultValue="" disabled={busy === c.cid} onChange={e => connect(c, e.target.value)}>
+              <option value="" disabled>名簿の人を選ぶ</option>
+              {opts.map(({ r, score }) => <option key={r.rowKey} value={r.rowKey}>{score >= 2 ? "◎ " : ""}{r.memberNo || "No.なし"} {r.name}（{r.tabLabel}）</option>)}
+            </select>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SettingsPanel({ state, onClose, onSaved }) {
-  const [url, setUrl] = useState(state.sheet?.url || DEFAULT_SHEET_URL);
-  const [draft, setDraft] = useState(state.sheet || null);
+  const savedTabs = sheetTabs(state.sheet);
+  const [tabKind, setTabKind] = useState("ticket");
+  const savedTab = savedTabs.find(t => t.kind === tabKind);
+  const [url, setUrl] = useState(savedTab.url);
+  const [draft, setDraft] = useState(savedTab.rows ? savedTab : null);
+  const [calUrl, setCalUrl] = useState(state.calendar?.url || "");
+  const chooseTab = k => { const t = savedTabs.find(x => x.kind === k); setTabKind(k); setUrl(t.url); setDraft(t.rows ? t : null); };
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [staff, setStaff] = useState(state.staff || []);
@@ -1006,8 +1248,8 @@ function SettingsPanel({ state, onClose, onSaved }) {
   const [lineKey, setLineKey] = useState(lsGet(LINE_KEY_STORAGE));
 
   function applyRows(rows, source) {
-    const det = detectColumns(rows);
-    setDraft({ url: source, fetchedAt: new Date().toISOString(), rows, headerIdx: det.headerIdx, columns: det.columns });
+    const det = detectColumns(rows, { ticketsNextToName: tabKind === "ticket" });
+    setDraft({ ...savedTab, url: source, fetchedAt: new Date().toISOString(), rows, headerIdx: det.headerIdx, columns: det.columns });
   }
   async function loadUrl() {
     setLoading(true); setErr("");
@@ -1027,8 +1269,13 @@ function SettingsPanel({ state, onClose, onSaved }) {
     applyRows(parseCsv(text), `ファイル: ${file.name}`);
   }
   async function saveSheet() {
-    await saveGlobal("karteSheet", { ...draft, manual: true });
-    onSaved("スプレッドシートを保存しました");
+    const tabs = savedTabs.map(t => (t.kind === tabKind ? { ...draft, kind: t.kind, label: t.label, url: draft.url?.startsWith("https://") ? draft.url : t.url, manual: true } : t));
+    await saveGlobal("karteSheet", { tabs });
+    onSaved(`${savedTab.label}のタブを保存しました`);
+  }
+  async function saveCalendar() {
+    await saveGlobal("karteCalendar", { url: calUrl.trim() });
+    onSaved(calUrl.trim() ? "Googleカレンダーをつなぎました" : "Googleカレンダーを外しました");
   }
 
   const headers = draft ? draft.rows[draft.headerIdx] || [] : [];
@@ -1039,13 +1286,32 @@ function SettingsPanel({ state, onClose, onSaved }) {
       <div className="kt-modal" onClick={e => e.stopPropagation()}>
         <div className="kt-modal-h"><h2>設定</h2><button onClick={onClose} aria-label="閉じる"><X size={22} /></button></div>
 
+        <LinkStatus state={state} onSettings={() => {}} />
+
+        <LineLinkCard state={state} onSaved={onSaved} />
+
+        <div className="kt-card">
+          <div className="kt-card-h"><h3><CalendarDays size={16} />Googleカレンダー（本日の予約）</h3></div>
+          <ol className="kt-steps-help">
+            <li>パソコンで Googleカレンダーを開き、予約を入れているカレンダーの「︙」→「設定と共有」</li>
+            <li>下のほうの「カレンダーの統合」にある「<b>iCal 形式の非公開URL</b>」をコピー</li>
+            <li>ここに貼り付けて「保存」。今日の予定が「本日の予約」に出ます（予定名にお客様の名前か No. を入れておくと自動でつながります）</li>
+          </ol>
+          <div className="kt-custom" style={{ marginTop: 0 }}>
+            <input className="kt-in" value={calUrl} onChange={e => setCalUrl(e.target.value)} placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" />
+            <button className="kt-btn sm" onClick={saveCalendar}>保存</button>
+          </div>
+          <p className="kt-muted" style={{ marginTop: 8 }}>非公開URLを知っている人は予定を見られるので、外には出さないでください。</p>
+        </div>
+
         <div className="kt-card">
           <div className="kt-card-h"><h3><FileSpreadsheet size={16} />顧客スプレッドシート</h3></div>
-          <ol className="kt-steps-help">
-            <li>Google スプレッドシートの「共有」で「リンクを知っている全員（閲覧者）」にする</li>
-            <li>ブラウザのアドレス欄のURLをそのまま貼り付けて「読み込む」</li>
-            <li>名前・残り回数などの列が合っているか確認して「保存」</li>
-          </ol>
+          <div className="kt-groups" style={{ margin: "0 0 12px", padding: 0 }}>
+            {savedTabs.map(t => <button key={t.kind} className={tabKind === t.kind ? "on" : ""} onClick={() => chooseTab(t.kind)}>{t.label}のタブ</button>)}
+          </div>
+          <p className="kt-muted" style={{ marginTop: 0 }}>
+            「回数券顧客情報」「月額顧客情報」のタブを、カルテを開くたびと5分ごとに自動で読み直しています。列がずれたときだけ、ここで「読み込む」→ 列を選び直して「保存」してください。
+          </p>
           <div className="kt-custom" style={{ marginTop: 0 }}>
             <input className="kt-in" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…" />
             <button className="kt-btn sm" onClick={loadUrl} disabled={!url.trim() || loading}>{loading ? "読込中…" : "読み込む"}</button>
