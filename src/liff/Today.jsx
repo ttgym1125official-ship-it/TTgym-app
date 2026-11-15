@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Camera, Flame, Plus, Utensils, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Camera, Flame, Loader2, Plus, Utensils, X } from "lucide-react";
 import { sumMeals, sumItems, pfcRatio, pfcBalanceLabel, buildAdvice, PFC_RANGE, fmt } from "./nutrients.js";
 import { mealImageUrl } from "./api.js";
 import { COLORS, Ring, NutrientSection, addDays, dayInfo, jpDate, comma } from "./ui.jsx";
@@ -190,13 +190,48 @@ function Advice({ totals, targets }) {
   );
 }
 
-function Empty({ onAdd }) {
+// 「写真で記録」: スマホのカメラ・写真から選んで、AIが品目ごとに栄養を計算して記録する
+function PhotoButton({ date, onAddPhoto, dark, big }) {
+  const ref = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const pick = async e => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setErr("");
+    try {
+      await onAddPhoto(date, file);
+    } catch (x) {
+      setErr(x.message || "記録できませんでした");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <input ref={ref} type="file" accept="image/*" style={{ display: "none" }} onChange={pick} />
+      <button
+        className={dark ? "lf-btn-d" : "lf-btn-o"} disabled={busy} onClick={() => ref.current?.click()}
+        style={big ? { width: "100%", justifyContent: "center", height: 48, fontSize: 15 } : undefined}
+      >
+        {busy ? <Loader2 size={17} className="lf-spin" /> : <Camera size={17} />}
+        {busy ? "AIが解析中…" : "写真で記録"}
+      </button>
+      {err && <div style={{ color: "#C0392B", fontSize: 12.5, marginTop: 6, fontWeight: 700 }}>{err}</div>}
+    </>
+  );
+}
+
+function Empty({ onAdd, photo }) {
   return (
     <div className="lf-card lf-empty">
       <div className="icon"><Camera size={34} strokeWidth={1.8} /></div>
       <h3>今日の記録はまだありません</h3>
       <p>食事を送ると、栄養バランスが<br />ここに表示されます。</p>
-      <div className="lf-step"><i>1</i>LINEで食事の写真を送る</div>
+      <div style={{ margin: "4px 0 16px" }}>{photo}</div>
+      <div className="lf-step"><i>1</i>この画面かLINEで食事の写真を送る</div>
       <div className="lf-step"><i>2</i>または「昼食 牛丼並と味噌汁」と送る</div>
       <div className="lf-step"><i>3</i>品目ごとに重さを見積もって記録します</div>
       <button className="lf-btn-o" style={{ marginTop: 18 }} onClick={onAdd}><Plus size={17} />お店から選ぶ・自分で入力</button>
@@ -204,7 +239,7 @@ function Empty({ onAdd }) {
   );
 }
 
-export default function Today({ data, today, selected, onSelect, onDeleteItem, onDeleteMeal, onAddMeal, onWater }) {
+export default function Today({ data, today, selected, onSelect, onDeleteItem, onDeleteMeal, onAddMeal, onAddPhoto, onWater }) {
   const [adding, setAdding] = useState(false);
   const { targets } = data;
   const kcalByDate = {};
@@ -215,7 +250,7 @@ export default function Today({ data, today, selected, onSelect, onDeleteItem, o
   return (
     <>
       <WeekStrip today={today} selected={selected} onSelect={onSelect} kcalByDate={kcalByDate} targetKcal={targets.kcal} />
-      {meals.length === 0 ? <Empty onAdd={() => setAdding(true)} /> : (
+      {meals.length === 0 ? <Empty onAdd={() => setAdding(true)} photo={<PhotoButton date={selected} onAddPhoto={onAddPhoto} dark big />} /> : (
         <>
           <Hero date={selected} totals={totals} targets={targets} mealCount={meals.length} />
           <PfcBalance totals={totals} />
@@ -223,6 +258,7 @@ export default function Today({ data, today, selected, onSelect, onDeleteItem, o
             <h2>食事</h2>
             <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span className="meta">{meals.length}件</span>
+              <PhotoButton date={selected} onAddPhoto={onAddPhoto} />
               <button className="lf-btn-d" onClick={() => setAdding(true)}><Plus size={17} />追加</button>
             </span>
           </div>
