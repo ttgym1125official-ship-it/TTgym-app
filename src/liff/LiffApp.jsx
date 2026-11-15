@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ChartNoAxesColumn, Download, Flag, House, LoaderCircle } from "lucide-react";
 import "./liff.css";
 import { NUTRIENTS } from "./nutrients.js";
-import { fetchData, post, isDemo, openDashboard } from "./api.js";
+import { fetchData, post, postMealPhoto, isDemo, openDashboard } from "./api.js";
 import { Header, Toast, jstToday, jpDate, BlockedScreen } from "./ui.jsx";
 import Today from "./Today.jsx";
 import History, { dailyTotals } from "./History.jsx";
@@ -178,6 +178,7 @@ function Dashboard({ path }) {
             onDeleteItem={(meal, item) => window.confirm(`「${item.name}」を削除しますか？`) && act("deleteItem", { mealId: meal.id, itemId: item.id }, "削除しました")}
             onDeleteMeal={meal => window.confirm("この食事を削除しますか？") && act("deleteMeal", { mealId: meal.id }, "削除しました")}
             onAddMeal={async payload => { setData(await post("addMeal", payload)); flash("記録しました"); }}
+            onAddPhoto={async (date, file) => { setData(await postMealPhoto(date, file)); flash("写真から記録しました"); }}
             onWater={(date, ml) => act("water", { date, ml })}
           />
           </>

@@ -5,6 +5,7 @@
 import { calcTargets } from "./nutrients.js";
 import { makeDemoData } from "./demoData.js";
 import { LIFF_ID as DEFAULT_LIFF_ID } from "../lineConfig.js";
+import { fileToCompressedDataUrl } from "../imageUtils.js";
 
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || DEFAULT_LIFF_ID;
 const LIFF_SDK = "https://static.line-scdn.net/liff/edge/2/sdk.js";
@@ -123,6 +124,27 @@ export async function post(action, payload) {
     return demoResult();
   }
   return (await call("POST", { action, ...payload })).json();
+}
+
+// 食事の写真を送ってAIで解析・記録する（LINEのトークに写真を送ったときと同じ）
+export async function postMealPhoto(date, file) {
+  const toPart = url => {
+    const m = /^data:([^;]+);base64,(.+)$/.exec(url);
+    return m ? { mediaType: m[1], data: m[2] } : null;
+  };
+  const image = toPart(await fileToCompressedDataUrl(file, 1280, 0.82));
+  const thumb = toPart(await fileToCompressedDataUrl(file, 480, 0.78));
+  if (!image) throw new Error("写真を読み込めませんでした");
+  if (isDemo) {
+    await new Promise(r => setTimeout(r, 900));
+    const d = demo();
+    d.meals = [...d.meals, {
+      id: String(Date.now()), date, time: "12:30", label: "昼食", title: "写真の食事（デモ）", hasImage: false,
+      items: [{ id: `${Date.now()}-0`, name: "ごはん", amount: "150g", kcal: 234, p: 3.8, f: 0.5, c: 55.7, n: {} }],
+    }];
+    return demoResult();
+  }
+  return post("mealPhoto", { date, image, thumb });
 }
 
 // TTGYMアプリの指定タブを「このLINEの人」として開く

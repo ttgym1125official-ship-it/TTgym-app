@@ -16,6 +16,8 @@
 // POST /api/nutrition { action: "deleteMeal", mealId }
 // POST /api/nutrition { action: "addWeight", date, weight, bodyFat }
 // POST /api/nutrition { action: "deleteWeight", id }
+// POST /api/nutrition { action: "mealPhoto", date, image: { mediaType, data }, thumb?: { mediaType, data } }
+//                                                         写真をAIで解析して食事を記録（LINEに写真を送ったときと同じ）
 // POST /api/nutrition { action: "addMeal", date, time, label, items: [{ name, amount, kcal, p, f, c }] }
 // POST /api/nutrition { action: "water", date, ml }        ml は加算量（マイナスで取り消し）
 // POST /api/nutrition { action: "goal", goal: { goal, targetWeight, targetBodyFat, afterMonths } }
@@ -27,7 +29,7 @@
 import {
   loadUser, saveUser, kvGet, kvDelete, newId, calcTargets, normalizeItems, estimateNutrients,
   loadGoal, saveGoal, savePhoto, PHOTO_SLOTS, computeMembership, appProfileHints, createAppLoginToken,
-  isLineBlocked, BLOCKED_MESSAGE,
+  isLineBlocked, BLOCKED_MESSAGE, analyzeMessage, jstNow, kvSet,
 } from "./_lib/nutri.js";
 import { LINE_LOGIN_CHANNEL_ID } from "../src/lineConfig.js";
 import { ensureRichMenu } from "./_lib/richmenuAuto.js";
@@ -239,6 +241,31 @@ export default async function handler(req, res) {
         id: newId(), date, time, label: ["朝食", "昼食", "夕食", "間食", "食事"].includes(body.label) ? body.label : "食事",
         title, hasImage: false, manual: true, items,
       });
+      break;
+    }
+    case "mealPhoto": {
+      // 「今日の栄養」の画面から送った食事の写真。LINEのトークに送ったときと同じAI解析で記録する
+      const okImg = x => x && /^image\/(jpeg|png|webp)$/.test(x.mediaType) && typeof x.data === "string" && x.data.length > 0;
+      const img = okImg(body.image) ? body.image : null;
+      if (!img || img.data.length > 4_000_000) {
+        res.status(400).json({ error: img ? "写真が大きすぎます" : "写真を選んでください" });
+        return;
+      }
+      const thumb = okImg(body.thumb) && body.thumb.data.length <= 600_000 ? body.thumb : img;
+      const now = jstNow();
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || "") && body.date <= now.date ? body.date : now.date;
+      const dayMeals = user.meals.filter(m => m.date === date);
+      const result = await analyzeMessage({ images: [img], text: "", todayMeals: dayMeals, lastMeal: null, targets: calcTargets(user.profile), now: { ...now, date } });
+      if (result.intent !== "meal" || !result.items?.length) {
+        res.status(422).json({ error: "写真から食事を読み取れませんでした。料理がはっきり写るように撮り直してください" });
+        return;
+      }
+      const meal = {
+        id: newId(), date, time: date === now.date ? now.time : "12:00", label: result.mealLabel || "食事",
+        title: result.title || "食事", hasImage: true, note: "", items: normalizeItems(result.items),
+      };
+      user.meals.push(meal);
+      await kvSet(`nutri_img:${userId}:${meal.id}`, `data:${thumb.mediaType};base64,${thumb.data}`);
       break;
     }
     case "water": {
