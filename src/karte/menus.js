@@ -1,16 +1,43 @@
 // セッションで選べるメニュー（はじめから入っているもの）。
 // お店独自のメニューはカルテの「設定」から追加でき、global:karteMenus に保存される。
 // unit: "reps"（回数）か "sec"（秒）。load: 重量を入れる種目か
+// unit: "reps"（回数）か "sec"（秒）。load: 重量を入れる種目か。
+// group: カテゴリの中の小見出し。mobility: 「秒 × セット」を ＋− で増やす種目（モビリティだけ）
 export const MENU_CATEGORIES = [
+  { key: "care", label: "ストレッチ/ケア" },
+  { key: "core", label: "コア/腹筋" },
   { key: "lower", label: "下半身" },
   { key: "upper", label: "上半身" },
-  { key: "core", label: "体幹" },
   { key: "kick", label: "キックボクシング" },
   { key: "cardio", label: "有酸素" },
-  { key: "care", label: "ストレッチ・ケア" },
 ];
 
+const MOBILITY = "モビリティトレーニング";
+const TRUNK = "体幹";
+const ABS = "腹筋トレーニング（屈曲・回旋）";
+
 export const DEFAULT_MENUS = [
+  { cat: "care", name: "調整", load: false, unit: "sec" },
+  { cat: "care", name: "ストレッチ", load: false, unit: "sec" },
+  { cat: "care", group: MOBILITY, mobility: true, name: "足関節（足首）", load: false, unit: "sec" },
+  { cat: "care", group: MOBILITY, mobility: true, name: "股関節", load: false, unit: "sec" },
+  { cat: "care", group: MOBILITY, mobility: true, name: "胸椎（背中）", load: false, unit: "sec" },
+  { cat: "care", group: MOBILITY, mobility: true, name: "肩甲胸郭関節（肩甲骨）", load: false, unit: "sec" },
+  { cat: "care", group: MOBILITY, mobility: true, name: "肩関節（肩甲上腕関節）", load: false, unit: "sec" },
+  { cat: "care", group: MOBILITY, mobility: true, name: "頸椎上部（首の付け根）", load: false, unit: "sec" },
+  { cat: "care", name: "筋膜リリース", load: false, unit: "sec" },
+  { cat: "core", group: TRUNK, name: "プランク（フロントプランク）", load: false, unit: "sec" },
+  { cat: "core", group: TRUNK, name: "サイドプランク", load: false, unit: "sec" },
+  { cat: "core", group: TRUNK, name: "バードドッグ", load: false },
+  { cat: "core", group: TRUNK, name: "デッドバグ", load: false },
+  { cat: "core", group: TRUNK, name: "ベアクロール（四つん這い移動）", load: false },
+  { cat: "core", group: TRUNK, name: "ホローボディホールド", load: false, unit: "sec" },
+  { cat: "core", group: ABS, name: "クランチ", load: false },
+  { cat: "core", group: ABS, name: "レッグレイズ（リバースクランチ）", load: false },
+  { cat: "core", group: ABS, name: "バイシクルクランチ", load: false },
+  { cat: "core", group: ABS, name: "ロシアンツイスト", load: false },
+  { cat: "core", group: ABS, name: "Vシット（V字腹筋）", load: false },
+  { cat: "core", group: ABS, name: "マウンテンクライマー", load: false },
   { cat: "lower", name: "スクワット", load: true },
   { cat: "lower", name: "ブルガリアンスクワット", load: true },
   { cat: "lower", name: "デッドリフト", load: true },
@@ -29,12 +56,6 @@ export const DEFAULT_MENUS = [
   { cat: "upper", name: "アームカール", load: true },
   { cat: "upper", name: "トライセプスエクステンション", load: true },
   { cat: "upper", name: "腕立て伏せ", load: false },
-  { cat: "core", name: "プランク", load: false, unit: "sec" },
-  { cat: "core", name: "サイドプランク", load: false, unit: "sec" },
-  { cat: "core", name: "クランチ", load: false },
-  { cat: "core", name: "レッグレイズ", load: false },
-  { cat: "core", name: "デッドバグ", load: false },
-  { cat: "core", name: "ドローイン", load: false, unit: "sec" },
   { cat: "kick", name: "ミット打ち", load: false, unit: "sec" },
   { cat: "kick", name: "シャドー", load: false, unit: "sec" },
   { cat: "kick", name: "サンドバッグ", load: false, unit: "sec" },
@@ -44,9 +65,6 @@ export const DEFAULT_MENUS = [
   { cat: "cardio", name: "トレッドミル", load: false, unit: "sec" },
   { cat: "cardio", name: "縄跳び", load: false, unit: "sec" },
   { cat: "cardio", name: "HIIT", load: false, unit: "sec" },
-  { cat: "care", name: "ストレッチ", load: false, unit: "sec" },
-  { cat: "care", name: "筋膜リリース", load: false, unit: "sec" },
-  { cat: "care", name: "姿勢改善エクササイズ", load: false },
 ];
 
 // 当日の体調（セッションの最初に聞く）

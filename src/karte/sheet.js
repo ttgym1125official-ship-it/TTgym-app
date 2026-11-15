@@ -12,7 +12,10 @@ export const SHEET_FIELDS = [
   { key: "goal", label: "目標", words: ["目標", "目的", "ゴール", "goal"] },
   { key: "phone", label: "電話番号", words: ["電話", "携帯", "tel", "phone"] },
   { key: "plan", label: "プラン", words: ["プラン", "コース", "契約", "メニュー"] },
-  { key: "startDate", label: "入会日", words: ["入会日", "開始日", "契約日", "入会"] },
+  { key: "startDate", label: "入会日", words: ["入会日", "入会月", "開始日", "契約日"] },
+  { key: "monthNo", label: "何ヶ月目", words: ["何カ月目", "何ヶ月目", "何か月目", "何ヵ月目", "カ月目", "ヶ月目", "か月目"] },
+  { key: "bind", label: "縛り", words: ["縛り", "契約期間"] },
+  { key: "perWeek", label: "週何回", words: ["週何回", "週回数"] },
   { key: "nextReserve", label: "次の予約", words: ["次の予約", "次回予約", "次回"] },
   { key: "lastVisit", label: "最終来店日", words: ["最後来た日", "最後来店日", "最終来店日", "最終来店", "前回来店", "来店日", "来た日"] },
 ];
@@ -193,6 +196,9 @@ export function sheetRecords(sheet, tab = { kind: "ticket", label: "回数券" }
       plan: at(r, "plan") || section,
       startDate: toIsoDate(at(r, "startDate")),
       nextReserve: at(r, "nextReserve"),
+      monthNo: at(r, "monthNo") ? toNumber(at(r, "monthNo")) : null,
+      bind: at(r, "bind"),
+      perWeek: at(r, "perWeek"),
       lastVisit: toIsoDateLoose(at(r, "lastVisit"), { past: true }),
       // チェックボックスは ✓ に、空・未チェックは出さない
       raw: Object.fromEntries(headers.map((h, i) => [String(h || `列${i + 1}`).trim(), String(r[i] ?? "").trim()])
