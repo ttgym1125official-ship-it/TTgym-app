@@ -12,7 +12,7 @@ import "./karte.css";
 import {
   loadCustomers, loadDetail, saveSession, deleteSession, saveMeasurement, saveGoal, savePhoto, adjustTickets, updateKarte,
   loadGlobal, saveGlobal, linkSheetRow, sortCustomers, sheetTabs, nameScore, connectToSheet,
-  loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary,
+  loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, setsText,
 } from "./store.js";
 import { MENU_CATEGORIES, DEFAULT_MENUS, DAY_CONDITIONS, BODY_PARTS } from "./menus.js";
 import { SHEET_FIELDS, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
@@ -406,10 +406,17 @@ function CustomerRow({ c, selected, onSelect, time, extra }) {
             {[c.group === "other" ? "名簿にいない人" : time != null ? c.section : null, c.lastVisit ? `来店 ${ago(c.lastVisit)}` : null, c.sheet?.nextReserve ? `次 ${c.sheet.nextReserve}` : null].filter(Boolean).join(" ・ ")}
           </div>
         </div>
-        <div className={`kt-tk${low ? " low" : ""}`}>
-          <em>残り</em>
-          {c.tickets != null ? <><b className="num">{c.tickets}</b><small>回</small></> : <small>—</small>}
-        </div>
+        {c.group === "monthly" ? (
+          <div className="kt-tk">
+            <em>月額</em>
+            {c.monthNo != null ? <><b className="num">{c.monthNo}</b><small>ヶ月目</small></> : <small>—</small>}
+          </div>
+        ) : (
+          <div className={`kt-tk${low ? " low" : ""}`}>
+            <em>残り</em>
+            {c.tickets != null ? <><b className="num">{c.tickets}</b><small>回</small></> : <small>—</small>}
+          </div>
+        )}
       </button>
       {extra}
     </div>
@@ -582,7 +589,7 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, on
             </div>
           </div>
         </div>
-        <TicketCard c={c} low={low} onChange={changeTickets} />
+        {c.group === "monthly" ? <MonthCard c={c} /> : <TicketCard c={c} low={low} onChange={changeTickets} />}
       </section>
 
       <nav className="kt-tabs">
@@ -611,6 +618,21 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, on
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// 月額の人: 残り回数ではなく「何ヶ月目」（名簿の「何カ月目」の列）
+function MonthCard({ c }) {
+  return (
+    <div className="kt-ticket month">
+      <div className="lab">月額 ・ {c.section || "通い放題"}</div>
+      <div className="row">
+        <div className="big"><b className="num">{c.monthNo ?? "—"}</b><span>ヶ月目</span></div>
+      </div>
+      <div className="note">
+        {[c.sheet?.perWeek ? `週${c.sheet.perWeek}回` : "", c.sheet?.bind ? `縛り ${c.sheet.bind}まで` : ""].filter(Boolean).join(" ・ ") || "名簿の「何カ月目」を表示しています"}
+      </div>
     </div>
   );
 }
@@ -792,7 +814,10 @@ function SessionBody({ s }) {
       {s.items?.length > 0 && (
         <div className="kt-items">
           {s.items.map((i, n) => (
-            <div key={n}><span>{i.name}</span><span className="num">{[i.weight ? `${i.weight}kg` : "", i.reps ? `${i.reps}${i.unit === "sec" ? "秒" : "回"}` : "", i.sets ? `${i.sets}セット` : ""].filter(Boolean).join(" × ")}</span></div>
+            <div key={n} className={i.note ? "has-note" : ""}>
+              <span>{i.name}</span><span className="num">{setsText(i)}</span>
+              {i.note && <small className="kt-item-note">{i.note}</small>}
+            </div>
           ))}
         </div>
       )}
@@ -922,13 +947,49 @@ function SheetCard({ c, state, flash, onReload, onSelect }) {
 }
 
 // ───────────────────────── 今日の記録 ─────────────────────────
+// 記録中の種目: 普通の種目はセットごとに「kg × 回」を入れて「完了」（取り消しもできる）。
+// モビリティは「秒 × セット」を ＋− で増やす。どの種目にもメモを書ける
+const blankRow = () => ({ weight: "", reps: "", done: false });
+function toDraftItem(m, prev) {
+  const base = { name: m.name, cat: m.cat || prev?.cat, unit: m.unit || prev?.unit || "reps", load: m.load !== false, note: "" };
+  if (m.mobility) return { ...base, unit: "sec", load: false, mobility: true, sec: prev?.reps || 30, setCount: prev?.sets || 2, done: false };
+  let rows;
+  if (prev?.setList?.length) rows = prev.setList.map(x => ({ weight: x.weight ?? "", reps: x.reps ?? "", done: false }));
+  else if (prev && (prev.weight != null || prev.reps != null)) rows = Array.from({ length: Math.min(Math.max(Number(prev.sets) || 1, 1), 10) }, () => ({ weight: prev.weight ?? "", reps: prev.reps ?? "", done: false }));
+  else rows = [blankRow()];
+  return { ...base, rows };
+}
+function toSavedItem(i) {
+  const base = { name: i.name, cat: i.cat, unit: i.unit, note: (i.note || "").trim() };
+  if (i.mobility) return { ...base, unit: "sec", mobility: true, weight: null, reps: Number(i.sec) || null, sets: Number(i.setCount) || null, done: !!i.done };
+  const filled = (i.rows || []).filter(r => String(r.weight).trim() !== "" || String(r.reps).trim() !== "");
+  const done = filled.filter(r => r.done);
+  // 「完了」を押したセットを記録する（1つも押していなければ、入れたセットを全部）
+  const setList = (done.length ? done : filled).map(r => ({ weight: r.weight === "" ? null : Number(r.weight), reps: r.reps === "" ? null : Number(r.reps) }));
+  const weights = setList.map(x => x.weight).filter(x => x != null);
+  return { ...base, setList, sets: setList.length || null, weight: weights.length ? Math.max(...weights) : null, reps: setList[0]?.reps ?? null };
+}
+
+function Stepper({ value, onChange, step, min, unit }) {
+  const n = Number(value) || 0;
+  return (
+    <div className="kt-stepper">
+      <button onClick={() => onChange(Math.max(min, n - step))} aria-label={`${unit}を減らす`}><Minus size={15} /></button>
+      <b className="num">{n}</b><em>{unit}</em>
+      <button onClick={() => onChange(n + step)} aria-label={`${unit}を増やす`}><Plus size={15} /></button>
+    </div>
+  );
+}
+
 function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
   const allMenus = useMemo(() => [...DEFAULT_MENUS, ...(state.menus || [])], [state.menus]);
+  const menuDef = name => allMenus.find(m => m.name === name);
   const draft = useMemo(() => { try { return JSON.parse(lsGet(DRAFT_STORAGE(c.cid)) || "null") || {}; } catch (e) { return {}; } }, [c.cid]);
   const [date, setDate] = useState(draft.date || jstToday());
   const [staff, setStaff] = useState(() => lsGet(STAFF_STORAGE));
-  const [cat, setCat] = useState("lower");
-  const [items, setItems] = useState(draft.items || []);
+  const [cat, setCat] = useState(MENU_CATEGORIES[0].key);
+  // 以前の形の下書き（1種目に重量・回数・セットが1つずつ）も今の形に直して読む
+  const [items, setItems] = useState(() => (draft.items || []).map(it => (it.rows || it.mobility ? it : toDraftItem(menuDef(it.name) || it, { ...it, weight: it.weight === "" ? null : it.weight, reps: it.reps === "" ? null : it.reps }))));
   const [condition, setCondition] = useState(draft.condition ?? null);
   const [parts, setParts] = useState(draft.parts || []);
   const [comment, setComment] = useState(draft.comment || "");
@@ -963,10 +1024,16 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
   };
   const toggle = m => {
     if (items.some(i => i.name === m.name)) { setItems(items.filter(i => i.name !== m.name)); return; }
-    const prev = lastOf(m.name);
-    setItems([...items, { name: m.name, cat: m.cat, unit: m.unit || "reps", load: m.load !== false, weight: prev?.weight ?? "", reps: prev?.reps ?? "", sets: prev?.sets ?? "" }]);
+    setItems([...items, toDraftItem(m, lastOf(m.name))]);
   };
   const setItem = (n, patch) => setItems(items.map((x, i) => (i === n ? { ...x, ...patch } : x)));
+  const setRow = (n, k, patch) => setItems(items.map((x, i) => (i === n ? { ...x, rows: x.rows.map((r, j) => (j === k ? { ...r, ...patch } : r)) } : x)));
+  const addRow = n => setItems(items.map((x, i) => {
+    if (i !== n) return x;
+    const lastRow = x.rows[x.rows.length - 1];
+    return { ...x, rows: [...x.rows, lastRow ? { weight: lastRow.weight, reps: lastRow.reps, done: false } : blankRow()] };
+  }));
+  const removeRow = (n, k) => setItems(items.map((x, i) => (i === n ? { ...x, rows: x.rows.filter((_, j) => j !== k) } : x)));
 
   async function addCustom() {
     const name = custom.trim();
@@ -984,10 +1051,7 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
     setSaving(true); setErr("");
     try {
       lsSet(STAFF_STORAGE, staff);
-      const clean = items.map(i => ({
-        name: i.name, cat: i.cat, unit: i.unit,
-        weight: i.weight === "" ? null : Number(i.weight), reps: i.reps === "" ? null : Number(i.reps), sets: i.sets === "" ? null : Number(i.sets),
-      }));
+      const clean = items.map(toSavedItem);
       const { karte } = await saveSession(c, { id: newId(), date, staff, condition, parts, items: clean, comment: comment.trim(), memo: memo.trim(), ticketUsed });
       let msg = "記録しました";
       const menu = menuSummary(clean);
@@ -1035,7 +1099,7 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
           <div className="kt-card-h">
             <h3>メニュー <small>押して選ぶ・もう一度押すと外れます</small></h3>
             {last?.items?.length > 0 && (
-              <button className="kt-link" onClick={() => setItems(last.items.map(i => ({ ...i, load: i.weight != null || (allMenus.find(m => m.name === i.name)?.load ?? true), weight: i.weight ?? "", reps: i.reps ?? "", sets: i.sets ?? "" })))}>
+              <button className="kt-link" onClick={() => setItems(last.items.map(i => toDraftItem(menuDef(i.name) || { name: i.name, cat: i.cat, unit: i.unit, load: i.weight != null, mobility: i.mobility }, i)))}>
                 <RotateCcw size={13} />前回と同じ
               </button>
             )}
@@ -1047,9 +1111,17 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
             })}
           </div>
           <div className="kt-menu-grid">
-            {menusInCat.map(m => {
+            {menusInCat.map((m, k) => {
               const on = items.some(i => i.name === m.name);
-              return <button key={m.name} className={`kt-menu-btn${on ? " on" : ""}`} onClick={() => toggle(m)}>{on ? <Check size={15} /> : <Plus size={15} color="var(--dim)" />}{m.name}</button>;
+              const head = m.group && m.group !== menusInCat[k - 1]?.group;
+              const after = !m.group && menusInCat[k - 1]?.group;
+              return (
+                <React.Fragment key={m.name}>
+                  {head && <div className="kt-menu-group">{m.group}{m.mobility ? <small>秒 × セット</small> : null}</div>}
+                  {after && <div className="kt-menu-group sep" />}
+                  <button className={`kt-menu-btn${on ? " on" : ""}${m.group ? " sub" : ""}`} onClick={() => toggle(m)}>{on ? <Check size={15} /> : <Plus size={15} color="var(--dim)" />}{m.name}</button>
+                </React.Fragment>
+              );
             })}
           </div>
           <div className="kt-custom">
@@ -1062,20 +1134,45 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
           <div className="kt-card-h"><h3>今日の内容 <small>{items.length}種目</small></h3></div>
           {items.length === 0 ? <div className="kt-empty">上のメニューを押すと、ここに並びます。前回の重量・回数が入った状態で追加されます</div> : (
             <div className="kt-sel-list">
-              {items.map((i, n) => (
-                <div key={i.name} className="kt-sel-item">
-                  <div className="top">
-                    <b>{i.name}</b>
-                    <button onClick={() => setItem(n, { unit: i.unit === "sec" ? "reps" : "sec" })} className="kt-tag" style={{ display: "inline-block" }}>{i.unit === "sec" ? "秒" : "回数"}</button>
-                    <button aria-label="外す" onClick={() => setItems(items.filter((_, x) => x !== n))}><X size={16} /></button>
+              {items.map((i, n) => {
+                const doneCount = i.mobility ? (i.done ? 1 : 0) : (i.rows || []).filter(r => r.done).length;
+                return (
+                  <div key={i.name} className={`kt-sel-item${(i.mobility ? i.done : doneCount && doneCount === i.rows.length) ? " all-done" : ""}`}>
+                    <div className="top">
+                      <b>{i.name}</b>
+                      {!i.mobility && <span className="kt-muted" style={{ fontSize: 12 }}>完了 {doneCount}/{i.rows.length}</span>}
+                      {!i.mobility && <button onClick={() => setItem(n, { unit: i.unit === "sec" ? "reps" : "sec" })} className="kt-tag" style={{ display: "inline-block" }}>{i.unit === "sec" ? "秒" : "回数"}</button>}
+                      <button aria-label="外す" onClick={() => setItems(items.filter((_, x) => x !== n))}><X size={16} /></button>
+                    </div>
+                    {i.mobility ? (
+                      <div className="kt-mob">
+                        <Stepper value={i.sec} step={10} min={5} unit="秒" onChange={v => setItem(n, { sec: v })} />
+                        <span className="x">×</span>
+                        <Stepper value={i.setCount} step={1} min={1} unit="セット" onChange={v => setItem(n, { setCount: v })} />
+                        {i.done
+                          ? <button className="kt-done on" onClick={() => setItem(n, { done: false })}><Check size={14} />完了<small>取り消し</small></button>
+                          : <button className="kt-done" onClick={() => setItem(n, { done: true })}>完了</button>}
+                      </div>
+                    ) : (
+                      <>
+                        {i.rows.map((r, k) => (
+                          <div key={k} className={`kt-setrow${r.done ? " done" : ""}${i.load ? "" : " noload"}`}>
+                            <span className="no">{k + 1}</span>
+                            {i.load && <label><input inputMode="decimal" value={r.weight} disabled={r.done} onChange={e => setRow(n, k, { weight: e.target.value })} placeholder="0" aria-label={`${k + 1}セット目の重量`} /><em>kg</em></label>}
+                            <label><input inputMode="numeric" value={r.reps} disabled={r.done} onChange={e => setRow(n, k, { reps: e.target.value })} placeholder="0" aria-label={`${k + 1}セット目の${i.unit === "sec" ? "秒数" : "回数"}`} /><em>{i.unit === "sec" ? "秒" : "回"}</em></label>
+                            {r.done
+                              ? <button className="kt-done on" onClick={() => setRow(n, k, { done: false })}><Check size={14} />完了<small>取り消し</small></button>
+                              : <button className="kt-done" onClick={() => setRow(n, k, { done: true })}>完了</button>}
+                            {!r.done && i.rows.length > 1 ? <button className="kt-row-x" onClick={() => removeRow(n, k)} aria-label={`${k + 1}セット目を消す`}><X size={14} /></button> : <span />}
+                          </div>
+                        ))}
+                        <button className="kt-addset" onClick={() => addRow(n)}><Plus size={14} />セットを追加{i.load ? "（重量を変えて続ける）" : ""}</button>
+                      </>
+                    )}
+                    <input className="kt-in kt-note" value={i.note || ""} onChange={e => setItem(n, { note: e.target.value })} placeholder="この種目のメモ（フォーム・効いた場所・次回の重量など）" />
                   </div>
-                  <div className="kt-nums">
-                    <label className={i.load ? "" : "off"}><input inputMode="decimal" value={i.weight} onChange={e => setItem(n, { weight: e.target.value })} placeholder="0" aria-label="重量" /><em>kg</em></label>
-                    <label><input inputMode="numeric" value={i.reps} onChange={e => setItem(n, { reps: e.target.value })} placeholder="0" aria-label={i.unit === "sec" ? "秒数" : "回数"} /><em>{i.unit === "sec" ? "秒" : "回"}</em></label>
-                    <label><input inputMode="numeric" value={i.sets} onChange={e => setItem(n, { sets: e.target.value })} placeholder="0" aria-label="セット数" /><em>セット</em></label>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

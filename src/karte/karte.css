@@ -359,3 +359,35 @@
 .kt-pair b { display: block; font-size: 13.5px; }
 .kt-pair small { font-size: 11px; color: var(--sub); }
 .kt-pair em { font-style: normal; color: var(--dim); }
+
+/* メニューの小見出し（モビリティ・体幹・腹筋） */
+.kt-menu-group { grid-column: 1 / -1; font-size: 12px; font-weight: 800; color: var(--gold-text); margin: 6px 0 0; display: flex; align-items: baseline; gap: 8px; }
+.kt-menu-group small { font-weight: 600; color: var(--sub); }
+.kt-menu-group.sep { margin: 2px 0 0; height: 0; }
+.kt-menu-btn.sub { border-style: dashed !important; }
+
+/* セットごとの記録 */
+.kt-setrow { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) auto 28px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.kt-setrow.noload { grid-template-columns: 22px minmax(0, 1fr) auto 28px; }
+.kt-setrow .no { font-size: 12px; font-weight: 800; color: var(--sub); text-align: center; }
+.kt-setrow label { background: #fff; border: 1px solid var(--line2); border-radius: 8px; display: flex; align-items: center; padding: 0 8px; height: 40px; }
+.kt-setrow input { width: 100%; min-width: 0; border: none; outline: none; background: none; font-size: 16px; font-weight: 700; text-align: right; }
+.kt-setrow em { font-style: normal; font-size: 11px; color: var(--sub); margin-left: 3px; }
+.kt-setrow.done label { background: var(--green-soft); border-color: transparent; }
+.kt-setrow.done input { color: var(--green); }
+.kt-done { height: 40px; padding: 0 14px; border-radius: 8px; background: var(--dark); color: #fff !important; font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.kt-done.on { background: var(--green); flex-direction: row; }
+.kt-done.on small { font-size: 10px; font-weight: 600; opacity: .85; margin-left: 4px; text-decoration: underline; }
+.kt-addset { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font-weight: 700; font-size: 13px; padding: 4px 2px 8px; }
+.kt-sel-item.all-done { box-shadow: 0 0 0 1.5px var(--green) inset; }
+.kt-note { margin-top: 4px; font-size: 13px; padding: 7px 10px; background: #fff; }
+.kt-mob { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.kt-mob .x { color: var(--sub); font-weight: 700; }
+.kt-stepper { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--line2); border-radius: 10px; padding: 3px; }
+.kt-stepper button { width: 34px; height: 34px; border-radius: 8px; background: var(--track); display: flex; align-items: center; justify-content: center; }
+.kt-stepper b { min-width: 34px; text-align: center; font-size: 18px; }
+.kt-stepper em { font-style: normal; font-size: 11px; color: var(--sub); margin-right: 4px; }
+.kt-items div.has-note { flex-wrap: wrap; }
+.kt-item-note { width: 100%; font-size: 12px; color: var(--sub); }
+
+.kt-ticket.month { background: #2D5BA8; }

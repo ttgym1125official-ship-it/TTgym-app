@@ -248,6 +248,7 @@ export async function loadCustomers() {
     c.group = c.sheet?.kind || "other";
     c.section = c.sheet?.section || "";
     c.memberNo = c.sheet?.memberNo || "";
+    c.monthNo = c.sheet?.monthNo ?? null; // 月額の人は「何ヶ月目」
   }
   sortCustomers(list);
   return { customers: list, sheet, sheetError, sheetRows: rows, sheetLinks };
@@ -342,10 +343,21 @@ export async function adjustTickets(c, delta, reason, setTo) {
 //   personalLogs … パーソナルトレーニング記録（第◯回・メニュー）→ アプリ・LINEのレポートに出る
 //   comments     … type: "personal" のトレーナーコメント → アプリ・LINEの「コメント」に出る
 //   sessions     … その日の personalTraining を付ける → メンバーシップのポイント（+2pt）
+// 「スクワット 40kg×10 / 45kg×8 / 50kg×6」「股関節 30秒×2セット」。メモがあれば（ ）で
+export function setsText(i) {
+  const u = i.unit === "sec" ? "秒" : "回";
+  const one = x => [x.weight ? `${x.weight}kg` : "", x.reps ? `${x.reps}${u}` : ""].filter(Boolean).join("×");
+  if (Array.isArray(i.setList) && i.setList.length) {
+    const texts = i.setList.map(one).filter(Boolean);
+    if (!texts.length) return `${i.setList.length}セット`;
+    return texts.every(t => t === texts[0]) ? `${texts[0]}×${texts.length}セット` : texts.join(" / ");
+  }
+  return [i.weight ? `${i.weight}kg` : "", i.reps ? `${i.reps}${u}` : "", i.sets ? `${i.sets}セット` : ""].filter(Boolean).join("×");
+}
 export function menuSummary(items) {
   return items.map(i => {
-    const parts = [i.weight ? `${i.weight}kg` : "", i.reps ? `${i.reps}${i.unit === "sec" ? "秒" : "回"}` : "", i.sets ? `${i.sets}セット` : ""].filter(Boolean);
-    return parts.length ? `${i.name} ${parts.join("×")}` : i.name;
+    const t = setsText(i);
+    return `${i.name}${t ? ` ${t}` : ""}${i.note ? `（${i.note}）` : ""}`;
   }).join("\n");
 }
 
