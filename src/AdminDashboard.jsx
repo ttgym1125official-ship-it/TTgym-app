@@ -1011,7 +1011,7 @@ const SUPPLEMENT_LINK_ITEMS = [
   { key: "vitaminA", label: "ビタミンA" },
 ];
 
-function SupplementLinksEditor() {
+export function SupplementLinksEditor() {
   const [loaded, setLoaded] = useState(false);
   const [links, setLinks] = useState({});
   const [saving, setSaving] = useState(false);
