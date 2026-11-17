@@ -10,6 +10,8 @@ export const MENU_CATEGORIES = [
   { key: "upper", label: "上半身" },
   { key: "kick", label: "キックボクシング" },
   { key: "cardio", label: "有酸素" },
+  // サーキット: 上の種目を組み合わせて名前を付けて保存しておき、押すと今日の内容に入る（global:karteCircuits）
+  { key: "circuit", label: "サーキット" },
 ];
 
 const MOBILITY = "モビリティトレーニング";
