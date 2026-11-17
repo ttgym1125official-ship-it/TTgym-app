@@ -46,7 +46,17 @@ export function demoEntries() {
       beforePhoto: silhouette(120, "#B8C5B4", "BEFORE"), afterPhoto: silhouette(96, "#8DA88E", "AFTER"),
     },
     [`line_user:Udemo1`]: sato,
-    [`nutri:Udemo1`]: { line: { displayName: "みさき", pictureUrl: null }, profile: { fullName: "佐藤 美咲" }, meals: [], weights: [], water: {} },
+    [`nutri:Udemo1`]: {
+      line: { displayName: "みさき", pictureUrl: null }, followedAt: `${day(-60)}T09:00:00Z`,
+      profile: { fullName: "佐藤 美咲", sex: "female", age: 34, height: 160, weight: 57, activity: "normal", goal: "lose" },
+      meals: [{ id: "m2", date: day(0), time: "12:40", title: "鶏むね定食", items: [
+        { id: "i1", name: "鶏むね肉のソテー", amount: "150g", kcal: 230, p: 36, f: 8, c: 2, n: { vitB6: 0.9, niacin: 17, iron: 0.6, salt: 0.9, potassium: 520, vitA: 15 } },
+        { id: "i2", name: "ご飯", amount: "180g", kcal: 280, p: 4.5, f: 0.5, c: 66, n: { fiber: 0.5, magnesium: 13 } },
+        { id: "i3", name: "味噌汁", amount: "1杯", kcal: 40, p: 2.5, f: 1.2, c: 4, n: { salt: 1.6, calcium: 30, fiber: 1 } },
+        { id: "i4", name: "サラダ", amount: "1皿", kcal: 90, p: 1, f: 4.3, c: 10, n: { vitC: 25, vitK: 80, folate: 60, fiber: 2.2 } },
+      ] }],
+      weights: [], water: {},
+    },
     [`data:${sato}:growth`]: series(12, { w: 61.2, f: 31.5, m: 22.8 }, { w: 57.1, f: 27.3, m: 23.6 }, 7, t => ({ waist: Math.round((76 - 6 * t) * 10) / 10 })),
     [`data:${sato}:monthly`]: [
       { id: "m1", date: day(-56), situps: 18, benchMax: null, hipThrust: 30, note: "初回測定" },
@@ -66,6 +76,10 @@ export function demoEntries() {
       ...Array.from({ length: 12 }, (_, i) => ({ id: `mh${i}`, date: day(-1 - i), time: "19:00", name: "夕食", calories: 1350 + ((i * 137) % 400), protein: 70 + (i % 5) * 4, fat: 45, carb: 160, source: i % 2 ? "line" : "app" })),
     ],
     [`data:${sato}:water`]: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [day(-i), 1200 + (i % 4) * 300])),
+    [`data:${sato}:sessions`]: [
+      { id: "ss1", date: day(-1), personalTraining: false, freeComment: "家でスクワット20回×3セットやりました！太ももがパンパンです", freePhoto: null },
+      { id: "ss2", date: day(-3), personalTraining: true, freeComment: "今日のパーソナル、楽しかったです" },
+    ],
     [`data:${sato}:comments`]: [{ id: "cm1", type: "weekly", date: day(-3), text: "今週は食事記録が毎日できていて素晴らしいです！たんぱく質をあと20g増やしましょう。" }],
     [`line_log:Udemo1`]: [
       { at: `${day(-1)}T10:00:00Z`, from: "user", text: "昼食 鶏むね定食" },
