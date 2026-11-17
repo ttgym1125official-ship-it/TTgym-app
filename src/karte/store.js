@@ -467,7 +467,15 @@ export async function adjustTickets(c, delta, reason, setTo) {
 //   comments     … type: "personal" のトレーナーコメント → アプリ・LINEの「コメント」に出る
 //   sessions     … その日の personalTraining を付ける → メンバーシップのポイント（+2pt）
 // 「スクワット 40kg×10 / 45kg×8 / 50kg×6」「股関節 30秒×2セット」。メモがあれば（ ）で
+// サーキットの中身: 「スクワット15回・プランク30秒・バーピー10回」
+export const circuitExercises = cc => (cc?.exercises || []).map(e => `${e.name}${e.value ? `${e.value}${e.unit === "sec" ? "秒" : "回"}` : ""}`).join("・");
+
 export function setsText(i) {
+  if (i.circuit) {
+    const cc = i.circuit;
+    const head = [`${i.roundsDone ?? cc.rounds ?? 0}周`, cc.minutes ? `${cc.minutes}分` : "", cc.rest ? `休憩${cc.rest}秒` : ""].filter(Boolean).join("・");
+    return `${head}（${circuitExercises(cc)}）`;
+  }
   const u = i.unit === "sec" ? "秒" : "回";
   const one = x => [x.weight ? `${x.weight}kg` : "", x.reps ? `${x.reps}${u}` : ""].filter(Boolean).join("×");
   if (Array.isArray(i.setList) && i.setList.length) {

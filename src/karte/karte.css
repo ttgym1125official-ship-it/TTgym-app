@@ -470,3 +470,26 @@
 .kt-nrow em.low { background: var(--red-soft); color: var(--red-text); }
 .kt-nrow em.almost, .kt-nrow em.much, .kt-nrow em.over { background: var(--gold-soft); color: var(--gold-text); }
 @media (max-width: 640px) { .kt-nrow { grid-template-columns: 96px minmax(40px, 1fr) auto; } .kt-nrow em { display: none; } }
+
+/* サーキット */
+.kt-circuits { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.kt-circuit { display: flex; border: 1px solid var(--line2); border-radius: 12px; background: #fff; overflow: hidden; }
+.kt-circuit.on { border-color: var(--green); background: var(--green-soft); }
+.kt-circuit .main { flex: 1; min-width: 0; text-align: left; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.kt-circuit .main b { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.kt-circuit .main span { font-size: 12px; font-weight: 700; color: var(--gold-text); }
+.kt-circuit .main small { font-size: 11.5px; color: var(--sub); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.kt-circuit .edit { width: 40px; border-left: 1px solid var(--line) !important; color: var(--sub); display: flex; align-items: center; justify-content: center; }
+.kt-circuit-b { background: var(--bg); border-radius: 12px; padding: 12px; }
+.kt-cex { display: grid; grid-template-columns: 20px minmax(0, 1fr) 96px auto 26px 26px 26px; gap: 6px; align-items: center; margin-bottom: 6px; font-size: 13.5px; }
+.kt-cex .no { font-size: 12px; font-weight: 800; color: var(--sub); text-align: center; }
+.kt-cex label { background: #fff; border: 1px solid var(--line2); border-radius: 8px; display: flex; align-items: center; padding: 0 8px; height: 36px; }
+.kt-cex input { width: 100%; min-width: 0; border: none; outline: none; background: none; font-size: 15px; font-weight: 700; text-align: right; }
+.kt-cex em { font-style: normal; font-size: 11px; color: var(--sub); margin-left: 3px; }
+.kt-cex > button:not(.kt-tag) { height: 30px; border-radius: 8px; background: #fff; color: var(--sub); display: flex; align-items: center; justify-content: center; }
+.kt-cex > button:disabled { opacity: .3; }
+.kt-cex-list { margin: 6px 0 0; padding-left: 20px; }
+.kt-cex-list li { display: flex; justify-content: space-between; max-width: 360px; padding: 1px 0; color: var(--ink); }
+.kt-cex-list b { font-weight: 700; margin-left: 10px; }
+.kt-rounds { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+@media (max-width: 640px) { .kt-cex { grid-template-columns: 20px minmax(0, 1fr) 84px auto 26px; } .kt-cex > button[aria-label="上へ"], .kt-cex > button[aria-label="下へ"] { display: none; } }

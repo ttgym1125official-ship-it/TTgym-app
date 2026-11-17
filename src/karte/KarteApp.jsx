@@ -12,7 +12,7 @@ import "./karte.css";
 import {
   loadCustomers, loadDetail, saveSession, deleteSession, saveMeasurement, saveGoal, savePhoto, adjustTickets, updateKarte,
   loadGlobal, saveGlobal, linkSheetRow, sortCustomers, sheetTabs, nameScore, connectToSheet,
-  loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, setsText,
+  loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, setsText, circuitExercises,
   nutritionTargets, addMeal, membershipOf, patchProfile, addComment, deleteComment,
   dayNutrients, nutrientTargets, replyTrainingNote, deleteOldRecords,
 } from "./store.js";
@@ -96,12 +96,13 @@ export default function KarteApp() {
         loadCustomers(), loadGlobal("karteMenus", []), loadGlobal("karteStaff", []),
         loadGlobal("karteCalendar", {}), loadGlobal("karteCalendarMap", {}), loadToday(today),
       ]);
+      const circuits = await loadGlobal("karteCircuits", []);
       // Google カレンダーの今日の予定（設定でURLを入れたときだけ）
       let events = [], calError = "";
       if (calendar?.url || isDemo) {
         try { events = await fetchCalendar(calendar?.url || "", today); } catch (e) { calError = e.message; }
       }
-      setState({ ...base, menus, staff, calendar: calendar || {}, calMap: calMap || {}, today: todayList, todayDate: today, events, calError });
+      setState({ ...base, menus, staff, circuits: circuits || [], calendar: calendar || {}, calMap: calMap || {}, today: todayList, todayDate: today, events, calError });
       setError("");
     } catch (e) {
       setError(`読み込めませんでした: ${e.message}`);
@@ -186,6 +187,7 @@ export default function KarteApp() {
                 onPatch={patch => patchCustomer(current.cid, patch)}
                 onReload={refresh} flash={flash} onSelect={setSelected}
                 setMenus={menus => setState(s => ({ ...s, menus }))}
+                setCircuits={circuits => setState(s => ({ ...s, circuits }))}
               />
             ) : (
               <Welcome state={state} onSettings={() => setShowSettings(true)} listHidden={listHidden} onShowList={toggleList} onSaved={async msg => { flash(msg); await load(); }} />
@@ -577,7 +579,7 @@ const TABS = [
   { key: "history", label: "履歴", icon: History },
 ];
 
-function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, onSelect }) {
+function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, setCircuits, onSelect }) {
   const [d, setD] = useState(null);
   // 開いたらまず今日の記録（メモ）。トレーニング中にそのまま書き始められるように
   const [tab, setTab] = useState("record");
@@ -628,7 +630,7 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, on
         <>
           {tab === "overview" && <OverviewTab c={c} d={d} state={state} onPatch={onPatch} flash={flash} onReload={onReload} onReloadDetail={reload} onSelect={onSelect} goRecord={() => setTab("record")} />}
           {tab === "record" && (
-            <RecordTab c={c} d={d} state={state} setMenus={setMenus} flash={flash}
+            <RecordTab c={c} d={d} state={state} setMenus={setMenus} setCircuits={setCircuits} flash={flash}
               onSaved={async karte => { onPatch({ tickets: karte.tickets ?? c.tickets, lastVisit: karte.lastVisit, karte }); await reload(); setTab("history"); }} />
           )}
           {tab === "growth" && <GrowthTab c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await reload(); }} />}
@@ -1434,7 +1436,12 @@ function LineTab({ c, d, state, flash, onReload }) {
 // 記録中の種目: 普通の種目はセットごとに「kg × 回」を入れて「完了」（取り消しもできる）。
 // モビリティは「秒 × セット」を ＋− で増やす。どの種目にもメモを書ける
 const blankRow = () => ({ weight: "", reps: "", done: false });
+// サーキット: { name, exercises: [{ name, value, unit }], rounds（何周）, minutes（何分）, rest（休憩 秒） }。1周ごとに「完了」
+function circuitDraft(cc, note = "") {
+  return { name: `サーキット：${cc.name}`, cat: "circuit", circuit: cc, note, rows: Array.from({ length: Math.max(1, Number(cc.rounds) || 1) }, () => ({ done: false })) };
+}
 function toDraftItem(m, prev) {
+  if (m.circuit || prev?.circuit) return circuitDraft(m.circuit || prev.circuit);
   const base = { name: m.name, cat: m.cat || prev?.cat, unit: m.unit || prev?.unit || "reps", load: m.load !== false, note: "" };
   if (m.mobility) return { ...base, unit: "sec", load: false, mobility: true, sec: prev?.reps || 30, setCount: prev?.sets || 2, done: false };
   let rows;
@@ -1444,6 +1451,11 @@ function toDraftItem(m, prev) {
   return { ...base, rows };
 }
 function toSavedItem(i) {
+  if (i.circuit) {
+    // 「完了」を押した周の数（1つも押していなければ予定の周回数）
+    const done = (i.rows || []).filter(r => r.done).length;
+    return { name: i.name, cat: "circuit", note: (i.note || "").trim(), circuit: { ...i.circuit, rounds: i.rows.length }, roundsDone: done || i.rows.length, sets: done || i.rows.length };
+  }
   const base = { name: i.name, cat: i.cat, unit: i.unit, note: (i.note || "").trim() };
   if (i.mobility) return { ...base, unit: "sec", mobility: true, weight: null, reps: Number(i.sec) || null, sets: Number(i.setCount) || null, done: !!i.done };
   const filled = (i.rows || []).filter(r => String(r.weight).trim() !== "" || String(r.reps).trim() !== "");
@@ -1465,7 +1477,60 @@ function Stepper({ value, onChange, step, min, unit }) {
   );
 }
 
-function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
+// サーキットを作る・直す（すでにある種目から選ぶか、新しい名前で足す）
+function CircuitBuilder({ allMenus, initial, onSave, onAddOnce, onCancel, onDelete }) {
+  const [name, setName] = useState(initial?.name || "");
+  const [exercises, setExercises] = useState(initial?.exercises || []);
+  const [rounds, setRounds] = useState(initial?.rounds || 3);
+  const [minutes, setMinutes] = useState(initial?.minutes || 0);
+  const [rest, setRest] = useState(initial?.rest ?? 30);
+  const [q, setQ] = useState("");
+  const nq = normQ(q);
+  const hits = nq ? allMenus.filter(m => m.cat !== "circuit" && normQ(m.name).includes(nq)).slice(0, 12) : [];
+  const add = (nm, unit = "reps") => { if (nm.trim()) setExercises([...exercises, { name: nm.trim(), value: unit === "sec" ? 30 : 10, unit }]); setQ(""); };
+  const setEx = (k, patch) => setExercises(exercises.map((e, j) => (j === k ? { ...e, ...patch } : e)));
+  const move = (k, dir) => { const a = [...exercises]; const j = k + dir; if (j < 0 || j >= a.length) return; [a[k], a[j]] = [a[j], a[k]]; setExercises(a); };
+  const cc = { id: initial?.id || newId(), name: name.trim(), exercises, rounds, minutes, rest };
+  const ok = name.trim() && exercises.length > 0;
+  return (
+    <div className="kt-circuit-b">
+      <input className="kt-in" value={name} onChange={e => setName(e.target.value)} placeholder="サーキットの名前（例：脂肪燃焼A）" />
+      <div className="kt-eb" style={{ margin: "12px 0 6px" }}>種目（上から順番）</div>
+      {exercises.length === 0 && <div className="kt-empty">下で種目を探して足してください</div>}
+      {exercises.map((e, k) => (
+        <div key={k} className="kt-cex">
+          <span className="no">{k + 1}</span>
+          <b>{e.name}</b>
+          <label><input inputMode="numeric" value={e.value} onChange={ev => setEx(k, { value: ev.target.value })} /><em>{e.unit === "sec" ? "秒" : "回"}</em></label>
+          <button className="kt-tag" onClick={() => setEx(k, { unit: e.unit === "sec" ? "reps" : "sec" })}>{e.unit === "sec" ? "秒" : "回数"}</button>
+          <button onClick={() => move(k, -1)} aria-label="上へ" disabled={k === 0}>↑</button>
+          <button onClick={() => move(k, 1)} aria-label="下へ" disabled={k === exercises.length - 1}>↓</button>
+          <button onClick={() => setExercises(exercises.filter((_, j) => j !== k))} aria-label="外す"><X size={14} /></button>
+        </div>
+      ))}
+      <div className="kt-custom" style={{ marginTop: 8 }}>
+        <input className="kt-in" value={q} onChange={e => setQ(e.target.value)} placeholder="種目を探す（例：スクワット）／ない種目は名前を入れて「新しく追加」" onKeyDown={e => { if (e.key === "Enter" && q.trim() && !hits.length) add(q); }} />
+        <button className="kt-btn ghost sm" disabled={!q.trim()} onClick={() => add(q)}><Plus size={14} />新しく追加</button>
+      </div>
+      {hits.length > 0 && <div className="kt-pills" style={{ marginTop: 6 }}>{hits.map(m => <button key={m.name} className="kt-pill" onClick={() => add(m.name, m.unit || "reps")}><Plus size={13} />{m.name}</button>)}</div>}
+      <div className="kt-eb" style={{ margin: "14px 0 6px" }}>回し方</div>
+      <div className="kt-mob">
+        <Stepper value={rounds} step={1} min={1} unit="周" onChange={setRounds} />
+        <Stepper value={minutes} step={1} min={0} unit="分" onChange={setMinutes} />
+        <Stepper value={rest} step={10} min={0} unit="秒休憩" onChange={setRest} />
+      </div>
+      <div className="kt-muted" style={{ margin: "4px 0 12px" }}>分を0にすると「何分」は出しません</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="kt-btn gold sm" disabled={!ok} onClick={() => onSave(cc)}>保存して今日に追加</button>
+        <button className="kt-btn ghost sm" disabled={!ok} onClick={() => onAddOnce(cc)}>保存せず今日だけ</button>
+        <button className="kt-btn ghost sm" onClick={onCancel}>やめる</button>
+        {onDelete && <button className="kt-del" onClick={onDelete}><Trash2 size={13} />このサーキットを消す</button>}
+      </div>
+    </div>
+  );
+}
+
+function RecordTab({ c, d, state, setMenus, setCircuits, flash, onSaved }) {
   const allMenus = useMemo(() => [...DEFAULT_MENUS, ...(state.menus || [])], [state.menus]);
   const menuDef = name => allMenus.find(m => m.name === name);
   const draft = useMemo(() => { try { return JSON.parse(lsGet(DRAFT_STORAGE(c.cid)) || "null") || {}; } catch (e) { return {}; } }, [c.cid]);
@@ -1558,6 +1623,22 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
   }
 
   const menusInCat = allMenus.filter(m => m.cat === cat);
+  // サーキット: 保存したもの（global:karteCircuits）を押すと今日の内容に入る
+  const [building, setBuilding] = useState(null); // null / "new" / 直すサーキット
+  const circuits = state.circuits || [];
+  const addCircuit = cc => setItems(list => [...list.filter(i => i.name !== `サーキット：${cc.name}`), circuitDraft(cc)]);
+  async function saveCircuit(cc) {
+    const next = [...circuits.filter(x => x.id !== cc.id), cc];
+    await saveGlobal("karteCircuits", next);
+    setCircuits(next); addCircuit(cc); setBuilding(null);
+    flash(`サーキット「${cc.name}」を保存して、今日の内容に入れました`);
+  }
+  async function removeCircuit(cc) {
+    if (!window.confirm(`サーキット「${cc.name}」を消しますか？（記録したものは残ります）`)) return;
+    const next = circuits.filter(x => x.id !== cc.id);
+    await saveGlobal("karteCircuits", next);
+    setCircuits(next); setBuilding(null);
+  }
   const canSave = items.length > 0 || comment.trim() || memo.trim();
 
   return (
@@ -1594,6 +1675,36 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
               return <button key={k.key} className={cat === k.key ? "on" : ""} onClick={() => setCat(k.key)}>{k.label}{n ? ` (${n})` : ""}</button>;
             })}
           </div>
+          {cat === "circuit" ? (
+            <div>
+              {building ? (
+                <CircuitBuilder allMenus={allMenus} initial={building === "new" ? null : building}
+                  onSave={saveCircuit} onAddOnce={cc => { addCircuit(cc); setBuilding(null); }} onCancel={() => setBuilding(null)}
+                  onDelete={building !== "new" ? () => removeCircuit(building) : null} />
+              ) : (
+                <>
+                  {circuits.length === 0 && <div className="kt-empty">保存したサーキットはまだありません。「新しいサーキット」から作ると、次からは押すだけで入れられます</div>}
+                  <div className="kt-circuits">
+                    {circuits.map(cc => {
+                      const on = items.some(i => i.name === `サーキット：${cc.name}`);
+                      return (
+                        <div key={cc.id} className={`kt-circuit${on ? " on" : ""}`}>
+                          <button className="main" onClick={() => (on ? setItems(items.filter(i => i.name !== `サーキット：${cc.name}`)) : addCircuit(cc))}>
+                            <b>{on ? <Check size={15} /> : <Plus size={15} />}{cc.name}</b>
+                            <span>{[`${cc.rounds}周`, cc.minutes ? `${cc.minutes}分` : "", cc.rest ? `休憩${cc.rest}秒` : ""].filter(Boolean).join("・")}</span>
+                            <small>{circuitExercises(cc)}</small>
+                          </button>
+                          <button className="edit" onClick={() => setBuilding(cc)} aria-label={`${cc.name}を直す`}><Pencil size={14} /></button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button className="kt-btn ghost sm" style={{ marginTop: 10 }} onClick={() => setBuilding("new")}><Plus size={14} />新しいサーキット</button>
+                </>
+              )}
+            </div>
+          ) : (
+          <>
           <div className="kt-menu-grid">
             {menusInCat.map((m, k) => {
               const on = items.some(i => i.name === m.name);
@@ -1612,6 +1723,8 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
             <input className="kt-in" value={custom} onChange={e => setCustom(e.target.value)} placeholder={`「${MENU_CATEGORIES.find(k => k.key === cat).label}」にメニューを追加`} onKeyDown={e => { if (e.key === "Enter") addCustom(); }} />
             <button className="kt-btn ghost sm" onClick={addCustom} disabled={!custom.trim()}><Plus size={14} />追加</button>
           </div>
+          </>
+          )}
         </div>
 
         <div className="kt-card">
@@ -1620,6 +1733,27 @@ function RecordTab({ c, d, state, setMenus, flash, onSaved }) {
             <div className="kt-sel-list">
               {items.map((i, n) => {
                 const doneCount = i.mobility ? (i.done ? 1 : 0) : (i.rows || []).filter(r => r.done).length;
+                if (i.circuit) return (
+                  <div key={i.name} className={`kt-sel-item kt-circuit-item${doneCount && doneCount === i.rows.length ? " all-done" : ""}`}>
+                    <div className="top">
+                      <b>{i.name}</b>
+                      <span className="kt-muted" style={{ fontSize: 12 }}>完了 {doneCount}/{i.rows.length}周</span>
+                      <button aria-label="外す" onClick={() => setItems(items.filter((_, x) => x !== n))}><X size={16} /></button>
+                    </div>
+                    <div className="kt-muted" style={{ marginBottom: 8 }}>
+                      {[i.circuit.minutes ? `${i.circuit.minutes}分` : "", i.circuit.rest ? `休憩${i.circuit.rest}秒` : ""].filter(Boolean).join("・")}
+                      <ol className="kt-cex-list">{i.circuit.exercises.map((e, k) => <li key={k}>{e.name}<b>{e.value}{e.unit === "sec" ? "秒" : "回"}</b></li>)}</ol>
+                    </div>
+                    <div className="kt-rounds">
+                      {i.rows.map((r, k) => r.done
+                        ? <button key={k} className="kt-done on" onClick={() => setRow(n, k, { done: false })}><Check size={14} />{k + 1}周目<small>取り消し</small></button>
+                        : <button key={k} className="kt-done" onClick={() => setRow(n, k, { done: true })}>{k + 1}周目 完了</button>)}
+                      <button className="kt-addset" onClick={() => setItem(n, { rows: [...i.rows, { done: false }] })}><Plus size={14} />1周追加</button>
+                      {i.rows.length > 1 && !i.rows[i.rows.length - 1].done && <button className="kt-addset" style={{ color: "var(--sub)" }} onClick={() => setItem(n, { rows: i.rows.slice(0, -1) })}><Minus size={14} />1周減らす</button>}
+                    </div>
+                    <input className="kt-in kt-note" value={i.note || ""} onChange={e => setItem(n, { note: e.target.value })} placeholder="このサーキットのメモ（きつかった種目・次回の調整など）" />
+                  </div>
+                );
                 return (
                   <div key={i.name} className={`kt-sel-item${(i.mobility ? i.done : doneCount && doneCount === i.rows.length) ? " all-done" : ""}`}>
                     <div className="top">
