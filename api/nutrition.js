@@ -104,7 +104,17 @@ async function readJson(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch (e) { return {}; }
 }
 
+// 予期しないエラーでも、原因の文字を画面に出せるように JSON で返す
 export default async function handler(req, res) {
+  try {
+    await handle(req, res);
+  } catch (e) {
+    console.error("nutrition", e);
+    if (!res.headersSent) res.status(500).json({ error: `サーバーでエラーが出ました: ${String(e?.message || e).slice(0, 300)}` });
+  }
+}
+
+async function handle(req, res) {
   res.setHeader("Cache-Control", "no-store");
   const userId = await verifyLineUser(req);
   if (!userId) {
@@ -255,7 +265,15 @@ export default async function handler(req, res) {
       const now = jstNow();
       const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || "") && body.date <= now.date ? body.date : now.date;
       const dayMeals = user.meals.filter(m => m.date === date);
-      const result = await analyzeMessage({ images: [img], text: "", todayMeals: dayMeals, lastMeal: null, targets: calcTargets(user.profile), now: { ...now, date } });
+      let result;
+      try {
+        result = await analyzeMessage({ images: [img], text: "", todayMeals: dayMeals, lastMeal: null, targets: calcTargets(user.profile), now: { ...now, date } });
+      } catch (e) {
+        // 原因がわかるように、AIのエラー文をそのまま画面に出す
+        console.error("mealPhoto", e);
+        res.status(502).json({ error: `AIの解析でエラーが出ました: ${String(e?.message || e).slice(0, 300)}` });
+        return;
+      }
       if (result.intent !== "meal" || !result.items?.length) {
         res.status(422).json({ error: "写真から食事を読み取れませんでした。料理がはっきり写るように撮り直してください" });
         return;
@@ -265,7 +283,7 @@ export default async function handler(req, res) {
         title: result.title || "食事", hasImage: true, note: "", items: normalizeItems(result.items),
       };
       user.meals.push(meal);
-      await kvSet(`nutri_img:${userId}:${meal.id}`, `data:${thumb.mediaType};base64,${thumb.data}`);
+      await kvSet(`nutri_img:${userId}:${meal.id}`, `data:${thumb.mediaType};base64,${thumb.data}`).catch(() => { meal.hasImage = false; });
       break;
     }
     case "water": {
