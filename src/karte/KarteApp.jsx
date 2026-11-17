@@ -3,17 +3,20 @@
 // 体重・写真・自主トレ）を1人1枚のカルテにまとめ、毎回のメニュー・コメント・メモをここで残す。
 // データの置き場所は store.js の先頭を参照。/karte?demo=1 でサンプルデータの表示。
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import {
   Search, Settings, RefreshCw, ChevronLeft, Minus, Plus, Check, X, Pencil, Trash2, Camera,
-  ArrowDownRight, ArrowUpRight, ClipboardList, History, TrendingUp, Image as ImageIcon, UserRound, RotateCcw, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, CalendarDays, Link2,
+  ArrowDownRight, ArrowUpRight, ClipboardList, History, TrendingUp, Image as ImageIcon, UserRound, RotateCcw, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, CalendarDays, Link2, Utensils, MessageCircle, Send, Award, Cake,
 } from "lucide-react";
 import "./karte.css";
 import {
   loadCustomers, loadDetail, saveSession, deleteSession, saveMeasurement, saveGoal, savePhoto, adjustTickets, updateKarte,
   loadGlobal, saveGlobal, linkSheetRow, sortCustomers, sheetTabs, nameScore, connectToSheet,
   loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, setsText,
+  nutritionTargets, addMeal, membershipOf, patchProfile, addComment, deleteComment,
 } from "./store.js";
+import { TIERS, POINT_RULES } from "../membership.js";
+import { COMMENT_TYPES } from "../careData.js";
 import { MENU_CATEGORIES, DEFAULT_MENUS, DAY_CONDITIONS, BODY_PARTS } from "./menus.js";
 import { SHEET_FIELDS, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
 import { fileToCompressedDataUrl } from "../imageUtils.js";
@@ -33,14 +36,19 @@ const r1 = v => (v == null || isNaN(v) ? "—" : (Math.round(v * 10) / 10).toStr
 const daysAgo = d => (d ? Math.round((Date.parse(`${jstToday()}T00:00:00Z`) - Date.parse(`${d}T00:00:00Z`)) / 86400000) : null);
 const ago = d => { const n = daysAgo(d); return n == null ? "" : n === 0 ? "今日" : n === 1 ? "昨日" : n < 31 ? `${n}日前` : `${Math.round(n / 30)}ヶ月前`; };
 
-async function notifyLine(lineUserId, text) {
+// 管理画面と同じ /api/line-admin（LINEへの送信・利用停止・アプリ会員との連携）。LINE操作キーが要る
+async function lineAdmin(action, payload = {}) {
   const res = await fetch("/api/line-admin", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-admin-key": lsGet(LINE_KEY_STORAGE) },
-    body: JSON.stringify({ action: "push", lineUserId, text }),
+    body: JSON.stringify({ action, ...payload }),
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `エラー (${res.status})`);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `エラー (${res.status})`);
+  return body;
 }
+const notifyLine = (lineUserId, text) => lineAdmin("push", { lineUserId, text });
+const isBirthday = b => !!b && b.slice(5) === jstToday().slice(5);
 
 function Avatar({ c, lg }) {
   return (
@@ -198,6 +206,7 @@ function Welcome({ state, onSettings, listHidden, onShowList, onSaved }) {
       <h2>お客様を選んでください</h2>
       <p>左の一覧から選ぶと、今日のメモ・回数券・目標・成長の記録がひと目で分かります。</p>
       {listHidden && <button className="kt-btn" onClick={onShowList} style={{ marginBottom: 14 }}><PanelLeftOpen size={16} />一覧を表示</button>}
+      <Notices state={state} />
       <SetupGuide state={state} onSaved={onSaved} onSettings={onSettings} />
       <LinkStatus state={state} onSettings={onSettings} />
     </div>
@@ -348,6 +357,19 @@ function SetupGuide({ state, onSaved, onSettings }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// 今日のお知らせ（誕生日・アプリの承認待ち）。管理画面のトップにあったもの
+function Notices({ state }) {
+  const birthdays = state.customers.filter(c => isBirthday(c.birthdate));
+  const pending = state.customers.filter(c => c.pending);
+  if (!birthdays.length && !pending.length) return null;
+  return (
+    <div style={{ textAlign: "left", marginTop: 14 }}>
+      {birthdays.length > 0 && <div className="kt-notice gold"><span><Cake size={15} style={{ verticalAlign: -2 }} /> 今日お誕生日：{birthdays.map(c => `${c.name}様`).join("、")}</span></div>}
+      {pending.length > 0 && <div className="kt-notice gold"><span>アプリの承認待ち：{pending.map(c => c.name).join("、")}（カルテの「アプリのアカウント」から承認できます）</span></div>}
     </div>
   );
 }
@@ -546,8 +568,10 @@ function CustomerList({ state, selected, onSelect, onAddToday, onRemoveToday, on
 const TABS = [
   { key: "record", label: "今日の記録", icon: Pencil },
   { key: "overview", label: "カルテ", icon: ClipboardList },
+  { key: "meals", label: "食事・栄養", icon: Utensils },
   { key: "growth", label: "成長・測定", icon: TrendingUp },
   { key: "photos", label: "ビフォーアフター", icon: ImageIcon },
+  { key: "line", label: "LINE", icon: MessageCircle },
   { key: "history", label: "履歴", icon: History },
 ];
 
@@ -600,12 +624,14 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, on
 
       {!d ? <div className="kt-loading" style={{ minHeight: 200 }}>読み込み中…</div> : (
         <>
-          {tab === "overview" && <OverviewTab c={c} d={d} state={state} onPatch={onPatch} flash={flash} onReload={onReload} onSelect={onSelect} goRecord={() => setTab("record")} />}
+          {tab === "overview" && <OverviewTab c={c} d={d} state={state} onPatch={onPatch} flash={flash} onReload={onReload} onReloadDetail={reload} onSelect={onSelect} goRecord={() => setTab("record")} />}
           {tab === "record" && (
             <RecordTab c={c} d={d} state={state} setMenus={setMenus} flash={flash}
               onSaved={async karte => { onPatch({ tickets: karte.tickets ?? c.tickets, lastVisit: karte.lastVisit, karte }); await reload(); setTab("history"); }} />
           )}
           {tab === "growth" && <GrowthTab c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await reload(); }} />}
+          {tab === "meals" && <MealsTab c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await reload(); }} />}
+          {tab === "line" && <LineTab c={c} d={d} state={state} flash={flash} onReload={async () => { await reload(); await onReload(); }} />}
           {tab === "photos" && <PhotosTab c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await reload(); }} />}
           {tab === "history" && (
             <HistoryTab d={d} onDelete={async s => {
@@ -672,7 +698,7 @@ function TicketCard({ c, low, onChange }) {
 }
 
 // ───────────────────────── カルテ（概要） ─────────────────────────
-function OverviewTab({ c, d, state, onPatch, flash, onReload, onSelect, goRecord }) {
+function OverviewTab({ c, d, state, onPatch, flash, onReload, onReloadDetail, onSelect, goRecord }) {
   const last = [...d.karteSessions].sort((a, b) => b.date.localeCompare(a.date))[0];
   return (
     <div className="kt-grid">
@@ -691,6 +717,9 @@ function OverviewTab({ c, d, state, onPatch, flash, onReload, onSelect, goRecord
       </div>
       <ConditionCard conditions={d.conditions} />
       <SelfTrainingCard workouts={d.workouts} />
+      <CommentsCard c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await onReloadDetail(); }} />
+      <MembershipCard c={c} d={d} flash={flash} onSaved={onReloadDetail} />
+      {c.pid && <AccountCard c={c} d={d} flash={flash} onSaved={async () => { await onReloadDetail(); await onReload(); }} />}
       <SheetCard c={c} state={state} flash={flash} onReload={onReload} onSelect={onSelect} />
     </div>
   );
@@ -942,6 +971,309 @@ function SheetCard({ c, state, flash, onReload, onSelect }) {
       {c.sheet ? (
         <dl className="kt-kv">{Object.entries(c.sheet.raw).map(([k, v]) => <React.Fragment key={k}><dt>{k}</dt><dd>{v}</dd></React.Fragment>)}</dl>
       ) : <div className="kt-empty">名簿に同じ名前の人が見つかりませんでした。「名簿とつなぐ」から No. の人を選んでください（似た名前に◎）</div>}
+    </div>
+  );
+}
+
+// トレーナーコメント（1週間・1ヶ月・パーソナル・体調管理）。アプリ・公式LINEの「コメント」に出る
+function CommentsCard({ c, d, flash, onSaved }) {
+  const [type, setType] = useState("weekly");
+  const [text, setText] = useState("");
+  const [sendLine, setSendLine] = useState(!!c.lineUserId && !isDemo);
+  const [busy, setBusy] = useState(false);
+  const list = [...d.comments].filter(x => x.type === type).sort((a, b) => (b.date + (b.createdAt || "")).localeCompare(a.date + (a.createdAt || "")));
+  const label = COMMENT_TYPES.find(t => t.key === type)?.label || "";
+  async function save() {
+    setBusy(true);
+    await addComment(c, type, text.trim());
+    let msg = "コメントを保存しました（アプリ・LINEの「コメント」に出ます）";
+    if (sendLine && c.lineUserId) {
+      try { await notifyLine(c.lineUserId, `【TTGYM】トレーナーから${label}が届きました。\n\n${text.trim()}`); msg = "コメントを保存して、LINEにも送りました"; }
+      catch (e) { msg = `コメントを保存しました（LINEは送れませんでした: ${e.message}）`; }
+    }
+    setText(""); setBusy(false); flash(msg); await onSaved();
+  }
+  return (
+    <div className="kt-card">
+      <div className="kt-card-h"><h3><MessageCircle size={16} />トレーナーコメント <small>アプリ・LINEの「コメント」に出ます</small></h3></div>
+      <div className="kt-pills" style={{ marginBottom: 10 }}>
+        {COMMENT_TYPES.map(t => <button key={t.key} className={`kt-pill${type === t.key ? " on" : ""}`} onClick={() => setType(t.key)}>{t.label.replace(/へ?のコメントとアドバイス$/, "")}<span style={{ opacity: .6 }}>{d.comments.filter(x => x.type === t.key).length}</span></button>)}
+      </div>
+      <textarea className="kt-ta" rows={3} value={text} onChange={e => setText(e.target.value)} placeholder={`${label}を書く`} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0 12px", flexWrap: "wrap" }}>
+        <button className="kt-btn sm" onClick={save} disabled={busy || !text.trim()}>{busy ? "保存中…" : "保存"}</button>
+        {c.lineUserId && <label className="kt-muted" style={{ display: "flex", alignItems: "center", gap: 6 }}><input type="checkbox" checked={sendLine} onChange={e => setSendLine(e.target.checked)} disabled={isDemo} />LINEにも送る</label>}
+      </div>
+      {list.length === 0 ? <div className="kt-empty">まだありません</div> : list.slice(0, 5).map(x => (
+        <div key={x.id} className="kt-comment">
+          <div><small>{ymd(x.date)}{x.staff ? `・${x.staff}` : ""}</small><button className="kt-del" onClick={async () => { if (window.confirm("このコメントを消しますか？（アプリ・LINEからも消えます）")) { await deleteComment(c, x.id); await onSaved(); } }}><Trash2 size={12} /></button></div>
+          <div className="kt-pre">{x.text}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// メンバーシップ（ランク・ポイント）。アプリ会員はポイントの調整もできる（アプリ・LINEの表示と同じ式）
+function MembershipCard({ c, d, flash, onSaved }) {
+  const m = membershipOf(d);
+  const adj = Number(d.profile?.pointAdjustment) || 0;
+  async function change(delta) {
+    await patchProfile(c.pid, { pointAdjustment: adj + delta });
+    flash(`ポイントを${delta > 0 ? "+" : ""}${delta}しました`);
+    await onSaved();
+  }
+  return (
+    <div className="kt-card">
+      <div className="kt-card-h"><h3><Award size={16} />メンバーシップ</h3>{adj !== 0 && <small className="kt-muted">調整 {adj > 0 ? "+" : ""}{adj}pt</small>}</div>
+      <div className="kt-rank">
+        <i style={{ background: m.tier.color }} />
+        <div><b>{m.tier.name}</b><span><b className="num">{m.points}</b> pt{m.nextTier ? `（${m.nextTier.name}まであと${m.nextTier.min - m.points}pt）` : ""}</span></div>
+        {c.pid && (
+          <div className="kt-rank-adj">
+            <button className="kt-btn ghost sm" onClick={() => change(-1)}>−1</button>
+            <button className="kt-btn ghost sm" onClick={() => change(+1)}>+1</button>
+            <button className="kt-btn ghost sm" onClick={() => change(+5)}>+5</button>
+          </div>
+        )}
+      </div>
+      <div className="kt-tiers">{TIERS.map(t => <span key={t.name} className={t.name === m.tier.name ? "on" : ""} style={{ "--c": t.color }}>{t.name}<small>{t.min}</small></span>)}</div>
+      <ul className="kt-rules">{POINT_RULES.map(r => <li key={r}>{r}</li>)}</ul>
+    </div>
+  );
+}
+
+// アプリ会員のアカウント（承認・強制停止・誕生日）
+function AccountCard({ c, d, flash, onSaved }) {
+  const p = d.profile || {};
+  const [busy, setBusy] = useState(false);
+  async function set(patch, msg) {
+    setBusy(true);
+    await patchProfile(c.pid, patch);
+    setBusy(false); flash(msg); await onSaved();
+  }
+  return (
+    <div className="kt-card">
+      <div className="kt-card-h"><h3><UserRound size={16} />アプリのアカウント</h3></div>
+      {isBirthday(p.birthdate) && <div className="kt-notice gold"><Cake size={15} />今日は{c.name}様のお誕生日です</div>}
+      {p.registered && !p.approved && (
+        <div className="kt-notice gold">承認待ちです。承認するまでアプリは使えません
+          <button className="kt-btn sm gold" disabled={busy} onClick={() => set({ approved: true }, "承認しました")}>承認する</button>
+        </div>
+      )}
+      <dl className="kt-kv">
+        <dt>アプリの名前</dt><dd>{p.name || "—"}{p.furigana ? `（${p.furigana}）` : ""}</dd>
+        <dt>電話番号</dt><dd>{p.phone || "—"}</dd>
+        <dt>生年月日</dt><dd>{p.birthdate ? ymd(p.birthdate) : "—"}</dd>
+        <dt>状態</dt><dd style={{ color: p.blocked ? "var(--red-text)" : undefined }}>{p.blocked ? "強制停止中（アプリ・公式LINEが使えません）" : p.approved ? "利用中" : "承認待ち"}</dd>
+      </dl>
+      <div style={{ marginTop: 12 }}>
+        {p.blocked
+          ? <button className="kt-btn sm" disabled={busy} onClick={() => set({ blocked: false }, "利用を再開しました")}>利用を再開する</button>
+          : <button className="kt-btn ghost sm" style={{ color: "var(--red-text)" }} disabled={busy} onClick={() => window.confirm(`${c.name}様のアプリを強制停止しますか？（あとで再開できます）`) && set({ blocked: true }, "強制停止しました")}>強制停止する</button>}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── 食事・栄養 ─────────────────────────
+function Bar2({ label, value, target, unit }) {
+  const pct = target ? Math.min(100, Math.round((value / target) * 100)) : 0;
+  return (
+    <div className="kt-nbar">
+      <div className="h"><span>{label}</span><b className="num">{Math.round(value).toLocaleString()}<small>{target ? ` / ${Math.round(target).toLocaleString()}` : ""}{unit}</small></b></div>
+      <div className="track"><i style={{ width: `${target ? pct : 0}%`, background: target && value > target * 1.1 ? "var(--gold)" : "var(--green)" }} /></div>
+    </div>
+  );
+}
+
+function MealsTab({ c, d, flash, onSaved }) {
+  const today = jstToday();
+  const [day, setDay] = useState(today);
+  const [period, setPeriod] = useState(7);
+  const [f, setF] = useState({ name: "", kcal: "", p: "", f: "", c: "", time: "" });
+  const [saving, setSaving] = useState(false);
+  const targets = nutritionTargets(d);
+  const dayMeals = d.meals.filter(m => m.date === day);
+  const sum = dayMeals.reduce((a, m) => ({ kcal: a.kcal + m.kcal, p: a.p + m.p, f: a.f + m.f, c: a.c + m.c }), { kcal: 0, p: 0, f: 0, c: 0 });
+  const dates = Array.from({ length: period }, (_, i) => new Date(Date.parse(`${today}T00:00:00Z`) - (period - 1 - i) * 86400000).toISOString().slice(0, 10));
+  const chart = dates.map(x => ({ date: md(x), iso: x, kcal: Math.round(d.meals.filter(m => m.date === x).reduce((n, m) => n + m.kcal, 0)), water: Number(d.water[x]) || 0 }));
+  const logged = chart.filter(x => x.kcal > 0);
+  const avgKcal = logged.length ? Math.round(logged.reduce((n, x) => n + x.kcal, 0) / logged.length) : null;
+  const waters = chart.filter(x => x.water > 0);
+  const shift = n => setDay(new Date(Date.parse(`${day}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10));
+
+  async function save() {
+    setSaving(true);
+    await addMeal(c, { ...f, date: day, name: f.name.trim() });
+    setF({ name: "", kcal: "", p: "", f: "", c: "", time: "" });
+    setSaving(false); flash("食事を記録しました（アプリ・LINEのダッシュボードにも出ます）"); await onSaved();
+  }
+  const SRC = { line: ["LINE", "line"], app: ["アプリ", "app"], staff: ["スタッフ", "sheet"] };
+
+  return (
+    <div className="kt-grid">
+      <div className="kt-card">
+        <div className="kt-card-h">
+          <h3><Utensils size={16} />{day === today ? "今日" : ymd(day)}の栄養</h3>
+          <div className="kt-daynav"><button onClick={() => shift(-1)} aria-label="前の日"><ChevronLeft size={16} /></button><button onClick={() => shift(1)} disabled={day >= today} aria-label="次の日" style={{ transform: "scaleX(-1)" }}><ChevronLeft size={16} /></button></div>
+        </div>
+        <Bar2 label="カロリー" value={sum.kcal} target={targets?.kcal} unit="kcal" />
+        <Bar2 label="たんぱく質" value={sum.p} target={targets?.p} unit="g" />
+        <Bar2 label="脂質" value={sum.f} target={targets?.f} unit="g" />
+        <Bar2 label="炭水化物" value={sum.c} target={targets?.c} unit="g" />
+        <div className="kt-muted" style={{ marginTop: 8 }}>
+          水分 <b style={{ color: "var(--ink)" }}>{(Number(d.water[day]) || 0).toLocaleString()}ml</b>
+          {targets ? ` ・ 目標は${targets.from === "staff" ? "スタッフが設定" : "公式LINEのプロフィールから計算"}` : " ・ 目標は未設定（下で設定できます）"}
+        </div>
+      </div>
+
+      <div className="kt-card">
+        <div className="kt-card-h"><h3>{ymd(day)} の食事 <small>{dayMeals.length}件</small></h3></div>
+        {dayMeals.length === 0 ? <div className="kt-empty">記録なし</div> : dayMeals.map(m => (
+          <details key={m.id} className="kt-meal">
+            <summary>
+              <span className="t">{m.time}</span>
+              <span className="n">{m.title}<i className={`kt-src`}><i className={SRC[m.source]?.[1] || "app"}>{SRC[m.source]?.[0] || "アプリ"}</i></i></span>
+              <span className="k num">{Math.round(m.kcal)}kcal</span>
+            </summary>
+            <div className="kt-muted" style={{ padding: "2px 0 6px 52px" }}>P{Math.round(m.p)} F{Math.round(m.f)} C{Math.round(m.c)}g
+              {(m.items || []).map((it, k) => <div key={k}>・{it.name}{it.amount ? `（${it.amount}）` : ""} {Math.round(it.kcal || 0)}kcal</div>)}
+            </div>
+          </details>
+        ))}
+        <div className="kt-eb" style={{ margin: "14px 0 8px" }}>スタッフが食事を足す</div>
+        <input className="kt-in" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="メニュー名（例：鶏むね定食）" style={{ marginBottom: 6 }} />
+        <div className="kt-nums" style={{ gridTemplateColumns: "repeat(4, minmax(0,1fr))", marginBottom: 8 }}>
+          {[["kcal", "kcal"], ["p", "P g"], ["f", "F g"], ["c", "C g"]].map(([k, u]) => <label key={k}><input inputMode="decimal" value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} placeholder="0" /><em>{u}</em></label>)}
+        </div>
+        <button className="kt-btn sm" onClick={save} disabled={saving || !f.name.trim()}>{saving ? "保存中…" : `${ymd(day)}の食事として記録`}</button>
+      </div>
+
+      <div className="kt-card wide">
+        <div className="kt-card-h">
+          <h3>カロリーの推移 <small>{avgKcal ? `記録した日の平均 ${avgKcal.toLocaleString()}kcal` : ""}{waters.length ? ` ・ 水分の平均 ${Math.round(waters.reduce((n, x) => n + x.water, 0) / waters.length).toLocaleString()}ml` : ""}</small></h3>
+          <div className="kt-pills">{[[7, "1週間"], [30, "1ヶ月"]].map(([n, l]) => <button key={n} className={`kt-pill${period === n ? " on" : ""}`} onClick={() => setPeriod(n)}>{l}</button>)}</div>
+        </div>
+        <div className="kt-chart" style={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chart} margin={{ top: 16, right: 24, left: 0, bottom: 0 }} onClick={e => e?.activePayload && setDay(e.activePayload[0].payload.iso)}>
+              <CartesianGrid stroke="#ECE8E0" vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: "#85837D", fontSize: 11 }} axisLine={{ stroke: "#DED9CE" }} tickLine={false} minTickGap={8} />
+              <YAxis tick={{ fill: "#85837D", fontSize: 11 }} axisLine={false} tickLine={false} width={44} />
+              <Tooltip cursor={{ fill: "#F3F1EC" }} content={({ active, payload }) => active && payload?.length ? (
+                <div className="kt-tip"><div style={{ color: "#85837D" }}>{ymd(payload[0].payload.iso)}</div><b className="num">{payload[0].value.toLocaleString()}</b> kcal{payload[0].payload.water ? ` ・ 水分 ${payload[0].payload.water}ml` : ""}</div>
+              ) : null} />
+              {targets?.kcal && <ReferenceLine y={targets.kcal} stroke="#C9973A" strokeDasharray="5 4" label={{ value: `目標 ${targets.kcal}`, position: "insideTopRight", fill: "#9A7537", fontSize: 11 }} />}
+              <Bar dataKey="kcal" fill="#2F6B4F" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="kt-muted">棒を押すと、その日の食事が上に出ます</div>
+      </div>
+
+      {c.pid && <TargetCard c={c} d={d} flash={flash} onSaved={onSaved} />}
+    </div>
+  );
+}
+
+// アプリ会員の1日の栄養目標（アプリ・LINEのダッシュボードの目標になる）
+function TargetCard({ c, d, flash, onSaved }) {
+  const p = d.profile || {};
+  const [f, setF] = useState({ kcal: p.targetCalories ?? "", p: p.targetProtein ?? "", f: p.targetFat ?? "", c: p.targetCarb ?? "" });
+  async function save() {
+    const n = v => (v === "" || v == null ? null : Number(v));
+    await patchProfile(c.pid, { targetCalories: n(f.kcal), targetProtein: n(f.p), targetFat: n(f.f), targetCarb: n(f.c) });
+    flash("栄養目標を保存しました"); await onSaved();
+  }
+  return (
+    <div className="kt-card">
+      <div className="kt-card-h"><h3>1日の栄養目標 <small>アプリの目標にも使われます</small></h3></div>
+      <div className="kt-nums" style={{ gridTemplateColumns: "repeat(4, minmax(0,1fr))", marginBottom: 8 }}>
+        {[["kcal", "kcal"], ["p", "P g"], ["f", "F g"], ["c", "C g"]].map(([k, u]) => <label key={k}><input inputMode="decimal" value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} placeholder="—" /><em>{u}</em></label>)}
+      </div>
+      <button className="kt-btn sm" onClick={save}>保存</button>
+    </div>
+  );
+}
+
+// ───────────────────────── 公式LINE ─────────────────────────
+function LineTab({ c, d, state, flash, onReload }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState("");
+  const [linkTo, setLinkTo] = useState("");
+  const hasKey = !!lsGet(LINE_KEY_STORAGE) || isDemo;
+  const n = d.nutri || {};
+  const log = d.lineLog || [];
+  const linked = c.pid && c.lineUserId;
+  const members = state.customers.filter(x => x.pid && !x.lineUserId);
+  async function act(label, fn, msg) {
+    setBusy(label);
+    try { await fn(); flash(msg); await onReload(); } catch (e) { flash(`できませんでした: ${e.message}`); }
+    setBusy("");
+  }
+  if (!c.lineUserId) {
+    return (
+      <div className="kt-card">
+        <div className="kt-card-h"><h3><MessageCircle size={16} />公式LINE</h3></div>
+        <div className="kt-empty">この方は公式LINEとまだつながっていません。カルテの「名簿（スプレッドシート）」→「公式LINE・アプリとつなぐ」から選べます。{c.pid ? "アプリの「設定」に出る6文字のコードをLINEに送ってもらっても、つながります。" : ""}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="kt-grid">
+      <div className="kt-card">
+        <div className="kt-card-h"><h3><MessageCircle size={16} />公式LINE</h3></div>
+        <div className="kt-lineprof">
+          <Avatar c={c} />
+          <div><b>{n.line?.displayName || "—"}</b><small>{n.profile?.fullName ? `登録名：${n.profile.fullName}` : "フルネーム未登録"}</small></div>
+        </div>
+        <dl className="kt-kv" style={{ marginTop: 10 }}>
+          <dt>友だち追加</dt><dd>{n.followedAt ? ymd(n.followedAt.slice(0, 10)) : "—"}{n.unfollowedAt ? <span style={{ color: "var(--red-text)" }}>（ブロックされています）</span> : ""}</dd>
+          {n.profile?.age && <><dt>プロフィール</dt><dd>{[n.profile.sex === "female" ? "女性" : "男性", `${n.profile.age}歳`, n.profile.height && `${n.profile.height}cm`, n.profile.weight && `${n.profile.weight}kg`].filter(Boolean).join("・")}</dd></>}
+          <dt>アプリ</dt><dd>{linked ? "連携済み" : "未連携"}</dd>
+          <dt>利用</dt><dd style={{ color: d.lineBlocked ? "var(--red-text)" : undefined }}>{d.lineBlocked ? "停止中" : "利用できます"}</dd>
+        </dl>
+        {!hasKey && <div className="kt-notice gold" style={{ marginTop: 10 }}>送信・停止・連携には「LINE操作キー」が要ります（トップの「はじめにやること」③）</div>}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          {d.lineBlocked
+            ? <button className="kt-btn sm" disabled={!hasKey || !!busy} onClick={() => act("unblock", () => lineAdmin("unblock", { lineUserId: c.lineUserId }), "公式LINEの利用を再開しました")}>利用を再開する</button>
+            : <button className="kt-btn ghost sm" style={{ color: "var(--red-text)" }} disabled={!hasKey || !!busy} onClick={() => window.confirm("公式LINEの利用を停止しますか？（ダッシュボード・各ページ・トークでの記録が使えなくなります。あとで再開できます）") && act("block", () => lineAdmin("block", { lineUserId: c.lineUserId }), "公式LINEの利用を停止しました")}>利用を停止する</button>}
+          {linked && <button className="kt-btn ghost sm" disabled={!hasKey || !!busy} onClick={() => window.confirm("アプリとの連携を解除しますか？") && act("unlink", () => lineAdmin("unlink", { lineUserId: c.lineUserId }), "アプリとの連携を解除しました")}>アプリとの連携を解除</button>}
+        </div>
+        {!c.pid && members.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div className="kt-eb" style={{ marginBottom: 6 }}>アプリ会員と連携する</div>
+            <div className="kt-custom" style={{ marginTop: 0 }}>
+              <select className="kt-sel" value={linkTo} onChange={e => setLinkTo(e.target.value)}>
+                <option value="">アプリ会員を選ぶ</option>
+                {members.map(m => <option key={m.pid} value={m.pid}>{m.name}{m.appName && m.appName !== m.name ? `（${m.appName}）` : ""}</option>)}
+              </select>
+              <button className="kt-btn sm" disabled={!hasKey || !linkTo || !!busy} onClick={() => act("link", () => lineAdmin("link", { lineUserId: c.lineUserId, profileId: linkTo }), "アプリ会員と連携しました（LINEの記録もアプリへ移ります）")}>連携</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="kt-card">
+        <div className="kt-card-h"><h3>LINEのやりとり <small>直近{Math.min(log.length, 60)}件</small></h3></div>
+        <div className="kt-chat">
+          {log.length === 0 ? <div className="kt-empty">やりとりの記録はまだありません</div> : log.slice(-60).map((m, i) => m.from === "system"
+            ? <div key={i} className="sys">{new Date(m.at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} {m.text}</div>
+            : (
+              <div key={i} className={`msg ${m.from === "user" ? "them" : "me"} ${m.from}`}>
+                <small>{m.from === "user" ? "お客様" : m.from === "staff" ? "スタッフ" : "自動返信"}・{new Date(m.at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</small>
+                <div>{String(m.text || "").length > 400 ? `${m.text.slice(0, 400)}…` : m.text}</div>
+              </div>
+            ))}
+        </div>
+        <textarea className="kt-ta" rows={2} value={text} onChange={e => setText(e.target.value)} placeholder="お客様のLINEにメッセージを送る" style={{ marginTop: 10 }} disabled={!!n.unfollowedAt} />
+        <button className="kt-btn sm" style={{ marginTop: 8 }} disabled={!hasKey || !text.trim() || !!busy || !!n.unfollowedAt}
+          onClick={() => act("send", async () => { await notifyLine(c.lineUserId, text.trim()); setText(""); }, "LINEで送りました")}>
+          <Send size={14} />{busy === "send" ? "送信中…" : "LINEで送る"}
+        </button>
+        {n.unfollowedAt && <div className="kt-err">ブロックされているため送れません</div>}
+      </div>
     </div>
   );
 }
@@ -1440,6 +1772,24 @@ function HistoryTab({ d, onDelete }) {
 }
 
 // ───────────────────────── 設定 ─────────────────────────
+// 公式LINE・アプリ全体の設定（管理画面と同じ部品を、開いたときだけ読み込む）
+const GlobalSettingsLazy = React.lazy(() => import("./GlobalSettings.jsx"));
+function GlobalSettingsCard() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="kt-card">
+      <div className="kt-card-h">
+        <h3><Settings size={16} />公式LINE・アプリ全体の設定</h3>
+        <button className="kt-link" onClick={() => setOpen(v => !v)}>{open ? "閉じる" : "開く"}</button>
+      </div>
+      <p className="kt-muted" style={{ marginTop: 0 }}>リッチメニュー、おすすめのお店・健康アイテム、週刊レシピのLINE配信、サプリの購入リンク（管理画面と同じものです）</p>
+      {open && (isDemo ? <div className="kt-empty">デモ表示では開けません</div> : (
+        <React.Suspense fallback={<div className="kt-empty">読み込み中…</div>}><GlobalSettingsLazy /></React.Suspense>
+      ))}
+    </div>
+  );
+}
+
 // 公式LINE・アプリのお客様のうち、名簿の名前と合わなかった人を、まとめて名簿の No. の人とつなぐ
 function LineLinkCard({ state, onSaved }) {
   const [busy, setBusy] = useState("");
@@ -1535,6 +1885,8 @@ function SettingsPanel({ state, onClose, onSaved }) {
         <LinkStatus state={state} onSettings={() => {}} />
 
         <LineLinkCard state={state} onSaved={onSaved} />
+
+        <GlobalSettingsCard />
 
         <div className="kt-card">
           <div className="kt-card-h"><h3><CalendarDays size={16} />Googleカレンダー（本日の予約）</h3></div>

@@ -54,7 +54,7 @@ const btn = (primary) => ({
 });
 const input = { width: "100%", background: C.bg, border: `1px solid ${C.cardBorder}`, borderRadius: 4, padding: "8px 10px", color: C.ivory, fontSize: 12.5, boxSizing: "border-box" };
 
-function KeyBox() {
+export function KeyBox() {
   const [key, setKey] = useState(getKey());
   const [status, setStatus] = useState(getKey() ? "saved" : "");
   const save = async () => {
@@ -263,7 +263,7 @@ const MENU_LINKS = [
   ["kickboxing", "キックボクシング体験申込み"],
 ];
 
-function RichMenuBox({ hasKey }) {
+export function RichMenuBox({ hasKey }) {
   const [links, setLinks] = useState({});
   const [state, setState] = useState("");
   useEffect(() => {
@@ -317,7 +317,7 @@ const LISTS = {
   },
 };
 
-function ListBox({ kind }) {
+export function ListBox({ kind }) {
   const cfg = LISTS[kind];
   const [stores, setStores] = useState([]);
   const [draft, setDraft] = useState({});

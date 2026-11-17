@@ -391,3 +391,51 @@
 .kt-item-note { width: 100%; font-size: 12px; color: var(--sub); }
 
 .kt-ticket.month { background: #2D5BA8; }
+
+/* 管理アプリから移したもの */
+.kt-comment { border-top: 1px solid var(--line); padding: 8px 0; font-size: 13.5px; }
+.kt-comment > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+.kt-comment small { color: var(--sub); font-size: 11.5px; }
+.kt-rank { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.kt-rank > i { width: 40px; height: 40px; border-radius: 50%; box-shadow: inset 0 0 0 3px rgba(255,255,255,.5); }
+.kt-rank > div:nth-child(2) { flex: 1; min-width: 140px; }
+.kt-rank b { font-size: 18px; display: block; }
+.kt-rank span { font-size: 12.5px; color: var(--sub); }
+.kt-rank span b { display: inline; font-size: 14px; color: var(--ink); }
+.kt-rank-adj { display: flex; gap: 6px; }
+.kt-tiers { display: flex; gap: 4px; margin: 12px 0 8px; flex-wrap: wrap; }
+.kt-tiers span { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--track); color: var(--sub); display: inline-flex; gap: 4px; align-items: baseline; }
+.kt-tiers span.on { background: var(--c); color: #fff; font-weight: 800; }
+.kt-tiers small { opacity: .7; font-size: 10px; }
+.kt-rules { margin: 0; padding-left: 18px; font-size: 12px; color: var(--sub); line-height: 1.7; }
+.kt-notice { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; padding: 10px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; margin-bottom: 10px; background: var(--track); }
+.kt-notice.gold { background: var(--gold-soft); color: var(--gold-text); }
+.kt-nbar { margin-bottom: 10px; }
+.kt-nbar .h { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+.kt-nbar .h b { font-size: 15px; }
+.kt-nbar .h small { font-size: 11px; color: var(--sub); font-weight: 500; }
+.kt-nbar .track { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.kt-nbar .track i { display: block; height: 100%; border-radius: 999px; }
+.kt-daynav { display: flex; gap: 4px; }
+.kt-daynav button { width: 30px; height: 30px; border-radius: 8px; background: var(--track); display: flex; align-items: center; justify-content: center; }
+.kt-daynav button:disabled { opacity: .35; }
+.kt-meal { border-top: 1px solid var(--line); }
+.kt-meal summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; font-size: 13.5px; }
+.kt-meal summary::-webkit-details-marker { display: none; }
+.kt-meal .t { width: 42px; color: var(--sub); font-size: 12px; }
+.kt-meal .n { flex: 1; min-width: 0; display: flex; gap: 6px; align-items: center; }
+.kt-meal .k { font-weight: 700; }
+.kt-lineprof { display: flex; align-items: center; gap: 12px; }
+.kt-lineprof b { display: block; font-size: 15px; }
+.kt-lineprof small { font-size: 12px; color: var(--sub); }
+.kt-chat { max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 2px; background: var(--bg); border-radius: 12px; padding: 10px; }
+.kt-chat .sys { text-align: center; font-size: 11px; color: var(--sub); }
+.kt-chat .msg { max-width: 85%; }
+.kt-chat .msg small { display: block; font-size: 10.5px; color: var(--sub); margin-bottom: 2px; }
+.kt-chat .msg div { white-space: pre-wrap; font-size: 13px; line-height: 1.6; padding: 7px 11px; border-radius: 12px; background: #fff; }
+.kt-chat .msg.me { align-self: flex-end; text-align: right; }
+.kt-chat .msg.me div { text-align: left; background: #DFF5E4; }
+.kt-chat .msg.staff div { background: var(--gold-soft); }
+
+.kt-dark { background: #0D0D0D; color: #EDEAE0; border-radius: 12px; padding: 12px; font-family: "Noto Sans JP", sans-serif; }
+.kt-dark button { color: inherit; }

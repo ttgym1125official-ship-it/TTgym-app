@@ -20,6 +20,8 @@
 //   global:karteStaff             → スタッフの名前
 import { supabase } from "../supabaseClient.js";
 import { sheetRecords, normName, normPhone, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
+import { sumMeals, calcTargets } from "../liff/nutrients.js";
+import { computePoints, tierFor } from "../membership.js";
 
 // TTGYM の顧客スプレッドシートの「回数券顧客情報」「月額顧客情報」タブ。設定で別のURLを保存したらそちらを使う
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/1QRSPuzpMT3gRgXyuxZbjNHyNeSxHUddZw9_4LSERQEs/edit";
@@ -169,7 +171,7 @@ export async function loadCustomers() {
       name: p.name, furigana: p.furigana || "", phone: p.phone || "", birthdate: p.birthdate || null,
       avatar: n?.line?.pictureUrl || null, avatarColor: p.avatarColor || null,
       goal: p.goal || "", targetWeight: p.targetWeight ?? null, targetBodyFat: p.targetBodyFat ?? null,
-      lastActivityAt: p.lastActivityAt || null, blocked: !!p.blocked,
+      lastActivityAt: p.lastActivityAt || null, blocked: !!p.blocked, pending: !!(p.registered && !p.approved && !p.blocked),
     });
   }
   for (const [lineUserId, n] of Object.entries(nutriBy)) {
@@ -258,17 +260,91 @@ export async function loadCustomers() {
 const DATA_KEYS = ["growth", "monthly", "conditions", "workouts", "sessions", "personalLogs", "comments", "karteSessions"];
 
 export async function loadDetail(c) {
-  const values = await Promise.all(DATA_KEYS.map(k => kvGet(`data:${c.dataId}:${k}`, []).catch(() => [])));
+  const [values, mealsRaw, waterRaw, n, profile, log, lineBlocked] = await Promise.all([
+    Promise.all(DATA_KEYS.map(k => kvGet(`data:${c.dataId}:${k}`, []).catch(() => []))),
+    kvGet(`data:${c.dataId}:meals`, []).catch(() => []),
+    kvGet(`data:${c.dataId}:water`, {}).catch(() => ({})),
+    c.lineUserId ? kvGet(`nutri:${c.lineUserId}`, {}).catch(() => ({})) : null,
+    c.pid ? kvGet(`profile:${c.pid}`, {}).catch(() => ({})) : null,
+    c.lineUserId ? kvGet(`line_log:${c.lineUserId}`, []).catch(() => []) : [],
+    c.lineUserId ? rawGet(`line_blocked:${c.lineUserId}`).catch(() => null) : null,
+  ]);
   const d = Object.fromEntries(DATA_KEYS.map((k, i) => [k, Array.isArray(values[i]) ? values[i] : []]));
   // 公式LINEだけの人: LINEで送った体重（nutri:）も成長記録として見せる（同じ日は成長記録を優先）
-  if (c.kind === "line") {
-    const n = await kvGet(`nutri:${c.lineUserId}`, {}).catch(() => ({}));
+  if (c.kind === "line" && n) {
     const dates = new Set(d.growth.map(g => g.date));
     d.growth = [...d.growth, ...(n.weights || []).filter(w => !dates.has(w.date)).map(w => ({ ...w, fromLine: true }))];
   }
+  d.meals = normalizeMeals(Array.isArray(mealsRaw) ? mealsRaw : [], c.kind === "line" ? n?.meals || [] : []);
+  // 水分: アプリの記録と、LINEだけの人は nutri: の記録も（同じ日は多いほう）
+  d.water = { ...(waterRaw && typeof waterRaw === "object" ? waterRaw : {}) };
+  if (c.kind === "line") for (const [day, ml] of Object.entries(n?.water || {})) d.water[day] = Math.max(d.water[day] || 0, Number(ml) || 0);
+  d.nutri = n || null;           // 公式LINEのプロフィール・目標・LINEの表示名など
+  d.profile = profile || null;   // アプリ会員のプロフィール（承認・停止・ポイント調整・栄養目標）
+  d.lineLog = Array.isArray(log) ? log : [];
+  d.lineBlocked = !!lineBlocked;
   d.photos = await loadPhotos(c);
   return d;
 }
+
+// 食事をひとつの形に: { id, date, time, title, kcal, p, f, c, items, source }
+//   アプリの食事（data:<ID>:meals）… name / calories / protein / fat / carb（LINEで送った食事も line- で写してある）
+//   LINEだけの人の食事（nutri:）… 品目（items）ごとの栄養
+function normalizeMeals(appMeals, lineMeals) {
+  const out = appMeals.map(m => ({
+    id: m.id, date: m.date, time: m.time || "", title: m.name || "食事",
+    kcal: Number(m.calories) || 0, p: Number(m.protein) || 0, f: Number(m.fat) || 0, c: Number(m.carb) || 0,
+    source: m.source === "line" || String(m.id).startsWith("line-") ? "line" : m.source === "staff" ? "staff" : "app", items: m.items || null,
+  }));
+  const ids = new Set(out.map(m => String(m.id)));
+  for (const m of lineMeals) {
+    if (m.source === "app" || ids.has(String(m.id)) || ids.has(`line-${m.id}`)) continue;
+    const t = sumMeals([m]);
+    out.push({ id: m.id, date: m.date, time: m.time || "", title: m.title || "食事", kcal: t.kcal || 0, p: t.p || 0, f: t.f || 0, c: t.c || 0, source: "line", items: m.items || [] });
+  }
+  return out.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+}
+
+// 1日の目標（カロリー・PFC）: アプリ会員はスタッフが入れた目標、なければ公式LINEのプロフィールから計算
+export function nutritionTargets(d) {
+  const p = d.profile || {};
+  if (p.targetCalories) return { kcal: Number(p.targetCalories), p: Number(p.targetProtein) || null, f: Number(p.targetFat) || null, c: Number(p.targetCarb) || null, from: "staff" };
+  const t = calcTargets(d.nutri?.profile);
+  return t ? { kcal: t.kcal, p: t.p, f: t.f, c: t.c, from: "line" } : null;
+}
+
+// スタッフが食事を足す（アプリ・公式LINEのダッシュボードにも「アプリで記録」として出る）
+export async function addMeal(c, m) {
+  const entry = {
+    id: newId(), date: m.date, time: m.time || "12:00", name: m.name,
+    calories: Number(m.kcal) || 0, protein: Number(m.p) || 0, fat: Number(m.f) || 0, carb: Number(m.c) || 0, source: "staff",
+  };
+  await kvUpdate(`data:${c.dataId}:meals`, [], list => [...(Array.isArray(list) ? list : []), entry]);
+  return entry;
+}
+
+// メンバーシップ（ランク・ポイント）。アプリ・公式LINEと同じ式
+export function membershipOf(d) {
+  const day = n => new Date(Date.now() + 9 * 3600 * 1000 - n * 86400000).toISOString().slice(0, 10);
+  const activeDates = new Set([...d.meals, ...d.conditions, ...d.workouts, ...d.growth].map(x => x.date));
+  const points = computePoints({
+    sessions: d.sessions, workouts: d.workouts, monthlyCount: d.monthly.length,
+    activeDates, recentDates: [day(0), day(1)], adjustment: Number(d.profile?.pointAdjustment) || 0,
+  });
+  return { points, ...tierFor(points) };
+}
+
+// アプリ会員のプロフィールの一部を書き換える（承認・強制停止・ポイント調整・栄養目標）
+export const patchProfile = (pid, patch) => kvUpdate(`profile:${pid}`, { id: pid }, p => ({ ...p, ...patch }));
+
+// トレーナーコメント（1週間・1ヶ月・パーソナル・体調管理）。アプリ・公式LINEの「コメント」に出る
+export async function addComment(c, type, text) {
+  const entry = { id: newId(), type, date: jstToday(), text, createdAt: new Date().toISOString() };
+  await kvUpdate(`data:${c.dataId}:comments`, [], list => [...list, entry]);
+  await updateKarte(c, k => k);
+  return entry;
+}
+export const deleteComment = (c, id) => kvUpdate(`data:${c.dataId}:comments`, [], list => list.filter(x => x.id !== id));
 
 export const PHOTO_SLOTS = [
   ["before", "前"], ["before_side", "横"], ["before_back", "後ろ"],

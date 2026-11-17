@@ -42,7 +42,7 @@ export function demoEntries() {
   return {
     [`profile:${sato}`]: {
       id: sato, name: "佐藤 美咲", furigana: "サトウ ミサキ", birthdate: "1992-04-18", phone: "090-1111-2222", avatarColor: "#C9973A",
-      goal: "結婚式までに−5kg。二の腕とお腹まわりをすっきりさせたい", targetWeight: 55, targetBodyFat: 24, lineUserId: "Udemo1", approved: true, lastActivityAt: `${day(0)}T09:00:00Z`,
+      goal: "結婚式までに−5kg。二の腕とお腹まわりをすっきりさせたい", targetWeight: 55, targetBodyFat: 24, lineUserId: "Udemo1", approved: true, registered: true, targetCalories: 1800, targetProtein: 110, targetFat: 50, targetCarb: 220, lastActivityAt: `${day(0)}T09:00:00Z`,
       beforePhoto: silhouette(120, "#B8C5B4", "BEFORE"), afterPhoto: silhouette(96, "#8DA88E", "AFTER"),
     },
     [`line_user:Udemo1`]: sato,
@@ -60,6 +60,18 @@ export function demoEntries() {
       { id: "w3", date: day(-5), exercise: "ランジ", reps: 12, unit: "reps", weight: 0 },
     ],
     [`data:${sato}:karteSessions`]: satoSessions,
+    [`data:${sato}:meals`]: [
+      { id: "m1", date: day(0), time: "08:10", name: "オートミールとゆで卵", calories: 380, protein: 22, fat: 12, carb: 45, source: "app" },
+      { id: "line-m2", date: day(0), time: "12:40", name: "鶏むね定食", calories: 640, protein: 42, fat: 14, carb: 82, source: "line" },
+      ...Array.from({ length: 12 }, (_, i) => ({ id: `mh${i}`, date: day(-1 - i), time: "19:00", name: "夕食", calories: 1350 + ((i * 137) % 400), protein: 70 + (i % 5) * 4, fat: 45, carb: 160, source: i % 2 ? "line" : "app" })),
+    ],
+    [`data:${sato}:water`]: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [day(-i), 1200 + (i % 4) * 300])),
+    [`data:${sato}:comments`]: [{ id: "cm1", type: "weekly", date: day(-3), text: "今週は食事記録が毎日できていて素晴らしいです！たんぱく質をあと20g増やしましょう。" }],
+    [`line_log:Udemo1`]: [
+      { at: `${day(-1)}T10:00:00Z`, from: "user", text: "昼食 鶏むね定食" },
+      { at: `${day(-1)}T10:00:05Z`, from: "bot", text: "鶏むね定食を記録しました。640kcal・たんぱく質42g" },
+      { at: `${day(0)}T03:00:00Z`, from: "staff", text: "明日は10時からお待ちしています！" },
+    ],
     [`karte:${sato}`]: { tickets: 6, sheetTickets: 8, lastVisit: day(-3), note: "左膝に古傷あり（高校の部活）。ジャンプ系は控えめに。\n甘いものが好き。週末の外食が多い。" },
     [`profile_photo:${sato}:before_side`]: silhouette(110, "#B8C5B4", "BEFORE"),
     [`profile_photo:${sato}:after_side`]: silhouette(88, "#8DA88E", "AFTER"),
