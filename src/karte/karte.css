@@ -439,3 +439,34 @@
 
 .kt-dark { background: #0D0D0D; color: #EDEAE0; border-radius: 12px; padding: 12px; font-family: "Noto Sans JP", sans-serif; }
 .kt-dark button { color: inherit; }
+
+/* レポート・自主トレのメモ・栄養素 */
+.kt-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.kt-stats div { background: var(--bg); border-radius: 12px; padding: 8px 12px; }
+.kt-stats span { display: block; font-size: 11.5px; color: var(--sub); }
+.kt-stats b { font-size: 18px; }
+.kt-stats small { font-size: 11px; color: var(--sub); font-weight: 500; margin-left: 2px; }
+.kt-note-item { border-top: 1px solid var(--line); padding: 10px 0; font-size: 13.5px; }
+.kt-note-item:first-of-type { border-top: none; padding-top: 0; }
+.kt-note-item .h { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.kt-note-item .h .kt-link { margin-left: auto; }
+.kt-note-item img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 10px; margin-top: 6px; }
+.kt-advice { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.kt-advice div { border-radius: 12px; padding: 8px 12px; background: var(--red-soft); }
+.kt-advice div.over { background: var(--gold-soft); }
+.kt-advice b { display: block; font-size: 13px; }
+.kt-advice span { font-size: 12px; color: var(--sub); }
+.kt-ncat { margin-bottom: 10px; }
+.kt-ncat .kt-eb { margin-bottom: 4px; }
+.kt-nrow { display: grid; grid-template-columns: 120px minmax(60px, 1fr) auto 56px; gap: 10px; align-items: center; font-size: 13px; padding: 4px 0; }
+.kt-nrow .track { height: 7px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.kt-nrow .track i { display: block; height: 100%; border-radius: 999px; background: var(--green); }
+.kt-nrow .track i.low { background: var(--red); }
+.kt-nrow .track i.almost { background: var(--gold); }
+.kt-nrow .track i.much, .kt-nrow .track i.over { background: var(--gold); }
+.kt-nrow b { font-size: 13.5px; text-align: right; }
+.kt-nrow small { font-size: 11px; color: var(--sub); font-weight: 500; }
+.kt-nrow em { font-style: normal; font-size: 11px; font-weight: 700; text-align: center; border-radius: 999px; padding: 1px 6px; background: var(--green-soft); color: var(--green); }
+.kt-nrow em.low { background: var(--red-soft); color: var(--red-text); }
+.kt-nrow em.almost, .kt-nrow em.much, .kt-nrow em.over { background: var(--gold-soft); color: var(--gold-text); }
+@media (max-width: 640px) { .kt-nrow { grid-template-columns: 96px minmax(40px, 1fr) auto; } .kt-nrow em { display: none; } }

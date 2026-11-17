@@ -20,7 +20,7 @@
 //   global:karteStaff             → スタッフの名前
 import { supabase } from "../supabaseClient.js";
 import { sheetRecords, normName, normPhone, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
-import { sumMeals, calcTargets } from "../liff/nutrients.js";
+import { sumMeals, sumItems, calcTargets, emptyNutrients } from "../liff/nutrients.js";
 import { computePoints, tierFor } from "../membership.js";
 
 // TTGYM の顧客スプレッドシートの「回数券顧客情報」「月額顧客情報」タブ。設定で別のURLを保存したらそちらを使う
@@ -275,7 +275,7 @@ export async function loadDetail(c) {
     const dates = new Set(d.growth.map(g => g.date));
     d.growth = [...d.growth, ...(n.weights || []).filter(w => !dates.has(w.date)).map(w => ({ ...w, fromLine: true }))];
   }
-  d.meals = normalizeMeals(Array.isArray(mealsRaw) ? mealsRaw : [], c.kind === "line" ? n?.meals || [] : []);
+  d.meals = normalizeMeals(Array.isArray(mealsRaw) ? mealsRaw : [], n?.meals || [], c.kind === "line");
   // 水分: アプリの記録と、LINEだけの人は nutri: の記録も（同じ日は多いほう）
   d.water = { ...(waterRaw && typeof waterRaw === "object" ? waterRaw : {}) };
   if (c.kind === "line") for (const [day, ml] of Object.entries(n?.water || {})) d.water[day] = Math.max(d.water[day] || 0, Number(ml) || 0);
@@ -290,20 +290,45 @@ export async function loadDetail(c) {
 // 食事をひとつの形に: { id, date, time, title, kcal, p, f, c, items, source }
 //   アプリの食事（data:<ID>:meals）… name / calories / protein / fat / carb（LINEで送った食事も line- で写してある）
 //   LINEだけの人の食事（nutri:）… 品目（items）ごとの栄養
-function normalizeMeals(appMeals, lineMeals) {
-  const out = appMeals.map(m => ({
-    id: m.id, date: m.date, time: m.time || "", title: m.name || "食事",
-    kcal: Number(m.calories) || 0, p: Number(m.protein) || 0, f: Number(m.fat) || 0, c: Number(m.carb) || 0,
-    source: m.source === "line" || String(m.id).startsWith("line-") ? "line" : m.source === "staff" ? "staff" : "app", items: m.items || null,
-  }));
+// 栄養素（n）: LINEの食事は品目ごとの36項目、アプリの食事は写真解析の8項目（食物繊維・糖分・ナトリウム・カリウム・ビタミンA/C・カルシウム・鉄）
+function appMealNutrients(m) {
+  const n = emptyNutrients();
+  const v = k => Number(m[k]) || 0;
+  n.fiber = v("fiber"); n.sugar = v("sugar"); n.salt = (v("sodium") * 2.54) / 1000; n.potassium = v("potassium");
+  n.vitA = v("vitaminA"); n.vitC = v("vitaminC"); n.calcium = v("calcium"); n.iron = v("iron");
+  return n;
+}
+function normalizeMeals(appMeals, lineMeals, includeLineOnly) {
+  const lineById = Object.fromEntries(lineMeals.map(m => [String(m.id), m]));
+  const out = appMeals.map(m => {
+    // LINEで送った食事をアプリに写したもの（line-…）は、品目つきのLINE側を使う
+    const lm = String(m.id).startsWith("line-") ? lineById[String(m.id).slice(5)] : null;
+    return {
+      id: m.id, date: m.date, time: m.time || "", title: m.name || "食事",
+      kcal: Number(m.calories) || 0, p: Number(m.protein) || 0, f: Number(m.fat) || 0, c: Number(m.carb) || 0,
+      source: m.source === "line" || lm || String(m.id).startsWith("line-") ? "line" : m.source === "staff" ? "staff" : "app",
+      items: lm?.items || m.items || null, n: lm ? sumMeals([lm]).n : appMealNutrients(m), full: !!lm,
+    };
+  });
   const ids = new Set(out.map(m => String(m.id)));
-  for (const m of lineMeals) {
+  if (includeLineOnly) for (const m of lineMeals) {
     if (m.source === "app" || ids.has(String(m.id)) || ids.has(`line-${m.id}`)) continue;
     const t = sumMeals([m]);
-    out.push({ id: m.id, date: m.date, time: m.time || "", title: m.title || "食事", kcal: t.kcal || 0, p: t.p || 0, f: t.f || 0, c: t.c || 0, source: "line", items: m.items || [] });
+    out.push({ id: m.id, date: m.date, time: m.time || "", title: m.title || "食事", kcal: t.kcal || 0, p: t.p || 0, f: t.f || 0, c: t.c || 0, source: "line", items: m.items || [], n: t.n, full: true });
   }
   return out.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
 }
+
+// その日の栄養素の合計
+export function dayNutrients(meals) {
+  const n = emptyNutrients();
+  for (const m of meals) for (const k of Object.keys(n)) n[k] += Number(m.n?.[k]) || 0;
+  const t = meals.reduce((a, m) => ({ kcal: a.kcal + m.kcal, p: a.p + m.p, f: a.f + m.f, c: a.c + m.c }), { kcal: 0, p: 0, f: 0, c: 0 });
+  return { ...t, n, full: meals.some(m => m.full) };
+}
+
+// 栄養素の目標（日本人の食事摂取基準）: 公式LINEのプロフィール（性別・年齢・身長・体重）から
+export const nutrientTargets = d => calcTargets(d.nutri?.profile)?.n || null;
 
 // 1日の目標（カロリー・PFC）: アプリ会員はスタッフが入れた目標、なければ公式LINEのプロフィールから計算
 export function nutritionTargets(d) {
@@ -344,6 +369,28 @@ export async function addComment(c, type, text) {
   await updateKarte(c, k => k);
   return entry;
 }
+// お客様が自主トレに書いたメモ（sessions の freeComment）に、トレーナーの返事を書き足す。
+// アプリ・公式LINEの「トレーニング」タブにそのまま出る（お客様の文章は消さない）
+export async function replyTrainingNote(c, date, text, staff = "") {
+  await kvUpdate(`data:${c.dataId}:sessions`, [], list => {
+    const ex = list.find(x => x.date === date);
+    const reply = `💬 トレーナー${staff ? `（${staff}）` : ""}：${text}`;
+    const entry = { ...(ex || { id: newId(), date, personalTraining: false }), freeComment: [ex?.freeComment, reply].filter(Boolean).join("\n\n") };
+    return [...list.filter(x => x.date !== date), entry];
+  });
+  await updateKarte(c, k => k);
+}
+
+// 1年以上前の記録を消す（管理画面と同じ。トレーナーのコメントとパーソナル記録・カルテのセッションは残す）
+export async function deleteOldRecords(c) {
+  const cutoff = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+  for (const k of ["meals", "conditions", "growth", "workouts", "monthly", "sessions"]) {
+    await kvUpdate(`data:${c.dataId}:${k}`, [], list => (Array.isArray(list) ? list.filter(x => !x.date || x.date >= cutoff) : list));
+  }
+  await kvUpdate(`data:${c.dataId}:water`, {}, w => Object.fromEntries(Object.entries(w || {}).filter(([day]) => day >= cutoff)));
+  return cutoff;
+}
+
 export const deleteComment = (c, id) => kvUpdate(`data:${c.dataId}:comments`, [], list => list.filter(x => x.id !== id));
 
 export const PHOTO_SLOTS = [

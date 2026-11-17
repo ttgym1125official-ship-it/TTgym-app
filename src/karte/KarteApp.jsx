@@ -3,7 +3,7 @@
 // 体重・写真・自主トレ）を1人1枚のカルテにまとめ、毎回のメニュー・コメント・メモをここで残す。
 // データの置き場所は store.js の先頭を参照。/karte?demo=1 でサンプルデータの表示。
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { LineChart, Line, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import {
   Search, Settings, RefreshCw, ChevronLeft, Minus, Plus, Check, X, Pencil, Trash2, Camera,
   ArrowDownRight, ArrowUpRight, ClipboardList, History, TrendingUp, Image as ImageIcon, UserRound, RotateCcw, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, CalendarDays, Link2, Utensils, MessageCircle, Send, Award, Cake,
@@ -14,9 +14,11 @@ import {
   loadGlobal, saveGlobal, linkSheetRow, sortCustomers, sheetTabs, nameScore, connectToSheet,
   loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, setsText,
   nutritionTargets, addMeal, membershipOf, patchProfile, addComment, deleteComment,
+  dayNutrients, nutrientTargets, replyTrainingNote, deleteOldRecords,
 } from "./store.js";
 import { TIERS, POINT_RULES } from "../membership.js";
 import { COMMENT_TYPES } from "../careData.js";
+import { NUTRIENTS, CATEGORIES, nutrientStatus, STATUS_LABEL, buildAdvice, fmt } from "../liff/nutrients.js";
 import { MENU_CATEGORIES, DEFAULT_MENUS, DAY_CONDITIONS, BODY_PARTS } from "./menus.js";
 import { SHEET_FIELDS, parseCsv, detectColumns, fetchSheetCsv } from "./sheet.js";
 import { fileToCompressedDataUrl } from "../imageUtils.js";
@@ -634,7 +636,12 @@ function CustomerView({ c, state, onBack, onPatch, onReload, flash, setMenus, on
           {tab === "line" && <LineTab c={c} d={d} state={state} flash={flash} onReload={async () => { await reload(); await onReload(); }} />}
           {tab === "photos" && <PhotosTab c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await reload(); }} />}
           {tab === "history" && (
-            <HistoryTab d={d} onDelete={async s => {
+            <HistoryTab d={d} onDeleteOld={async () => {
+              if (!window.confirm("1年以上前の記録（食事・体調・成長・トレーニング・月次測定・水分）を削除します。元に戻せません。よろしいですか？\n（トレーナーのコメント・パーソナル記録・カルテの記録は残ります）")) return;
+              const cutoff = await deleteOldRecords(c);
+              await reload();
+              flash(`${ymd(cutoff)}より前の記録を削除しました`);
+            }} onDelete={async s => {
               if (!window.confirm(`${ymd(s.date)} の記録を削除しますか？${s.ticketUsed ? "\n（使った回数券は1回戻します）" : ""}`)) return;
               const k = await deleteSession(c, s);
               if (k) onPatch({ tickets: k.tickets, karte: k });
@@ -717,6 +724,8 @@ function OverviewTab({ c, d, state, onPatch, flash, onReload, onReloadDetail, on
       </div>
       <ConditionCard conditions={d.conditions} />
       <SelfTrainingCard workouts={d.workouts} />
+      <ReportCard d={d} />
+      <TrainingNotesCard c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await onReloadDetail(); }} />
       <CommentsCard c={c} d={d} flash={flash} onSaved={async () => { onPatch({}); await onReloadDetail(); }} />
       <MembershipCard c={c} d={d} flash={flash} onSaved={onReloadDetail} />
       {c.pid && <AccountCard c={c} d={d} flash={flash} onSaved={async () => { await onReloadDetail(); await onReload(); }} />}
@@ -1076,6 +1085,148 @@ function AccountCard({ c, d, flash, onSaved }) {
   );
 }
 
+// 1週間・1ヶ月のレポート（体調・トレーニング・食事・水分・体重）。管理画面のレポートと同じ中身
+function ReportCard({ d }) {
+  const [days, setDays] = useState(7);
+  const today = jstToday();
+  const dates = Array.from({ length: days }, (_, i) => new Date(Date.parse(`${today}T00:00:00Z`) - (days - 1 - i) * 86400000).toISOString().slice(0, 10));
+  const from = dates[0];
+  const inP = x => x.date >= from && x.date <= today;
+  const avg = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  const conds = d.conditions.filter(inP);
+  const condBy = Object.fromEntries(conds.map(x => [x.date, x]));
+  const workouts = d.workouts.filter(inP);
+  const meals = d.meals.filter(inP);
+  const kcalBy = {};
+  for (const m of meals) kcalBy[m.date] = (kcalBy[m.date] || 0) + m.kcal;
+  const waters = dates.map(x => Number(d.water[x]) || 0).filter(Boolean);
+  const w = d.growth.filter(g => g.weight != null && inP(g)).sort((a, b) => a.date.localeCompare(b.date));
+  const active = new Set([...conds, ...workouts, ...meals, ...d.growth.filter(inP)].map(x => x.date));
+  const chart = dates.map(x => ({ date: md(x), 睡眠: condBy[x]?.sleep ?? null, メンタル: condBy[x]?.mental ?? null, だるさ: condBy[x]?.morningFatigue ?? null }));
+  const stats = [
+    ["記録した日", `${active.size}/${days}`, "日"],
+    ["睡眠の質（平均）", r1(avg(conds.map(x => Number(x.sleep)).filter(Boolean))), "/5"],
+    ["睡眠時間（平均）", r1(avg(conds.map(x => Number(x.sleepHours)).filter(Boolean))), "時間"],
+    ["メンタル（平均）", r1(avg(conds.map(x => Number(x.mental)).filter(Boolean))), "/5"],
+    ["朝のだるさ（平均）", r1(avg(conds.map(x => Number(x.morningFatigue)).filter(Boolean))), "/5"],
+    ["自主トレ", new Set(workouts.map(x => x.date)).size, "日"],
+    ["自主トレの消費", Math.round(workouts.reduce((n, x) => n + (Number(x.calories) || 0), 0)).toLocaleString(), "kcal"],
+    ["食事（1日平均）", Object.keys(kcalBy).length ? Math.round(avg(Object.values(kcalBy))).toLocaleString() : "—", "kcal"],
+    ["水分（1日平均）", waters.length ? Math.round(avg(waters)).toLocaleString() : "—", "ml"],
+    ["体重の変化", w.length >= 2 ? `${w[w.length - 1].weight - w[0].weight > 0 ? "+" : ""}${r1(w[w.length - 1].weight - w[0].weight)}` : "—", "kg"],
+  ];
+  return (
+    <div className="kt-card wide">
+      <div className="kt-card-h">
+        <h3>レポート <small>アプリ・公式LINE・カルテの記録から</small></h3>
+        <div className="kt-pills">{[[7, "1週間"], [30, "1ヶ月"]].map(([n, l]) => <button key={n} className={`kt-pill${days === n ? " on" : ""}`} onClick={() => setDays(n)}>{l}</button>)}</div>
+      </div>
+      <div className="kt-stats">{stats.map(([l, v, u]) => <div key={l}><span>{l}</span><b className="num">{v}<small>{u}</small></b></div>)}</div>
+      {conds.length >= 2 ? (
+        <div className="kt-chart" style={{ height: 200, marginTop: 10 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chart} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#ECE8E0" vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: "#85837D", fontSize: 11 }} axisLine={{ stroke: "#DED9CE" }} tickLine={false} minTickGap={8} />
+              <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fill: "#85837D", fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #DED9CE", fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="睡眠" stroke="#2F6B4F" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+              <Line type="monotone" dataKey="メンタル" stroke="#3D6BD9" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+              <Line type="monotone" dataKey="だるさ" stroke="#C9973A" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : <div className="kt-empty" style={{ marginTop: 8 }}>体調の記録が2日分以上たまると、睡眠・メンタル・だるさのグラフが出ます</div>}
+    </div>
+  );
+}
+
+// お客様が自主トレに書いたメモ・写真（アプリ・LINEの「トレーニング」タブ）。返事を書き足せる
+function TrainingNotesCard({ c, d, flash, onSaved }) {
+  const notes = [...d.sessions].filter(s => s.freeComment || s.freePhoto).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const [replying, setReplying] = useState(null);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function send(date) {
+    setBusy(true);
+    await replyTrainingNote(c, date, text.trim(), lsGet(STAFF_STORAGE));
+    setBusy(false); setReplying(null); setText("");
+    flash("返事を書きました（アプリ・LINEのトレーニングタブに出ます）");
+    await onSaved();
+  }
+  return (
+    <div className="kt-card">
+      <div className="kt-card-h"><h3>自主トレのメモ・写真 <small>お客様がアプリ・LINEで書いたもの</small></h3></div>
+      {notes.length === 0 ? <div className="kt-empty">まだありません</div> : notes.map(s => (
+        <div key={s.date} className="kt-note-item">
+          <div className="h"><b>{ymd(s.date)}</b>{s.personalTraining && <span className="kt-tag gold">パーソナル</span>}
+            {replying !== s.date && <button className="kt-link" onClick={() => { setReplying(s.date); setText(""); }}>返事を書く</button>}</div>
+          {s.freeComment && <div className="kt-pre">{s.freeComment}</div>}
+          {s.freePhoto && <img src={s.freePhoto} alt="" />}
+          {replying === s.date && (
+            <div style={{ marginTop: 8 }}>
+              <textarea className="kt-ta" rows={2} value={text} onChange={e => setText(e.target.value)} placeholder="お客様への返事（メモの下に書き足されます）" autoFocus />
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <button className="kt-btn sm" disabled={busy || !text.trim()} onClick={() => send(s.date)}>{busy ? "保存中…" : "書き足す"}</button>
+                <button className="kt-btn ghost sm" onClick={() => setReplying(null)}>やめる</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// その日の栄養素（ビタミン・ミネラル・脂質の質・食物繊維・塩分）と、不足しがちなもの
+function NutrientsCard({ d, day }) {
+  const meals = d.meals.filter(m => m.date === day);
+  const t = dayNutrients(meals);
+  const targets = nutrientTargets(d);
+  const [open, setOpen] = useState(false);
+  const shown = NUTRIENTS.filter(def => t.n[def.key] > 0 || (t.full && targets?.[def.key]));
+  const advice = targets && t.full ? buildAdvice(t, { n: targets, p: nutritionTargets(d)?.p || 0 }, 4) : [];
+  return (
+    <div className="kt-card wide">
+      <div className="kt-card-h">
+        <h3>栄養素 <small>{ymd(day)}・ビタミン・ミネラル・脂質の質・食物繊維・塩分</small></h3>
+        {shown.length > 8 && <button className="kt-link" onClick={() => setOpen(v => !v)}>{open ? "閉じる" : `全部見る（${shown.length}項目）`}</button>}
+      </div>
+      {meals.length === 0 ? <div className="kt-empty">この日の食事の記録はありません</div> : (
+        <>
+          {advice.length > 0 && (
+            <div className="kt-advice">{advice.map((a, i) => <div key={i} className={a.type}><b>{a.title}</b><span>{a.body}</span></div>)}</div>
+          )}
+          {!targets && <div className="kt-muted" style={{ marginBottom: 8 }}>目標と比べるには、お客様が公式LINEでプロフィール（性別・年齢・身長・体重）を登録している必要があります。量だけ表示しています。</div>}
+          {!t.full && <div className="kt-muted" style={{ marginBottom: 8 }}>アプリで記録した食事は、食物繊維・糖分・塩分・カリウム・ビタミンA/C・カルシウム・鉄の8項目です（公式LINEで記録すると36項目）。</div>}
+          {CATEGORIES.map(cat => {
+            const defs = shown.filter(x => x.cat === cat.id).slice(0, open ? 99 : 4);
+            if (!defs.length) return null;
+            return (
+              <div key={cat.id} className="kt-ncat">
+                <div className="kt-eb">{cat.label}</div>
+                {defs.map(def => {
+                  const v = t.n[def.key], tg = targets?.[def.key];
+                  const st = tg ? nutrientStatus(def, v, tg) : null;
+                  return (
+                    <div key={def.key} className="kt-nrow">
+                      <span>{def.name}</span>
+                      <div className="track">{tg ? <i className={st} style={{ width: `${Math.min(100, Math.round((v / tg) * 100))}%` }} /> : null}</div>
+                      <b className="num">{fmt(v)}<small>{tg ? ` / ${fmt(tg)}` : ""}{def.unit}</small></b>
+                      {st && <em className={st}>{STATUS_LABEL[st]}</em>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ───────────────────────── 食事・栄養 ─────────────────────────
 function Bar2({ label, value, target, unit }) {
   const pct = target ? Math.min(100, Math.round((value / target) * 100)) : 0;
@@ -1172,6 +1323,7 @@ function MealsTab({ c, d, flash, onSaved }) {
         <div className="kt-muted">棒を押すと、その日の食事が上に出ます</div>
       </div>
 
+      <NutrientsCard d={d} day={day} />
       {c.pid && <TargetCard c={c} d={d} flash={flash} onSaved={onSaved} />}
     </div>
   );
@@ -1738,7 +1890,7 @@ function PhotosTab({ c, d, flash, onSaved }) {
 }
 
 // ───────────────────────── 履歴 ─────────────────────────
-function HistoryTab({ d, onDelete }) {
+function HistoryTab({ d, onDelete, onDeleteOld }) {
   const karteIds = new Set(d.karteSessions.map(s => s.id));
   // カルテ以外（管理画面・アプリ）で付いたパーソナル記録・コメントも時系列に並べる
   const others = [
@@ -1750,7 +1902,8 @@ function HistoryTab({ d, onDelete }) {
   const total = d.karteSessions.length;
   return (
     <div className="kt-card">
-      <div className="kt-card-h"><h3>セッションの履歴 <small>カルテで{total}回記録</small></h3></div>
+      <div className="kt-card-h"><h3>セッションの履歴 <small>カルテで{total}回記録</small></h3>
+        {onDeleteOld && <button className="kt-del" onClick={onDeleteOld}><Trash2 size={13} />1年以上前の記録を削除</button>}</div>
       {all.length === 0 && <div className="kt-empty">まだ記録がありません。「今日の記録」から残せます</div>}
       {all.map(x => (
         <div key={`${x.kind}-${x.id}`} className="kt-sess">
