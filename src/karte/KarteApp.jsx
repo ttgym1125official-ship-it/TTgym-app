@@ -12,7 +12,7 @@ import "./karte.css";
 import {
   loadCustomers, loadDetail, saveSession, deleteSession, saveMeasurement, saveGoal, savePhoto, adjustTickets, updateKarte,
   loadGlobal, saveGlobal, linkSheetRow, sortCustomers, sheetTabs, nameScore, connectToSheet,
-  loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, setsText, circuitExercises,
+  loadToday, updateToday, fetchCalendar, matchEvent, calendarKey, jstToday, newId, isDemo, seedDemo, PHOTO_SLOTS, menuSummary, setsText, circuitExercises, unitLabel,
   nutritionTargets, addMeal, membershipOf, patchProfile, addComment, deleteComment,
   dayNutrients, nutrientTargets, replyTrainingNote, deleteOldRecords,
 } from "./store.js";
@@ -905,7 +905,7 @@ function SelfTrainingCard({ workouts }) {
       <div className="kt-card-h"><h3>自主トレ <small>アプリ・公式LINEの記録</small></h3><span className="kt-muted">30日で <b className="num" style={{ color: "var(--ink)" }}>{last30}</b> 日</span></div>
       {recent.length === 0 ? <div className="kt-empty">自主トレの記録はまだありません</div> : (
         <div className="kt-items">
-          {recent.map(w => <div key={w.id}><span>{md(w.date)}　{w.exercise}</span><span className="num">{w.reps}{w.unit === "sec" ? "秒" : "回"}{w.weight ? ` × ${w.weight}kg` : ""}</span></div>)}
+          {recent.map(w => <div key={w.id}><span>{md(w.date)}　{w.exercise}</span><span className="num">{w.reps}{unitLabel(w.unit)}{w.weight ? ` × ${w.weight}kg` : ""}</span></div>)}
         </div>
       )}
     </div>
@@ -1466,6 +1466,17 @@ function toSavedItem(i) {
   return { ...base, setList, sets: setList.length || null, weight: weights.length ? Math.max(...weights) : null, reps: setList[0]?.reps ?? null };
 }
 
+// 秒・分・回 の小さな切り替え
+function UnitPicker({ value, onChange }) {
+  return (
+    <span className="kt-unit" role="group" aria-label="単位">
+      {[["sec", "秒"], ["min", "分"], ["reps", "回"]].map(([k, l]) => (
+        <button key={k} className={(value || "reps") === k ? "on" : ""} onClick={() => onChange(k)} aria-pressed={(value || "reps") === k}>{l}</button>
+      ))}
+    </span>
+  );
+}
+
 function Stepper({ value, onChange, step, min, unit }) {
   const n = Number(value) || 0;
   return (
@@ -1487,7 +1498,7 @@ function CircuitBuilder({ allMenus, initial, onSave, onAddOnce, onCancel, onDele
   const [q, setQ] = useState("");
   const nq = normQ(q);
   const hits = nq ? allMenus.filter(m => m.cat !== "circuit" && normQ(m.name).includes(nq)).slice(0, 12) : [];
-  const add = (nm, unit = "reps") => { if (nm.trim()) setExercises([...exercises, { name: nm.trim(), value: unit === "sec" ? 30 : 10, unit }]); setQ(""); };
+  const add = (nm, unit = "reps") => { if (nm.trim()) setExercises([...exercises, { name: nm.trim(), value: unit === "sec" ? 30 : unit === "min" ? 1 : 10, unit }]); setQ(""); };
   const setEx = (k, patch) => setExercises(exercises.map((e, j) => (j === k ? { ...e, ...patch } : e)));
   const move = (k, dir) => { const a = [...exercises]; const j = k + dir; if (j < 0 || j >= a.length) return; [a[k], a[j]] = [a[j], a[k]]; setExercises(a); };
   const cc = { id: initial?.id || newId(), name: name.trim(), exercises, rounds, minutes, rest };
@@ -1501,8 +1512,8 @@ function CircuitBuilder({ allMenus, initial, onSave, onAddOnce, onCancel, onDele
         <div key={k} className="kt-cex">
           <span className="no">{k + 1}</span>
           <b>{e.name}</b>
-          <label><input inputMode="numeric" value={e.value} onChange={ev => setEx(k, { value: ev.target.value })} /><em>{e.unit === "sec" ? "秒" : "回"}</em></label>
-          <button className="kt-tag" onClick={() => setEx(k, { unit: e.unit === "sec" ? "reps" : "sec" })}>{e.unit === "sec" ? "秒" : "回数"}</button>
+          <label><input inputMode="decimal" value={e.value} onChange={ev => setEx(k, { value: ev.target.value })} /><em>{unitLabel(e.unit)}</em></label>
+          <UnitPicker value={e.unit} onChange={u => setEx(k, { unit: u })} />
           <button onClick={() => move(k, -1)} aria-label="上へ" disabled={k === 0}>↑</button>
           <button onClick={() => move(k, 1)} aria-label="下へ" disabled={k === exercises.length - 1}>↓</button>
           <button onClick={() => setExercises(exercises.filter((_, j) => j !== k))} aria-label="外す"><X size={14} /></button>
@@ -1742,7 +1753,7 @@ function RecordTab({ c, d, state, setMenus, setCircuits, flash, onSaved }) {
                     </div>
                     <div className="kt-muted" style={{ marginBottom: 8 }}>
                       {[i.circuit.minutes ? `${i.circuit.minutes}分` : "", i.circuit.rest ? `休憩${i.circuit.rest}秒` : ""].filter(Boolean).join("・")}
-                      <ol className="kt-cex-list">{i.circuit.exercises.map((e, k) => <li key={k}>{e.name}<b>{e.value}{e.unit === "sec" ? "秒" : "回"}</b></li>)}</ol>
+                      <ol className="kt-cex-list">{i.circuit.exercises.map((e, k) => <li key={k}>{e.name}<b>{e.value}{unitLabel(e.unit)}</b></li>)}</ol>
                     </div>
                     <div className="kt-rounds">
                       {i.rows.map((r, k) => r.done
@@ -1759,7 +1770,7 @@ function RecordTab({ c, d, state, setMenus, setCircuits, flash, onSaved }) {
                     <div className="top">
                       <b>{i.name}</b>
                       {!i.mobility && <span className="kt-muted" style={{ fontSize: 12 }}>完了 {doneCount}/{i.rows.length}</span>}
-                      {!i.mobility && <button onClick={() => setItem(n, { unit: i.unit === "sec" ? "reps" : "sec" })} className="kt-tag" style={{ display: "inline-block" }}>{i.unit === "sec" ? "秒" : "回数"}</button>}
+                      {!i.mobility && <UnitPicker value={i.unit} onChange={u => setItem(n, { unit: u })} />}
                       <button aria-label="外す" onClick={() => setItems(items.filter((_, x) => x !== n))}><X size={16} /></button>
                     </div>
                     {i.mobility ? (
@@ -1777,7 +1788,7 @@ function RecordTab({ c, d, state, setMenus, setCircuits, flash, onSaved }) {
                           <div key={k} className={`kt-setrow${r.done ? " done" : ""}${i.load ? "" : " noload"}`}>
                             <span className="no">{k + 1}</span>
                             {i.load && <label><input inputMode="decimal" value={r.weight} disabled={r.done} onChange={e => setRow(n, k, { weight: e.target.value })} placeholder="0" aria-label={`${k + 1}セット目の重量`} /><em>kg</em></label>}
-                            <label><input inputMode="numeric" value={r.reps} disabled={r.done} onChange={e => setRow(n, k, { reps: e.target.value })} placeholder="0" aria-label={`${k + 1}セット目の${i.unit === "sec" ? "秒数" : "回数"}`} /><em>{i.unit === "sec" ? "秒" : "回"}</em></label>
+                            <label><input inputMode="decimal" value={r.reps} disabled={r.done} onChange={e => setRow(n, k, { reps: e.target.value })} placeholder="0" aria-label={`${k + 1}セット目の${unitLabel(i.unit)}数`} /><em>{unitLabel(i.unit)}</em></label>
                             {r.done
                               ? <button className="kt-done on" onClick={() => setRow(n, k, { done: false })}><Check size={14} />完了<small>取り消し</small></button>
                               : <button className="kt-done" onClick={() => setRow(n, k, { done: true })}>完了</button>}
