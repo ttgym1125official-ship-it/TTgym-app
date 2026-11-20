@@ -1443,7 +1443,8 @@ function circuitDraft(cc, note = "") {
 function toDraftItem(m, prev) {
   if (m.circuit || prev?.circuit) return circuitDraft(m.circuit || prev.circuit);
   const base = { name: m.name, cat: m.cat || prev?.cat, unit: m.unit || prev?.unit || "reps", load: m.load !== false, note: "" };
-  if (m.mobility) return { ...base, unit: "sec", load: false, mobility: true, sec: prev?.reps || 30, setCount: prev?.sets || 2, done: false };
+  // モビリティ: 単位（秒・分・回）を選べる。前回の単位と数字を引き継ぐ
+  if (m.mobility) return { ...base, unit: prev?.unit || "sec", load: false, mobility: true, sec: prev?.reps || 30, setCount: prev?.sets || 2, done: false };
   let rows;
   if (prev?.setList?.length) rows = prev.setList.map(x => ({ weight: x.weight ?? "", reps: x.reps ?? "", done: false }));
   else if (prev && (prev.weight != null || prev.reps != null)) rows = Array.from({ length: Math.min(Math.max(Number(prev.sets) || 1, 1), 10) }, () => ({ weight: prev.weight ?? "", reps: prev.reps ?? "", done: false }));
@@ -1457,7 +1458,7 @@ function toSavedItem(i) {
     return { name: i.name, cat: "circuit", note: (i.note || "").trim(), circuit: { ...i.circuit, rounds: i.rows.length }, roundsDone: done || i.rows.length, sets: done || i.rows.length };
   }
   const base = { name: i.name, cat: i.cat, unit: i.unit, note: (i.note || "").trim() };
-  if (i.mobility) return { ...base, unit: "sec", mobility: true, weight: null, reps: Number(i.sec) || null, sets: Number(i.setCount) || null, done: !!i.done };
+  if (i.mobility) return { ...base, unit: i.unit || "sec", mobility: true, weight: null, reps: Number(i.sec) || null, sets: Number(i.setCount) || null, done: !!i.done };
   const filled = (i.rows || []).filter(r => String(r.weight).trim() !== "" || String(r.reps).trim() !== "");
   const done = filled.filter(r => r.done);
   // 「完了」を押したセットを記録する（1つも押していなければ、入れたセットを全部）
@@ -1465,6 +1466,10 @@ function toSavedItem(i) {
   const weights = setList.map(x => x.weight).filter(x => x != null);
   return { ...base, setList, sets: setList.length || null, weight: weights.length ? Math.max(...weights) : null, reps: setList[0]?.reps ?? null };
 }
+
+// モビリティの ＋− の刻みと、単位を切り替えたときの最初の数字
+const MOB_STEP = { sec: 10, min: 0.5, reps: 1 };
+const MOB_DEFAULT = { sec: 30, min: 1, reps: 10 };
 
 // 秒・分・回 の小さな切り替え
 function UnitPicker({ value, onChange }) {
@@ -1775,7 +1780,8 @@ function RecordTab({ c, d, state, setMenus, setCircuits, flash, onSaved }) {
                     </div>
                     {i.mobility ? (
                       <div className="kt-mob">
-                        <Stepper value={i.sec} step={10} min={5} unit="秒" onChange={v => setItem(n, { sec: v })} />
+                        <UnitPicker value={i.unit || "sec"} onChange={u => setItem(n, { unit: u, sec: MOB_DEFAULT[u] })} />
+                        <Stepper value={i.sec} step={MOB_STEP[i.unit || "sec"]} min={MOB_STEP[i.unit || "sec"]} unit={unitLabel(i.unit || "sec")} onChange={v => setItem(n, { sec: Math.round(v * 10) / 10 })} />
                         <span className="x">×</span>
                         <Stepper value={i.setCount} step={1} min={1} unit="セット" onChange={v => setItem(n, { setCount: v })} />
                         {i.done
