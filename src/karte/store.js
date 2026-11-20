@@ -468,7 +468,10 @@ export async function adjustTickets(c, delta, reason, setTo) {
 //   sessions     … その日の personalTraining を付ける → メンバーシップのポイント（+2pt）
 // 「スクワット 40kg×10 / 45kg×8 / 50kg×6」「股関節 30秒×2セット」。メモがあれば（ ）で
 // サーキットの中身: 「スクワット15回・プランク30秒・バーピー10回」
-export const circuitExercises = cc => (cc?.exercises || []).map(e => `${e.name}${e.value ? `${e.value}${e.unit === "sec" ? "秒" : "回"}` : ""}`).join("・");
+// 単位: reps（回）・sec（秒）・min（分）
+export const UNIT_LABEL = { reps: "回", sec: "秒", min: "分" };
+export const unitLabel = u => UNIT_LABEL[u] || "回";
+export const circuitExercises = cc => (cc?.exercises || []).map(e => `${e.name}${e.value ? `${e.value}${unitLabel(e.unit)}` : ""}`).join("・");
 
 export function setsText(i) {
   if (i.circuit) {
@@ -476,7 +479,7 @@ export function setsText(i) {
     const head = [`${i.roundsDone ?? cc.rounds ?? 0}周`, cc.minutes ? `${cc.minutes}分` : "", cc.rest ? `休憩${cc.rest}秒` : ""].filter(Boolean).join("・");
     return `${head}（${circuitExercises(cc)}）`;
   }
-  const u = i.unit === "sec" ? "秒" : "回";
+  const u = unitLabel(i.unit);
   const one = x => [x.weight ? `${x.weight}kg` : "", x.reps ? `${x.reps}${u}` : ""].filter(Boolean).join("×");
   if (Array.isArray(i.setList) && i.setList.length) {
     const texts = i.setList.map(one).filter(Boolean);
