@@ -2,7 +2,7 @@
 // お店独自のメニューはカルテの「設定」から追加でき、global:karteMenus に保存される。
 // unit: "reps"（回数）か "sec"（秒）。load: 重量を入れる種目か
 // unit: "reps"（回数）か "sec"（秒）。load: 重量を入れる種目か。
-// group: カテゴリの中の小見出し。mobility: 「秒 × セット」を ＋− で増やす種目（モビリティだけ）
+// group: カテゴリの中の小見出し。mobility: 「秒（分・回も選べる）× セット」を ＋− で増やす種目（モビリティだけ）
 export const MENU_CATEGORIES = [
   { key: "care", label: "ストレッチ/ケア" },
   { key: "core", label: "コア/腹筋" },
